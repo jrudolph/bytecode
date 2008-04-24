@@ -1,0 +1,9 @@
+Anwendungen:
+
+Compilerbackend
+Optimierung(RegEx)->Compiler
+Compilierung zur Laufzeit
+
+Andere Moeglichkeiten:
+Java + Compiler -> Nachteil zusaetzliche Stufe
+CGLIB/ASM ->  
