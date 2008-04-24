@@ -7,3 +7,25 @@ Compilierung zur Laufzeit
 Andere Moeglichkeiten:
 Java + Compiler -> Nachteil zusaetzliche Stufe
 CGLIB/ASM ->  
+
+
+Gliederung:
+
+1. Einführendes Beispiel
+2. Bytecode DSL Bibliothek
+ * Typsicherheit durch Typenstack
+ * Einfache (Unary) Operationen vs Binary- und mehr Operationen
+ * Methodenreferenzen 
+  * vorhandener Code: scala.reflect.Code[X => Y]
+  * neuer Code
+ * lokale Variablen, Variablenstack oder als einzelne Typparameter
+3. Anwendung
+ * XPath Compiler
+ * Ersparnis
+4. Fazit
+
+Referenzen:
+
+XPath:
+
+http://www.asciiarmor.com/2004/11/13/java-xpath-10-engine-comparison-performance/
