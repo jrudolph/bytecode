@@ -39,26 +39,16 @@ Zu lesen:
 
 Text
 ----
-
-
 Safer Java Bytecode Generation using Scala Bytecode Library
 
-Today there are more and more programming languages targetting the Java Virtual Machine. If they are compiled they have to emit Java bytecodes either ahead of time or dynamically at runtime. A popular approach to generate these is to use some library.
+To compile programs targetting the Java Virtual Machine, compiler writers have
+to emit Java bytecodes, a serialized, binary form of the program. For this task
+several libraries exist today. The well-formedness of the generated code is
+checked when generating the code or when the JVM loads the code. Errors will be
+reported at the runtime of the compiler. I propose a Scala library, which
+doesn't even allow illegal bytecode sequences to be represented in terms of the
+library. The library makes use of Scala's type system to let the Scala compiler
+reject illegal combinations of bytecode operations. This is accomplished by
+encoding the state of the stack and the local variables as type parameters of
+an object representing the current frame.
 
-
-To compile programs targetting the Java Virtual Machine, compiler
-writers have to emit Java bytecodes, a serialized, binary form of the
-program. For this task several libraries exist today. The
-well-formedness of the generated code is checked when generating the
-code or at last when the JVM loads the code. I propose a Scala
-library, which doesn't even allow illegal bytecode sequences to be
-represented in terms of the library. The library makes use of Scala's
-type system to let the Scala compiler reject illegal combinations of
-bytecode operations.
-
-using Scala's type system to reject
-
-Java bytecodes have to be well-formed as specified. 
-
- * Compiler: Program -> JVM: Program -> Bytecode
- * Runtime: JVM verifies bytecode
