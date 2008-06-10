@@ -31,7 +31,7 @@ Proposed thesis structure:
  2. Summary of "Constraints on Java Virtual Machine Code"[1]
  3. Bytecode DSL
   * The Frame type: Building up stacks of types to represent stack and local variables of a method
-  * Simple bytecode operations
+  * Encoding of simple bytecode operations
   * Method calls
     * Using scala.reflect.Code to access information about existing methods
     * Forward references for code being defined (not yet sure how to do it)
