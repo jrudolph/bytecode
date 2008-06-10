@@ -21,7 +21,7 @@ Gliederung:
  * lokale Variablen, Variablenstack oder als einzelne Typparameter
 3. Anwendung
  * XPath Compiler
- * Ersparnis
+ * Ersparnis/Performanceuntersuchung
 4. Fazit
 
 Referenzen:
@@ -29,3 +29,6 @@ Referenzen:
 XPath:
 
 http://www.asciiarmor.com/2004/11/13/java-xpath-10-engine-comparison-performance/
+
+Zu lesen:
+http://elliotth.blogspot.com/2008/03/generating-jvm-bytecode.html
