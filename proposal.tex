@@ -1,0 +1,151 @@
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
+
+%\documentclass[10pt,draft]{article}
+\documentclass[10pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{a4wide}
+\usepackage[monochrome]{color}
+%\usepackage[colorlinks=true,pdftex,bookmarksnumbered,bookmarksopen]{hyperref}
+\usepackage[colorlinks=false,pdftex,bookmarksnumbered,bookmarksopen]{hyperref}
+\usepackage{float} 
+%\usepackage{wrapfig}
+%\usepackage{german}
+\usepackage[ngerman]{babel}
+\usepackage[latin1]{inputenc}
+%\usepackage{luximono}
+\usepackage{listings}
+%\usepackage{ams,amsmath}
+%\usepackage{pandora}
+\usepackage{pgf,tikz}
+\usepackage{fixme}
+
+\begingroup
+  \makeatletter
+  \def\x#1\refstepcounter#2\@nil{%
+    \endgroup
+    \def\caption{#1\H@refstepcounter#2}%  
+  }%
+\expandafter\x\caption\@nil
+
+\lstset{
+  language=c++,
+  basicstyle=\footnotesize\color{black}\ttfamily,
+  keywordstyle=\color{blue},
+  showspaces=false,
+  showtabs=false
+}
+
+% Use a small font for the verbatim environment
+\makeatletter  % makes '@' an ordinary character
+\renewcommand{\verbatim@font}{%
+  \ttfamily\footnotesize\catcode`\<=\active\catcode`\>=\active%
+}
+\makeatother   % makes '@' a special symbol again
+
+\author{Johannes Rudolph}
+\title{Safer Java Bytecode Generation: A Scala Bytecode Library\\
+Diploma thesis proposal}
+\makeindex
+
+\pagestyle{headings}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\small 
+Albert-Ludwigs-Universität Freiburg\\
+Arbeitsbereich Programmiersprachen\\
+Prof. Thiemann\\
+\end{center}
+
+\section{Abstract}
+To compile programs targetting the Java Virtual Machine(JVM), compiler writers
+have to emit Java bytecodes, a serialized, binary form of the program. For this
+task several libraries exist today. To enforce the well behaviour of the code,
+the JVM specification defines several constraints which it imposes upon
+bytecode.  The well-formedness of the generated code is then checked at
+the time the JVM loads the code. 
+
+Classes being rejected by the classloader are undesirable, therefore
+many bytecode-generating libraries aid the compiler writer by giving
+him tools to check if the generated code in spe is
+valid\cite{asmref}\footnote{\url{http://asm.objectweb.org/asm31/javadoc/user/org/objectweb/asm/tree/analysis/Analyzer.html}}. Using
+such a tool errors are reported at the runtime of the compiler at
+least.
+
+I propose a Scala library, which - in the best case - doesn't even allow
+illegal bytecode sequences to be represented in terms of the library. The
+library makes use of Scala's type system to let the Scala compiler reject
+illegal combinations of bytecode operations. This is accomplished by encoding
+the state of the stack and the local variables as type parameters of an object
+representing the current state of the frame. By defining bytecode operations as
+transitions between one type of frame and another one can enforce that only
+matching operations can be applied to a given frame.
+
+As an application of the library a tool will be developed which compiles an
+XPath expression into corresponding Java bytecodes which internally traverse the
+DOM of an XML document.
+
+\section{Proposed thesis structure}
+\begin{enumerate}
+\item Bytecode generation example (XPath or simple expression language)
+\item Summary of "Constraints on Java Virtual Machine Code"\cite[§4.8]{jvm}
+\item Bytecode DSL
+  \begin{enumerate}
+  \item The Frame type: Building up stacks of types to represent stack and local variables of a method
+  \item Encoding of simple bytecode operations
+  \item Method calls
+    \begin{enumerate}
+    \item Using scala.reflect.Code to access information about existing methods
+    \item Forward references for code being defined (not yet sure how to do it)
+    \end{enumerate}  
+  \item Jumps: encoding of code references
+  \item (Translating Scala compiler errors into human readable form)
+  \end{enumerate}
+\item Application: The XPath compiler
+  \begin{enumerate}
+  \item How it is done
+  \item Some performance measurements
+  \end{enumerate}
+\item Discussion
+\end{enumerate}
+
+\section{Roadmap}
+\begin{tabular}{l l}
+1-15 July & Defining the core classes (subset of opcodes)\\
+31 July & Working byte code generation for that subset\\
+Aug & XPath Compilation\\
+Sep & XPath performance tests, adding missing opcodes, cleanup of the library\\
+Oct & Writing Chap 2,3\\
+Nov & Writing Chap 1,4,5\\
+Dec & Finishing: proof-reading etc, buffer for unexpected events...\\
+\end{tabular}
+
+\section{Some links}
+
+\paragraph{Bytecode Libraries}
+\begin{itemize}
+\item A list of libraries: \url{http://java-source.net/open-source/bytecode-libraries}
+\item \url{http://elliotth.blogspot.com/2008/03/generating-jvm-bytecode.html}
+\end{itemize}
+
+\paragraph{XPath}
+\begin{itemize}
+\item \url{http://www.asciiarmor.com/2004/11/13/java-xpath-10-engine-comparison-performance/}
+\item \url{http://www.ibm.com/developerworks/library/x-javaxpathapi.html#listing3}
+\item \url{http://dom4j.org/benchmarks/xpath/index.html}
+\item \url{http://www.nearinfinity.com/blogs/page/sfarley?entry=gpath_versus_xpath}
+\end{itemize}
+
+\bibliographystyle{plaindin}
+\bibliography{bytecode}
+
+\end{document}
+
