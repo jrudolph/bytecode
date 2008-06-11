@@ -38,7 +38,7 @@ Proposed thesis structure:
   * Jumps: encoding of code references
   [* Translating Scala compiler errors into human readable form]
  4. Application: The XPath compiler
-  * How is it done
+  * How it is done
   * Some performance measurements
  5. Discussion
  
@@ -52,8 +52,16 @@ Bytecode Libraries:
  * http://elliotth.blogspot.com/2008/03/generating-jvm-bytecode.html
 
 XPath:
-
  * http://www.asciiarmor.com/2004/11/13/java-xpath-10-engine-comparison-performance/
  * http://www.ibm.com/developerworks/library/x-javaxpathapi.html#listing3
  * http://dom4j.org/benchmarks/xpath/index.html
  * http://www.nearinfinity.com/blogs/page/sfarley?entry=gpath_versus_xpath
+
+Roadmap:
+ July, 1st - 15th: Defining the core classes (subset of opcodes)
+ July, 31th: Working byte code generation for that subset
+ Aug XPath Compilation
+ Sep XPath performance tests, adding missing opcodes, cleanup of the library
+ Oct Writing Chap 2,3
+ Nov Writing Chap 1,4,5
+ Dec Finishing: proof-reading etc, buffer for unexpected events...
