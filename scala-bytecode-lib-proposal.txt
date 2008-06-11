@@ -10,7 +10,7 @@ the JVM specification defines several constraints which it imposes upon
 bytecode.  The well-formedness of the generated code is then checked at
 the time the JVM loads the code. 
 
-Classes being rejected by the classloader are undesirable, so many
+Classes being rejected by the classloader are undesirable, therefore many
 bytecode-generating libraries aid the compiler writer by giving him tools to
 check if the generated code in spe is valid[2]. Using such a tool errors are
 reported at the runtime of the compiler at least.
@@ -25,7 +25,7 @@ transitions between one type of frame and another one can enforce that only
 matching operations can be applied to a given frame.
 
 As an application of the library a tool will be developed which compiles an
-XPath expression into a corresponding Java class which internally traverses the
+XPath expression into corresponding Java bytecodes which internally traverse the
 DOM of an XML document.
 
 Proposed thesis structure:
