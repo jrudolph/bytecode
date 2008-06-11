@@ -1,3 +1,5 @@
+Proposal for diploma thesis of Johannes Rudolph
+
 Safer Java Bytecode Generation: A Scala Bytecode Library
 ========================================================
 
