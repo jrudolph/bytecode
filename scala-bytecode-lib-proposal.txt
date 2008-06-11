@@ -60,10 +60,10 @@ XPath:
  * http://www.nearinfinity.com/blogs/page/sfarley?entry=gpath_versus_xpath
 
 Roadmap:
- July, 1st - 15th: Defining the core classes (subset of opcodes)
- July, 31th: Working byte code generation for that subset
- Aug XPath Compilation
- Sep XPath performance tests, adding missing opcodes, cleanup of the library
- Oct Writing Chap 2,3
- Nov Writing Chap 1,4,5
- Dec Finishing: proof-reading etc, buffer for unexpected events...
+ July, 1st - 15th 	Defining the core classes (subset of opcodes)
+ July, 31th		Working byte code generation for that subset
+ Aug 			XPath Compilation
+ Sep 			XPath performance tests, adding missing opcodes, cleanup of the library
+ Oct 			Writing Chap 2,3
+ Nov 			Writing Chap 1,4,5
+ Dec 			Finishing: proof-reading etc, buffer for unexpected events...
