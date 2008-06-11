@@ -1,2 +1,2 @@
 #!/bin/bash
-git push homepage:/var/git/diplom HEAD
+git push --all -f homepage:/var/git/diplom
