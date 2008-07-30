@@ -43,7 +43,17 @@ trait Ops{
   def pop[T,R<:Stack,L]:ST[S[T,R],R,L] = sop(pops)
 }
 
+trait Int2Stack[R<:Stack,L<:Local]{
+  def iadd():F[S[int,R],L]
+}
+trait NotEmptyStack[R,L<:Local]{
+  def pop():F[R,L]
+}
+
 object Simulation{
+  implicit def int2Stack[R,LT](st:F[S[int,S[int,R]],LT]):Int2Stack[R,LT] = null
+  implicit def notEmptyStack[T,R,LT](s:F[S[T,R],LT]):NotEmptyStack[R,LT] = null
+  
   type E[LT<:Local] = F[Empty,LT]
   
   def test = {
@@ -52,8 +62,8 @@ object Simulation{
     import ops._    
     x.op(bipush(12))
      .op(dup)
-     .op(iadd)
-     .op(pop)
+     .iadd
+     .pop
      .op(bipush(5))
      .sop(pops)
     x
@@ -64,11 +74,18 @@ object ShouldNotCompile{
   val ops:Ops=null
   val f:F[Empty,NoLocal]=null
   import ops._
-  def pushFromEmptyStack() {
+  def popFromEmptyStack() {
     f.op(pop)
+  }
+  def implicitPopFromEmptyStack() {
+    f.pop
   }
   def addWhenOnlyOneInteger {
     f.op(bipush(5))
      .op(iadd)
+  }
+  def implicitIAddWhenOnlyOneInteger {
+    f.op(bipush(5))
+     .iadd
   }
 }
