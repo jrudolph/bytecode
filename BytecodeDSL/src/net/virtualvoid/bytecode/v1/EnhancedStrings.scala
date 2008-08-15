@@ -59,8 +59,11 @@ class StrLexer extends Lexical with RegexParsers{
   case class Literal(str:String) extends StrToken{
     def chars = str
   }
-  case class ExpLiteral(identifier:String) extends StrToken{
+  case class Exp(identifier:String) extends StrToken{
     def chars = identifier
+  }
+  case class SpliceExp(exp:Exp,sep:String) extends StrToken{
+    def chars = exp.chars + ":" + sep
   }
 
   //type Token = StrToken
@@ -71,13 +74,18 @@ class StrLexer extends Lexical with RegexParsers{
   def idChar = letter
   //def num = digit ~ rep(digit) ^^ {case first ~ rest => Literal(first :: rest mkString "")}
   def lit:Parser[Token] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
-  def exp:Parser[Token] = expStartChar ~> idChar ~ rep(idChar) ^^ {case first ~ rest => ExpLiteral(first :: rest mkString "")}
+  def id = idChar ~ rep(idChar)
+  def exp:Parser[Exp] = expStartChar ~>
+    (id | "{" ~> id <~ "}") ^^ {case first ~ rest => Exp(first :: rest mkString "")}
+
+  def sepChars = "[^*]*".r
+  def spliceExp = exp ~ sepChars <~ "*" ^^ {case exp ~ separator => SpliceExp(exp,separator)}
 
   import scala.util.parsing.input.CharArrayReader.EofCh
   override def token:Parser[Token] = (EofCh ^^^ EOF
-     | exp | lit )
+     | spliceExp | exp | lit )
 
-  override def whitespace = rep('`')//failure("blub")//rep('`')
+  override def whitespace = rep('`')
   override def skipWhitespace = false
 }
 class StrParser extends TokenParsers{
@@ -91,8 +99,15 @@ class StrParser extends TokenParsers{
 object TestParser extends StrParser {
   //type Input = Reader[StrToken]
   def main(args:Array[String]):Unit = {
-    val scanner:Input = new lexical.Scanner(args(0)).asInstanceOf[Input]
-    //System.out.println(scanner.first)
-    System.out.println(phrase(values)(scanner))
+    import lexical.StrToken
+    def test(s:List[StrToken],input:String) = {
+      val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
+      val output = phrase(values)(scanner)
+      System.out.println(output.get.toString+" should be "+s.toString)
+      assert(s.toString == output.get.toString)
+    }
+    import lexical._
+    test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav blubber")
+    test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav,* blubber")
   }
 }
