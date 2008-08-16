@@ -68,6 +68,8 @@ class StrLexer extends Lexical with RegexParsers{
   case class Components(cmps:StrToken*) extends StrToken{
     def chars = cmps.map(_.chars).reduceLeft(_+_)
   }
+  
+  implicit def extendParser[T](x:Parser[T]):EParser[T] = EParser[T](x)
 
   val expStartChar = '#'
 
@@ -79,8 +81,7 @@ class StrLexer extends Lexical with RegexParsers{
     (id | "{" ~> id <~ "}") ^^ {case first ~ rest => Exp(first :: rest mkString "")}
 
   def sepChars = "[^)]*".r
-  def mkSep(x:Option[~[~[Elem,String],Elem]]):String = x match {case Some(ob ~ sep ~ cb) => sep;case None => ""}
-  def spliceExp = exp ~ opt(inners) ~ ("*" ~> opt('(' ~! sepChars ~! ')')) ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),mkSep(separator))}
+  def spliceExp = exp ~ opt(inners) ~ ("*" ~> opt(extendParser('(') ~!> sepChars <~! ')')) ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),separator.getOrElse(""))}
   
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']' ^^ {x=> Components(x:_*)}
@@ -91,6 +92,15 @@ class StrLexer extends Lexical with RegexParsers{
 
   override def whitespace = rep('`')
   override def skipWhitespace = false
+  
+  
+  case class EParser[T](oldThis:Parser[T]){
+    def ~!> [U](p: => Parser[U]): Parser[U] 
+      = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield b).named("~!>") }
+      
+    def <~! [U](p: => Parser[U]): Parser[T] 
+      = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield a).named("<~!") }
+  }
 }
 class StrParser extends TokenParsers{
   type Tokens = StrLexer
