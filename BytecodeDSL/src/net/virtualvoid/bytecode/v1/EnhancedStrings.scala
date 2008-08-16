@@ -20,7 +20,7 @@ package net.virtualvoid.bytecode.v1
  * String[] specs;
  * }
  *
- * str("create table #name (#columns[#name #type #specs,*],*)",t)
+ * str("create table #name (#columns[#name #type #specs(,)*\n](,)*)",t)
  *
  * "create table" + t.name + "(" +
  * t.columns.map(c=> c.name + " " + c.type + " " + c.specs.join(",")).join(",")
@@ -127,5 +127,8 @@ object TestParser extends StrParser {
     test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),"")),"#gustav[#ab]*")
     test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),",")),"#gustav[#ab](,)*")
     test(List(Literal("blub"),SpliceExp(Exp("gustav"),Exp("this"),","),Literal(" blubber")),"blub#gustav(,)* blubber")
+    
+    test(List(Literal("blub"), SpliceExp(Exp("gustav"),Components(List(Literal("abc "), SpliceExp(Exp("av"),Components(List(Literal("wurst")):_*),"")):_*),","), Literal(" blubber"))
+              ,"blub#gustav[abc #av[wurst]*](,)* blubber")
   }
 }
