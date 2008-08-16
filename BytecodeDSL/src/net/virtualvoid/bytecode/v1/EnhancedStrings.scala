@@ -62,25 +62,31 @@ class StrLexer extends Lexical with RegexParsers{
   case class Exp(identifier:String) extends StrToken{
     def chars = identifier
   }
-  case class SpliceExp(exp:Exp,sep:String) extends StrToken{
+  case class SpliceExp(exp:Exp,inner:StrToken,sep:String) extends StrToken{
     def chars = exp.chars + ":" + sep
+  }
+  case class Components(cmps:StrToken*) extends StrToken{
+    def chars = cmps.map(_.chars).reduceLeft(_+_)
   }
 
   val expStartChar = '#'
 
-  def char = "[^#]".r
-  def idChar = letter
-  def lit:Parser[Token] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
+  def char = "[^#\\]\\[\\(]".r
+  def idChar = "\\w".r
+  def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
   def id = idChar ~ rep(idChar)
   def exp:Parser[Exp] = expStartChar ~>
     (id | "{" ~> id <~ "}") ^^ {case first ~ rest => Exp(first :: rest mkString "")}
 
-  def sepChars = "[^*]*".r
-  def spliceExp = exp ~ sepChars <~ "*" ^^ {case exp ~ separator => SpliceExp(exp,separator)}
+  def sepChars = "[^)]*".r
+  def spliceExp = exp ~ opt(inners) ~ ("*" ~> opt('('~> sepChars <~ ')')) ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),separator.getOrElse(""))}
+  
+  def innerExp:Parser[StrToken] = spliceExp | exp | lit
+  def inners = '[' ~> rep(innerExp) <~ ']' ^^ {x=> Components(x:_*)}
 
   import scala.util.parsing.input.CharArrayReader.EofCh
   override def token:Parser[Token] = (EofCh ^^^ EOF
-     | spliceExp | exp | lit )
+     | innerExp )
 
   override def whitespace = rep('`')
   override def skipWhitespace = false
@@ -104,6 +110,11 @@ object TestParser extends StrParser {
     }
     import lexical._
     test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav blubber")
-    test(List(Literal("blub"),SpliceExp(Exp("gustav"),","),Literal(" blubber")),"blub#gustav,* blubber")
+    test(List(SpliceExp(Exp("gustav"),Exp("this"),"")),"#gustav*")
+    test(List(SpliceExp(Exp("gustav"),Components(List(Literal("wurst")):_*),"")),"#gustav[wurst]*")
+    
+    test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),"")),"#gustav[#ab]*")
+    test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),",")),"#gustav[#ab]*(,)")
+    test(List(Literal("blub"),SpliceExp(Exp("gustav"),Exp("this"),","),Literal(" blubber")),"blub#gustav*(,) blubber")
   }
 }
