@@ -81,7 +81,7 @@ class StrLexer extends Lexical with RegexParsers{
     (id | "{" ~> id <~ "}") ^^ {case first ~ rest => Exp(first :: rest mkString "")}
 
   def sepChars = "[^)]*".r
-  def spliceExp = exp ~ opt(inners) ~ ("*" ~> opt(extendParser('(') ~!> sepChars <~! ')')) ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),separator.getOrElse(""))}
+  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('(') ~!> sepChars <~! ')') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),separator.getOrElse(""))}
   
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']' ^^ {x=> Components(x:_*)}
@@ -125,7 +125,7 @@ object TestParser extends StrParser {
     test(List(SpliceExp(Exp("gustav"),Components(List(Literal("wurst")):_*),"")),"#gustav[wurst]*")
     
     test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),"")),"#gustav[#ab]*")
-    test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),",")),"#gustav[#ab]*(,)")
-    test(List(Literal("blub"),SpliceExp(Exp("gustav"),Exp("this"),","),Literal(" blubber")),"blub#gustav*(,) blubber")
+    test(List(SpliceExp(Exp("gustav"),Components(List(Exp("ab")):_*),",")),"#gustav[#ab](,)*")
+    test(List(Literal("blub"),SpliceExp(Exp("gustav"),Exp("this"),","),Literal(" blubber")),"blub#gustav(,)* blubber")
   }
 }
