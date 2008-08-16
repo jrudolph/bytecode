@@ -71,7 +71,7 @@ class StrLexer extends Lexical with RegexParsers{
 
   val expStartChar = '#'
 
-  def char = "[^#\\]\\[\\(]".r
+  def char = "[^#\\]\\[]".r
   def idChar = "\\w".r
   def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
   def id = idChar ~ rep(idChar)
@@ -79,7 +79,8 @@ class StrLexer extends Lexical with RegexParsers{
     (id | "{" ~> id <~ "}") ^^ {case first ~ rest => Exp(first :: rest mkString "")}
 
   def sepChars = "[^)]*".r
-  def spliceExp = exp ~ opt(inners) ~ ("*" ~> opt('('~> sepChars <~ ')')) ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),separator.getOrElse(""))}
+  def mkSep(x:Option[~[~[Elem,String],Elem]]):String = x match {case Some(ob ~ sep ~ cb) => sep;case None => ""}
+  def spliceExp = exp ~ opt(inners) ~ ("*" ~> opt('(' ~! sepChars ~! ')')) ^^ {case exp ~ x ~ separator => SpliceExp(exp,x.getOrElse(Exp("this")),mkSep(separator))}
   
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']' ^^ {x=> Components(x:_*)}
