@@ -66,13 +66,10 @@ class StrLexer extends Lexical with RegexParsers{
     def chars = exp.chars + ":" + sep
   }
 
-  //type Token = StrToken
-
   val expStartChar = '#'
 
   def char = "[^#]".r
   def idChar = letter
-  //def num = digit ~ rep(digit) ^^ {case first ~ rest => Literal(first :: rest mkString "")}
   def lit:Parser[Token] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
   def id = idChar ~ rep(idChar)
   def exp:Parser[Exp] = expStartChar ~>
@@ -97,7 +94,6 @@ class StrParser extends TokenParsers{
   def values = rep(value)
 }
 object TestParser extends StrParser {
-  //type Input = Reader[StrToken]
   def main(args:Array[String]):Unit = {
     import lexical.StrToken
     def test(s:List[StrToken],input:String) = {
@@ -108,6 +104,6 @@ object TestParser extends StrParser {
     }
     import lexical._
     test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav blubber")
-    test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav,* blubber")
+    test(List(Literal("blub"),SpliceExp(Exp("gustav"),","),Literal(" blubber")),"blub#gustav,* blubber")
   }
 }
