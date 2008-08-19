@@ -19,8 +19,15 @@ package net.virtualvoid.string
  *
  */
 
-trait IObjectFormatter {
+// The Visible API
+
+trait IObjectFormatterFactory {
   def format(format:String,o:AnyRef):String
+  def formatter[T<:AnyRef](format:String):IObjectFormatter[T]
+}
+
+trait IObjectFormatter[T<:AnyRef] {
+  def format(o:T):String
 }
 
 import scala.util.parsing.input.Reader
@@ -138,7 +145,7 @@ trait IPerson{
   def getAccounts():java.util.List[IAccount]
 }
 
-object ObjectFormatter extends IObjectFormatter{
+object ObjectFormatter extends IObjectFormatterFactory{
   object Parser extends StrParser{
     def parse(input:String):List[lexical.StrToken] = {
       val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
@@ -146,7 +153,13 @@ object ObjectFormatter extends IObjectFormatter{
       output.get
     }
   }
-  def format(format:String,o:AnyRef) = Parser.parse(format).map(_.eval(o)) mkString "" 
+  
+  def formatter[T<:AnyRef](fm:String):IObjectFormatter[T] = new IObjectFormatter[T]{
+    val parsed = Parser.parse(fm)
+    def format(o:T) = parsed.map(_.eval(o)) mkString ""
+  }
+  
+  def format(format:String,o:AnyRef) = formatter(format).format(o)
 }
 
 object TestParser extends StrParser {
