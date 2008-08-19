@@ -1,0 +1,31 @@
+<project>
+	<property file="../build.properties"/>
+	<property name="bin.dir" value="bin"/>
+	<property name="scala.src.dir" value="src"/>
+	
+	<target name="init-scala-compiler">
+		<echo>${scala.dir}</echo>
+        <path id="scala.compiler.cp">
+        	<fileset dir="${scala.dir}">
+        		<include name="lib/*.jar"/>
+        	</fileset>
+        </path>
+        <taskdef resource="scala/tools/ant/antlib.xml" classpathref="scala.compiler.cp"/>
+	</target>
+	
+	<target name="build" depends="init-scala-compiler">
+		<mkdir dir="${bin.dir}"/>
+		<mkdir dir="${bin.dir}/classes"/>
+		<scalac srcdir="${scala.src.dir}" 
+			destdir="${bin.dir}/classes"
+                        target="jvm-1.5" encoding="UTF8">
+                        
+                        <classpath refid="scala.compiler.cp"/>
+                </scalac>	
+	</target>
+	<target name="package" depends="build">
+		<jar file="${ant.project.name}.jar">
+			<fileset dir="${bin.dir}/classes" includes="**"/>
+		</jar>
+	</target>
+</project>
