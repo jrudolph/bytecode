@@ -56,10 +56,12 @@ class StrLexer extends Lexical with RegexParsers{
     import java.lang.NoSuchMethodException
     def method(c:Class[_],name:String):Option[Method] =
      try {
-      Some(c.getMethod(name,null))
-    }catch{
-    case _:NoSuchMethodException => None
-    }
+       val res = c.getMethod(name,null)
+       res.setAccessible(true)
+       Some(res)
+     }catch{
+     case _:NoSuchMethodException => None
+     }
     def capitalize(s:String):String = s.substring(0,1).toUpperCase + s.substring(1)
     def eval(o:AnyRef) = identifier match {
     case "this" => o
