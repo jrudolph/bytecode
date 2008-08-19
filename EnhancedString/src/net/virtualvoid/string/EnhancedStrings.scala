@@ -19,7 +19,7 @@ package net.virtualvoid.string
  *
  */
 
-trait ObjectFormatter {
+trait IObjectFormatter {
   def format(format:String,o:AnyRef):String
 }
 
@@ -129,7 +129,7 @@ trait IPerson{
   def getAccounts():java.util.List[IAccount]
 }
 
-object ObjectFormatter extends ObjectFormatter{
+object ObjectFormatter extends IObjectFormatter{
   object Parser extends StrParser{
     def parse(input:String):List[lexical.StrToken] = {
       val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
