@@ -10,13 +10,12 @@ package net.virtualvoid.string
  * String type;
  * String[] specs;
  * }
- *
- * str("create table #name (#columns[#name #type #specs(,)*\n](,)*)",t)
- *
+ * val t:Table
+ * ObjectFormatter.format("create table #name (#columns[#name #type #specs(,)*\n](,)*)",t)
+ * is short for
  * "create table" + t.name + "(" +
  * t.columns.map(c=> c.name + " " + c.type + " " + c.specs.join(",")).join(",")
  * + ")"
- *
  */
 
 // The Visible API
@@ -78,7 +77,7 @@ class StrLexer extends Lexical with RegexParsers{
   case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
     override def eval(o:AnyRef) = inner.eval(super.eval(o))
   }
-  case class SpliceExp(exp:Exp,sep:String,inner:StrToken*) extends StrToken{
+  case class SpliceExp(exp:Exp,sep:String,inner:List[StrToken]) extends StrToken{
     def chars = exp.chars + ":" + sep
     def realEval(l:Iterable[AnyRef]):String = l.map(e => inner.map(_.eval(e)) mkString "") mkString sep
     import Java.it2it
@@ -106,7 +105,7 @@ class StrLexer extends Lexical with RegexParsers{
     (id | extendParser("{") ~!> id <~! "}")
 
   def sepChars = "[^)]*".r
-  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('(') ~!> sepChars <~! ')') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))):_*)}
+  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('(') ~!> sepChars <~! ')') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))))}
   
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']'
@@ -126,86 +125,28 @@ class StrLexer extends Lexical with RegexParsers{
       = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield a).named("<~!") }
   }
 }
-class StrParser extends TokenParsers{
+trait StrParser extends TokenParsers{
   type Tokens = StrLexer
   override val lexical = new StrLexer
   import lexical._
 
   def value:Parser[StrToken] = elem("token",_.isInstanceOf[StrToken]) ^^ {case s:StrToken => s}
   def values = rep(value)
-}
-
-trait IAccount{
-  def getBank():String
-  def getAccountNo():String
-}
-trait IPerson{
-  def getFirstName():String
-  def getLastName():String
-  def getAccounts():java.util.List[IAccount]
-}
-
-object ObjectFormatter extends IObjectFormatterFactory{
-  object Parser extends StrParser{
-    def parse(input:String):List[lexical.StrToken] = {
+  
+  def parse(input:String):List[lexical.StrToken] = {
       val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
       val output = phrase(values)(scanner)
       output.get
     }
-  }
+}
+
+object ObjectFormatter extends IObjectFormatterFactory{
+  val parser = new StrParser{}
   
   def formatter[T<:AnyRef](fm:String):IObjectFormatter[T] = new IObjectFormatter[T]{
-    val parsed = Parser.parse(fm)
+    val parsed = parser.parse(fm)
     def format(o:T) = parsed.map(_.eval(o)) mkString ""
   }
   
   def format(format:String,o:AnyRef) = formatter(format).format(o)
-}
-
-object TestParser extends StrParser {
-  def parse(input:String):List[lexical.StrToken] = {
-    val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
-    val output = phrase(values)(scanner)
-    output.get
-  }
-  def eval(s:String,o:AnyRef):String =
-    parse(s).map(_.eval(o)) mkString ""
-  
-  def main(args:Array[String]):Unit = {
-    case class Account(nummer:String,bank:String) extends IAccount{
-      def getBank:String = bank
-      def getAccountNo:String = nummer
-    }
-    object Peter extends IPerson{
-      def getFirstName:String = "Peter"
-      def getLastName:String = "Paul"
-      def getAccounts():java.util.List[IAccount] = 
-        java.util.Arrays.asList(Array(Account("234234","Rich Bank Berlin"),Account("3424234","Park Bank")))
-    }    
-    
-    import lexical.StrToken
-    def test(s:List[StrToken],input:String) = {
-      val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
-      val output = phrase(values)(scanner)
-      System.out.println(output.get.toString+" should be "+s.toString)
-      assert(s.toString == output.get.toString)
-    }
-    import lexical._
-       
-    System.out.println(eval("Name: #firstName #lastName\nAccounts:\n#accounts[#accountNo at #bank](\n)*",Peter))
-    System.out.println(eval("#this[#this has the length #length and consists of the chars #toCharArray['#this'](,)*](\n)*",Array("test","long string")))
-    
-    test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav blubber")
-    test(List(ParentExp(Exp("wurst"),"test")),"#{test.wurst}")
-    test(List(ParentExp(Exp("wurst"),"test")),"#test.wurst")
-    test(List(SpliceExp(Exp("gustav"),"",List(Exp("this")):_*)),"#gustav*")
-    test(List(SpliceExp(Exp("gustav"),"",List(Literal("wurst")):_*)),"#gustav[wurst]*")
-    
-    test(List(SpliceExp(Exp("gustav"),"",List(Exp("ab")):_*)),"#gustav[#ab]*")
-    test(List(SpliceExp(Exp("gustav"),",",List(Exp("ab")):_*)),"#gustav[#ab](,)*")
-    test(List(Literal("blub"),SpliceExp(Exp("gustav"),",",List(Exp("this")):_*),Literal(" blubber")),"blub#gustav(,)* blubber")
-    
-    test(List(Literal("blub"), SpliceExp(Exp("gustav"),",",List(Literal("abc "), SpliceExp(Exp("av"),"",List(Literal("wurst")):_*)):_*), Literal(" blubber"))
-              ,"blub#gustav[abc #av[wurst]*](,)* blubber")
-  }
 }
