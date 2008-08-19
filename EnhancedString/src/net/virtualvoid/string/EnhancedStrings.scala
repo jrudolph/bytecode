@@ -67,7 +67,9 @@ class StrLexer extends Lexical with RegexParsers{
     case "this" => o
     case _ => Array("get"+capitalize(identifier),identifier).flatMap(method(o.getClass,_).toList).first.invoke(o,null)
     }
-      
+  }
+  case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
+    override def eval(o:AnyRef) = inner.eval(super.eval(o))
   }
   case class SpliceExp(exp:Exp,sep:String,inner:StrToken*) extends StrToken{
     def chars = exp.chars + ":" + sep
@@ -87,9 +89,14 @@ class StrLexer extends Lexical with RegexParsers{
   def char = "[^#\\]\\[]".r
   def idChar = "\\w".r
   def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
-  def id = idChar ~ rep(idChar)
+  
+  def idPart:Parser[String] = idChar ~ rep(idChar) ^^ {case first ~ rest => first :: rest mkString ""} 
+  def id:Parser[Exp] = idPart ~ opt("." ~> id) ^^ {case str ~ Some(inner) => ParentExp(inner,str)
+                                                   case str ~ None => Exp(str) 
+                                                  }  
+
   def exp:Parser[Exp] = expStartChar ~>
-    (id | "{" ~> id <~ "}") ^^ {case first ~ rest => Exp(first :: rest mkString "")}
+    (id | extendParser("{") ~!> id <~! "}")
 
   def sepChars = "[^)]*".r
   def spliceExp = exp ~ opt(inners) ~ opt(extendParser('(') ~!> sepChars <~! ')') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))):_*)}
@@ -176,6 +183,8 @@ object TestParser extends StrParser {
     System.out.println(eval("#this[#this has the length #length and consists of the chars #toCharArray['#this'](,)*](\n)*",Array("test","long string")))
     
     test(List(Literal("blub"),Exp("gustav"),Literal(" blubber")),"blub#gustav blubber")
+    test(List(ParentExp(Exp("wurst"),"test")),"#{test.wurst}")
+    test(List(ParentExp(Exp("wurst"),"test")),"#test.wurst")
     test(List(SpliceExp(Exp("gustav"),"",List(Exp("this")):_*)),"#gustav*")
     test(List(SpliceExp(Exp("gustav"),"",List(Literal("wurst")):_*)),"#gustav[wurst]*")
     
