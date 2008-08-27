@@ -46,13 +46,13 @@ trait Ops{
 trait Int2Stack[R<:Stack,L<:Local]{
   def iadd():F[S[int,R],L]
 }
-trait NotEmptyStack[R,L<:Local]{
+trait NotEmptyStack[R<:Stack,L<:Local]{
   def pop():F[R,L]
 }
 
 object Simulation{
-  implicit def int2Stack[R,LT](st:F[S[int,S[int,R]],LT]):Int2Stack[R,LT] = null
-  implicit def notEmptyStack[T,R,LT](s:F[S[T,R],LT]):NotEmptyStack[R,LT] = null
+  implicit def int2Stack[R<:Stack,LT<:Local](st:F[S[int,S[int,R]],LT]):Int2Stack[R,LT] = null
+  implicit def notEmptyStack[T,R<:Stack,LT<:Local](s:F[S[T,R],LT]):NotEmptyStack[R,LT] = null
   
   type E[LT<:Local] = F[Empty,LT]
   

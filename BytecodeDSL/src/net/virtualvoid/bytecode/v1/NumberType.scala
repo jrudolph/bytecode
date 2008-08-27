@@ -1,6 +1,6 @@
 package net.virtualvoid.bytecode.v1
 
-trait Number
+trait Number {}
 trait NoNumber <: Number
 trait N[C <: Number] <:Number
 
@@ -31,7 +31,7 @@ trait NumberDescender[L<:Local,X<:Number]{}
 object test{
   import types._
   implicit def descending[T,R,NR](d:Descender[L[T,R],N[NR]]):Descender[R,NR] = null
-  implicit def descending0[L,NR](d:Descender[L,N[NR]]):NumberDescender[L,NR] = null
+  implicit def descending0[L,NR,X <% Descender[L,N[NR]]](d:X):NumberDescender[L,NR] = null
   implicit def descending1[T,R,N](d:NumberDescender[L[T,R],N]):Descender[R,N] = null
   implicit def descended[T,R](d:Descender[L[T,R],NoNumber]):Descended[T] = null
   implicit def descendable[L](l:L):Descendable[L] = null
