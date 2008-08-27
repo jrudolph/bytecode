@@ -1,0 +1,9 @@
+<ivy-module version="1.0">
+        <info default="true" status="release" module="strings" organisation="virtualvoid" revision="0.1.1"></info>
+        <configurations>
+                <conf visibility="public" name="default"></conf>
+        </configurations>
+        <publications>
+                <artifact conf="default" type="jar" ext="jar" name="strings"></artifact>
+        </publications>
+</ivy-module>
