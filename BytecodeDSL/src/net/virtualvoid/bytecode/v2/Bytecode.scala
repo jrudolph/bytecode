@@ -20,8 +20,10 @@ object Bytecode{
     def stack:ST
     def locals:LT
 
-    def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def bipush(i1:Int):F[ST**Int,LT]
+
+    def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
+    def pop_int[R<:List](rest:R):F[R,LT]
   }
   trait Int2Stack[ST<:List,LT<:List]{
     def i1:Int
@@ -43,7 +45,9 @@ object Bytecode{
       val i1 = stack.rest.top
       val i2 = stack.top
     }
-    implicit def oneStack[R<:List,LT<:List,T](f:F[R**T,LT]):OneStack[R,T,LT] = null
+    implicit def oneStack[R<:List,LT<:List,T](f:F[R**T,LT]):OneStack[R,T,LT] = new OneStack[R,T,LT]{
+      def pop = f.pop_int(f.stack.rest)
+    }
   }
 
   trait ByteletCompiler{
@@ -53,26 +57,100 @@ object Bytecode{
 	  ): T => U
   }
 
-  object InterpretingCompiler extends ByteletCompiler{
+  object Interpreter extends ByteletCompiler{
     case class IF[ST<:List,LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
-      def checked[T](x:Any) = x.asInstanceOf[T]
+
+      def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
-      def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
+      def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
     }
 
     def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
       t => code(IF(N**t,N)).stack.top
   }
+  object ASMCompiler extends ByteletCompiler{
+    import org.objectweb.asm._
+    import org.objectweb.asm.Opcodes._
+
+    class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor) extends F[ST,LT]{
+      def self[T]:T = this.asInstanceOf[T]
+
+      val loopingList = new Cons(null.asInstanceOf[List],null){
+        override val rest = this
+        override val top = null
+      }
+
+      def locals:LT=loopingList.asInstanceOf[LT]
+      def stack:ST=loopingList.asInstanceOf[ST]
+
+      def bipush(i1:Int):F[ST**Int,LT] = {
+        mv.visitIntInsn(BIPUSH, i1)
+        self
+      }
+      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
+        mv.visitInsn(IADD)
+        self
+      }
+      def pop_int[R<:List](rest:R):F[R,LT] = {
+        mv.visitInsn(POP)
+        self
+      }
+    }
+    def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
+      new java.lang.ClassLoader{
+        override def findClass(name:String):java.lang.Class[_] =
+          defineClass(className,bytes,0,bytes.length);
+      }.loadClass(className)
+    }
+    var i = 0
+    def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
+      val className = "Compiled"+i
+
+      val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
+      cw.visit(V1_5,ACC_PUBLIC + ACC_SUPER,className,null,"net/virtualvoid/bytecode/v2/AbstractFunction1", null)
+
+      { // constructor
+        val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(INVOKESPECIAL, "net/virtualvoid/bytecode/v2/AbstractFunction1", "<init>", "()V");
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+      }
+
+      { // apply
+        val mv = cw.visitMethod(ACC_PUBLIC, "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", null, null);
+        mv.visitCode()
+        // this is a hack only valid for integers as input values
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitTypeInsn(CHECKCAST, "java/lang/Integer");
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I");
+
+        code(new ASMFrame[Nil**T,Nil](mv))
+
+        mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;");
+        mv.visitInsn(ARETURN);
+        mv.visitMaxs(1, 2)
+        mv.visitEnd
+      }
+      cw.visitEnd
+      classFromBytes(className,cw.toByteArray).newInstance.asInstanceOf[T=>U]
+    }
+  }
 }
+
+abstract class AbstractFunction1[T,U] extends Function1[T,U]
 
 object Test{
   def main(args:Array[String]):Unit = {
     import Bytecode._
     import Bytecode.Implicits._
-    val succ: Int => Int = Bytecode.InterpretingCompiler.compile(
+    val succ: Int => Int = Bytecode.ASMCompiler.compile(
       (f:F[Nil**Int,Nil]) => f.bipush(1).iadd)
     System.out.println(succ(1))
     System.out.println(succ(2))
   }
+
 }
