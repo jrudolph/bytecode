@@ -43,6 +43,9 @@ object Bytecode{
     def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
+  case class Zipper[ST<:List,L<:List,Cur,R<:List](st:ST,left:L,cur:Cur,right:R){
+
+  }
 
   object Implicits{
     implicit def int2Stack[R<:List,LT<:List](f:F[R**Int**Int,LT]):Int2Stack[R,LT] = new Int2Stack[R,LT]{
@@ -59,6 +62,31 @@ object Bytecode{
       def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT] =
         f.method_int(f.stack.rest,f.stack.top,code)
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
+    }
+
+    implicit def moreZipping[ST<:List,LR<:List,LT,Cur,R<:List](z:Zipper[ST,LR**LT,Cur,R]) = new {
+      def l() = Zipper(z.st,z.left.rest,z.left.top,z.right**z.cur)
+    }
+    implicit def notEmptyZipper[ST<:List,L<:List,Cur,RR<:List,RT](z:Zipper[ST,L,Cur,RR**RT]) = new {
+      def e() = Zipper(z.st,z.left ** z.cur,z.right.top,z.right.rest)
+    }
+    implicit def emptyZipper[ST<:List,L<:List,Cur](z:Zipper[ST,L,Cur,Nil]) = new {
+      def e():F[ST,L**Cur] = null
+    }
+    implicit def zippable[ST<:List,R<:List,T](f:F[ST,R**T]) = new {
+      def l():Zipper[ST,R,T,Nil] = null
+    }
+    implicit def zipLoad[ST<:List,L<:List,Cur,R<:List](z:Zipper[ST,L,Cur,R]) = new {
+      def load():Zipper[ST**Cur,L,Cur,R] = null
+    }
+    implicit def zipStore[ST,SR<:List,L<:List,R<:List](z:Zipper[SR**ST,L,_,R]) = new {
+      def store():Zipper[SR,L,ST,R] = null
+    }
+    implicit def genNewLocal[ST<:List](f:F[ST,Nil]) = new{
+      def l():Zipper[ST,Nil,Nil,Nil] = null
+    }
+    implicit def genNewLocalInZipper[ST<:List,Cur,R<:List](z:Zipper[ST,Nil,Cur,R]) = new {
+      def l():Zipper[ST,Nil,Nil,R**Cur] = null
     }
   }
 
@@ -240,5 +268,8 @@ object Test{
       (f:S[java.lang.String]) => f.method(_.length).bipush(3).imul.method(Integer.valueOf(_)))
     System.out.println(f("123"))
     System.out.println(f("123456"))
+
+    val f2:F[Nil,Nil] = null
+    f2.bipush(12).dup.iadd.l.store.e.l.load.e.dup.imul
   }
 }
