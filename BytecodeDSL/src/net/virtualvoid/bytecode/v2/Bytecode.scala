@@ -24,6 +24,7 @@ object Bytecode{
 
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
+    def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
   }
   trait Int2Stack[ST<:List,LT<:List]{
     def i1:Int
@@ -35,6 +36,7 @@ object Bytecode{
   }
   trait OneStack[R<:List,T,LT<:List]{
     def pop():F[R,LT]
+    def dup():F[R**T**T,LT]
   }
 
   object Implicits{
@@ -47,6 +49,7 @@ object Bytecode{
     }
     implicit def oneStack[R<:List,LT<:List,T](f:F[R**T,LT]):OneStack[R,T,LT] = new OneStack[R,T,LT]{
       def pop = f.pop_int(f.stack.rest)
+      def dup = f.dup_int(f.stack.rest,f.stack.top)
     }
   }
 
@@ -64,6 +67,7 @@ object Bytecode{
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
+      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
     }
 
     def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
@@ -94,6 +98,10 @@ object Bytecode{
       }
       def pop_int[R<:List](rest:R):F[R,LT] = {
         mv.visitInsn(POP)
+        self
+      }
+      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = {
+        mv.visitInsn(DUP)
         self
       }
     }
