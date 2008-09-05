@@ -43,6 +43,18 @@ object Bytecode{
     def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
+  trait LocalZipper[ST<:List,L,Cur,R[_]<:List]{
+    def load():F[ST**Cur,R[L**Cur]]
+  }
+  trait Zippable[ST<:List,L<:List,Cur,R[_]<:List]{
+    def l():LocalZipper[ST,L,Cur,R]
+  }
+  trait LocalStoreZipper[T,Rest<:List,L,R[_<:List]]{
+    //def load():F[Rest**T**Cur,R[L**Cur]]
+    //def store():F[Rest,R[L**T]]
+    //def l():LocalZipper
+  }
+
 
   object Implicits{
     implicit def int2Stack[R<:List,LT<:List](f:F[R**Int**Int,LT]):Int2Stack[R,LT] = new Int2Stack[R,LT]{
@@ -60,6 +72,24 @@ object Bytecode{
         f.method_int(f.stack.rest,f.stack.top,code)
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     }
+    /*
+     * Severity and Description	Path	Resource	Location	Creation Time	Id
+the kinds of the type arguments
+(ST,R,T,net.virtualvoid.bytecode.v2.Bytecode.Implicits.Id)
+do not conform to the expected kinds of the type parameters
+(type ST,type L,type Cur,type R) in trait Zippable.
+net.virtualvoid.bytecode.v2.Bytecode.Implicits.Id's type parameters do not match type R's
+expected parameters:
+type s's bounds >: Nothing <: net.virtualvoid.bytecode.v2.Bytecode.List
+are stricter than type _'s declared bounds >: Nothing <: Any	BytecodeDSL/src/net/virtualvoid/bytecode/v2	Bytecode.scala	Unknown	1220615849755	40778
+
+*/
+    //type Id[s] = s
+    trait Id[X] extends List
+    trait Ap[X,Y]
+    type Test[x] = Cons[_,x]
+    implicit def toZipper[ST<:List,R<:List,T](f:F[ST,R**T]):Zippable[ST,R,T,Id] = null
+    //implicit def localZipper[ST,Rest,L,Cur,R[_]<:List](x:LocalZipper[ST,Rest**L,Cur,R]):Zippable[ST,Rest,L,Test[R[Cur]]] = null
   }
 
   type S[s] = F[Nil**s,Nil]
@@ -207,9 +237,16 @@ object Bytecode{
 abstract class AbstractFunction1[T,U] extends Function1[T,U]
 
 object Test{
+  import Bytecode._
+  import Bytecode.Implicits._
+
+  def localsTest = {
+    val f:F[Nil,Nil**Int**Float**String] = null
+    //f.l.l.load
+    null
+  }
   def main(args:Array[String]):Unit = {
-    import Bytecode._
-    import Bytecode.Implicits._
+
     import java.lang.{Integer=>jInt}
     val bcs =
       (f:S[jInt]) =>
