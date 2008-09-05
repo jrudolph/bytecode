@@ -64,7 +64,8 @@ object Bytecode{
 
   trait ByteletCompiler{
 	  // compile a piece of code which
-	  def compile[T,U](code: F[Nil**T,Nil] // gets a parameter of type T on the stack
+	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],
+                       code: F[Nil**T,Nil] // gets a parameter of type T on the stack
 	                      => F[Nil**U,_]   // and uses it and has then a value of type U on the stack
 	  ): T => U
   }
@@ -82,7 +83,7 @@ object Bytecode{
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
     }
 
-    def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
+    def compile[T,U](cl:Class[T],code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
       t => code(IF(N**t,N)).stack.top
   }
   object ASMCompiler extends ByteletCompiler{
@@ -137,7 +138,7 @@ object Bytecode{
       }.loadClass(className)
     }
     var i = 0
-    def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
+    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
       i+=1
       val className = "Compiled" + i
 
@@ -157,14 +158,12 @@ object Bytecode{
       { // apply
         val mv = cw.visitMethod(ACC_PUBLIC, "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", null, null);
         mv.visitCode()
-        // this is a hack only valid for integers as input values
+        // put the parameter on the stack
         mv.visitVarInsn(ALOAD, 1);
-        mv.visitTypeInsn(CHECKCAST, "java/lang/Integer");
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I");
+        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
 
         code(new ASMFrame[Nil**T,Nil](mv))
 
-        mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;");
         mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)
         mv.visitEnd
