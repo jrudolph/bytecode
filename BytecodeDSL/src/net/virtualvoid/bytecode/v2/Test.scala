@@ -1,5 +1,10 @@
 package net.virtualvoid.bytecode.v2
 
+class Person{
+      def name():java.lang.String = "Joe"
+      def sb():java.lang.StringBuilder = new java.lang.StringBuilder
+    }
+
 object Test2 {
   import Bytecode._
   import Bytecode.Implicits._

@@ -27,6 +27,7 @@ object Bytecode{
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
 
     def loadI[T](i:Int):F[ST**T,LT]
@@ -46,6 +47,9 @@ object Bytecode{
     def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
+  trait TwoStack[R<:List,T2,T1,LT<:List]{
+    def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
+  }
   case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int)
   object Implicits{
     implicit def int2Stack[R<:List,LT<:List](f:F[R**Int**Int,LT]):Int2Stack[R,LT] = new Int2Stack[R,LT]{
@@ -62,6 +66,10 @@ object Bytecode{
       def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT] =
         f.method_int(f.stack.rest,f.stack.top,code)
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
+    }
+    implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
+      def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
+        f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
     }
 
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
@@ -126,6 +134,7 @@ object Bytecode{
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
+      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
 
       def get[T](i:Int,l:List):T = l match{
@@ -192,13 +201,38 @@ object Bytecode{
         mv.visitVarInsn(ASTORE, i); // TODO: store the correct type
         self
       }
+      def getClass(name:String):java.lang.Class[_] = name match{
+        case "scala.Int" => Integer.TYPE
+        case _ => java.lang.Class.forName(name)
+      }
+
+      /*
+       Function(
+       * List(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))), LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))
+       * ,Apply(Select(Ident(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))),Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))
+       * ,List(Ident(LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))
+       */
+      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = {
+        import scala.reflect._
+        code.tree match {
+          case Function(List(p1,p2@LocalValue(_,_,PrefixedType(_,Class(paramClass)))),Apply(Select(Ident(th),Method(method,_)),List(Ident(x)))) if th == p1 && x == p2 =>{
+            val i = method.lastIndexOf(".")
+            val clName = method.substring(0,i)
+            val methodName = method.substring(i+1)
+            System.out.println(clName);
+            System.out.println(methodName);
+            val cl = java.lang.Class.forName(clName)
+            val cl2 = java.lang.Class.forName(paramClass)
+            val m = cl.getMethod(methodName,cl2)
+            mv.visitMethodInsn(INVOKEVIRTUAL,Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+          }
+          case _ => throw new Error("Can't match this "+code.tree)
+        }
+        self
+      }
 
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
         import scala.reflect._
-        def getClass(name:String):java.lang.Class[_] = name match{
-          case "scala.Int" => Integer.TYPE
-          case _ => java.lang.Class.forName(name)
-        }
         code.tree match {
         // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
         case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
@@ -286,8 +320,8 @@ object Test{
       f.dup
        .l.l.store.e.e
        .method(_.toUpperCase)
-       .pop
-       .l.l.load.e.e)
+       .dup.method2(_.concat(_))
+       )
 
     System.out.println(func2("wurst"));
 
@@ -321,5 +355,26 @@ object Test{
     System.out.println(f("123"))
     System.out.println(f("123456"))
 
-  }
+    def compile{
+    /*
+     * "Name #name"
+     *
+     */
+      val f: Person=>String = ASMCompiler.compile(classOf[Person],
+        (f:S[Person]) =>
+      f.dup
+       .method(x => x.sb())
+       .l.store.e
+       .l.l.store.e.e
+       .l.load.e
+       .l.l.load.e.e
+       .method(_.name)
+       .method2(_.append(_))
+       .method(_.toString)
+    )
+    System.out.println(f(new Person))
+
+    }
+    compile
+    }
 }
