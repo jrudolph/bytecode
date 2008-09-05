@@ -26,6 +26,8 @@ object Bytecode{
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
+    def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
   }
   trait Int2Stack[ST<:List,LT<:List]{
     def i1:Int
@@ -38,6 +40,8 @@ object Bytecode{
   trait OneStack[R<:List,T,LT<:List]{
     def pop():F[R,LT]
     def dup():F[R**T**T,LT]
+    def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
 
   object Implicits{
@@ -50,7 +54,11 @@ object Bytecode{
     }
     implicit def oneStack[R<:List,LT<:List,T](f:F[R**T,LT]):OneStack[R,T,LT] = new OneStack[R,T,LT]{
       def pop = f.pop_int(f.stack.rest)
+
       def dup = f.dup_int(f.stack.rest,f.stack.top)
+      def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT] =
+        f.method_int(f.stack.rest,f.stack.top,code)
+      def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     }
   }
 
@@ -70,6 +78,8 @@ object Bytecode{
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
+      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
+      def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
     }
 
     def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
@@ -110,6 +120,11 @@ object Bytecode{
         mv.visitInsn(DUP)
         self
       }
+      def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
+        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
+        self
+      }
+      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader{
@@ -168,7 +183,7 @@ object Test{
 
     def testRun(i:Int) {
       System.out.println(String.format("Test for %d interpreted %d compiled %d same %s"
-                           ,int2Integer(i),int2Integer(isucc(i)),int2Integer(csucc(i)),(isucc(i)==csucc(i)).toString))
+                           ,int2Integer(i.intValue),int2Integer(isucc(i).intValue),int2Integer(csucc(i).intValue),(isucc(i)==csucc(i)).toString))
     }
 
     testRun(1)
