@@ -155,10 +155,18 @@ object Test{
   def main(args:Array[String]):Unit = {
     import Bytecode._
     import Bytecode.Implicits._
-    val succ: Int => Int = Bytecode.ASMCompiler.compile(
-      (f:F[Nil**Int,Nil]) => f.bipush(1).iadd)
-    System.out.println(succ(1))
-    System.out.println(succ(2))
+    val bcs =
+      (f:F[Nil**Int,Nil]) => f.bipush(1).iadd.bipush(3).dup.pop.dup.iadd.iadd
+    val isucc: Int => Int = Bytecode.Interpreter.compile(bcs)
+    val csucc: Int => Int = Bytecode.ASMCompiler.compile(bcs)
+
+    def testRun(i:Int) {
+      System.out.println(String.format("Test for %d interpreted %d compiled %d same %s"
+                           ,int2Integer(i),int2Integer(isucc(i)),int2Integer(csucc(i)),(isucc(i)==csucc(i)).toString))
+    }
+
+    testRun(1)
+    testRun(2)
   }
 
 }
