@@ -62,6 +62,8 @@ object Bytecode{
     }
   }
 
+  type S[s] = F[Nil**s,Nil]
+
   trait ByteletCompiler{
 	  // compile a piece of code which
 	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],
@@ -125,7 +127,35 @@ object Bytecode{
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         self
       }
-      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
+      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
+        import scala.reflect._
+        def getClass(name:String):java.lang.Class[_] = name match{
+          case "scala.Int" => Integer.TYPE
+          case _ => java.lang.Class.forName(name)
+        }
+        code.tree match {
+        // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
+        case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+          System.out.println("Classname: "+clazz)
+          System.out.println("Methodname: "+method)
+          val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
+          val methodName = method.substring(clazz.length+1)
+          val m = cl.getMethod(methodName)
+          mv.visitMethodInsn(INVOKEVIRTUAL,Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+        }
+        case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
+          System.out.println("Classname: "+clazz)
+          val cl = java.lang.Class.forName(clazz)
+          val methodName = method.substring(clazz.length+1)
+          val argCl = getClass(argClazz)
+          System.out.println("static Methodname: "+methodName)
+          val m = cl.getMethod(methodName,argCl)
+          mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(cl), methodName, Type.getMethodDescriptor(m));
+        }
+        case _ => throw new Error("Can't match this "+code.tree)
+        }
+        self
+      }
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader{
@@ -180,10 +210,23 @@ object Test{
   def main(args:Array[String]):Unit = {
     import Bytecode._
     import Bytecode.Implicits._
+    import java.lang.{Integer=>jInt}
     val bcs =
-      (f:F[Nil**Int,Nil]) => f.bipush(1).iadd.bipush(3).dup.pop.dup.iadd.iadd
-    val isucc: Int => Int = Bytecode.Interpreter.compile(bcs)
-    val csucc: Int => Int = Bytecode.ASMCompiler.compile(bcs)
+      (f:S[jInt]) =>
+      f.method(_.intValue)
+       .bipush(1)
+       .iadd
+       .bipush(3)
+       .dup
+       .pop
+       .dup
+       .iadd
+       .iadd
+       .method(jInt.valueOf(_))
+
+    //val isucc: jInt => jInt = Bytecode.Interpreter.compile(bcs)
+    val csucc: jInt => jInt = Bytecode.ASMCompiler.compile(classOf[jInt],bcs)
+    val isucc = csucc
 
     def testRun(i:Int) {
       System.out.println(String.format("Test for %d interpreted %d compiled %d same %s"
@@ -192,6 +235,10 @@ object Test{
 
     testRun(1)
     testRun(2)
-  }
 
+    val f = ASMCompiler.compile(classOf[java.lang.String],
+      (f:S[java.lang.String]) => f.method(_.length).bipush(3).imul.method(Integer.valueOf(_)))
+    System.out.println(f("123"))
+    System.out.println(f("123456"))
+  }
 }
