@@ -23,6 +23,7 @@ object Bytecode{
     def bipush(i1:Int):F[ST**Int,LT]
 
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
+    def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
   }
@@ -32,7 +33,7 @@ object Bytecode{
     def rest:ST
     def frame:F[_,LT]
     def iadd():F[ST**Int,LT] = frame.iadd_int[ST](rest,i1,i2)
-    def imult():F[ST**Int,LT] = null
+    def imul():F[ST**Int,LT] = frame.imul_int[ST](rest,i1,i2)
   }
   trait OneStack[R<:List,T,LT<:List]{
     def pop():F[R,LT]
@@ -66,6 +67,7 @@ object Bytecode{
       def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
+      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
     }
@@ -94,6 +96,10 @@ object Bytecode{
       }
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IADD)
+        self
+      }
+      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
+        mv.visitInsn(IMUL)
         self
       }
       def pop_int[R<:List](rest:R):F[R,LT] = {
