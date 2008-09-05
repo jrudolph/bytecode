@@ -128,13 +128,18 @@ object Bytecode{
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader{
-        override def findClass(name:String):java.lang.Class[_] =
+        override def findClass(name:String):java.lang.Class[_] = {
+          val fos = new java.io.FileOutputStream(name+".class")
+          fos.write(bytes)
+          fos.close
           defineClass(className,bytes,0,bytes.length);
+        }
       }.loadClass(className)
     }
     var i = 0
     def compile[T,U](code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
-      val className = "Compiled"+i
+      i+=1
+      val className = "Compiled" + i
 
       val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
       cw.visit(V1_5,ACC_PUBLIC + ACC_SUPER,className,null,"net/virtualvoid/bytecode/v2/AbstractFunction1", null)
