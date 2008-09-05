@@ -28,6 +28,9 @@ object Bytecode{
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
+
+    def loadI[T](i:Int):F[ST**T,LT]
+    def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
   trait Int2Stack[ST<:List,LT<:List]{
     def i1:Int
@@ -43,10 +46,7 @@ object Bytecode{
     def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
-  case class Zipper[ST<:List,L<:List,Cur,R<:List](st:ST,left:L,cur:Cur,right:R){
-
-  }
-
+  case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int)
   object Implicits{
     implicit def int2Stack[R<:List,LT<:List](f:F[R**Int**Int,LT]):Int2Stack[R,LT] = new Int2Stack[R,LT]{
       val frame = f
@@ -64,29 +64,45 @@ object Bytecode{
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     }
 
-    implicit def moreZipping[ST<:List,LR<:List,LT,Cur,R<:List](z:Zipper[ST,LR**LT,Cur,R]) = new {
-      def l() = Zipper(z.st,z.left.rest,z.left.top,z.right**z.cur)
+    trait Zippable[ST<:List,L<:List,Cur,R<:List]{
+      def l():Zipper[ST,L,Cur,R]
     }
-    implicit def notEmptyZipper[ST<:List,L<:List,Cur,RR<:List,RT](z:Zipper[ST,L,Cur,RR**RT]) = new {
-      def e() = Zipper(z.st,z.left ** z.cur,z.right.top,z.right.rest)
+    trait DeZippable[ST<:List,L<:List,Cur,R<:List]{
+      def e():Zipper[ST,L,Cur,R]
     }
-    implicit def emptyZipper[ST<:List,L<:List,Cur](z:Zipper[ST,L,Cur,Nil]) = new {
-      def e():F[ST,L**Cur] = null
+    trait EndZipped[ST<:List,LT<:List]{
+      def e():F[ST,LT]
     }
-    implicit def zippable[ST<:List,R<:List,T](f:F[ST,R**T]) = new {
-      def l():Zipper[ST,R,T,Nil] = null
+    trait Loadable[ST<:List,L<:List,Cur,R<:List]{
+      def load():Zipper[ST,L,Cur,R]
     }
-    implicit def zipLoad[ST<:List,L<:List,Cur,R<:List](z:Zipper[ST,L,Cur,R]) = new {
-      def load():Zipper[ST**Cur,L,Cur,R] = null
+    trait Storeable[ST<:List,L<:List,Cur,R<:List]{
+      def store():Zipper[ST,L,Cur,R]
     }
-    implicit def zipStore[ST,SR<:List,L<:List,R<:List](z:Zipper[SR**ST,L,_,R]) = new {
-      def store():Zipper[SR,L,ST,R] = null
+
+    implicit def moreZipping[ST<:List,LR<:List,LT,Cur,R<:List](z:Zipper[ST,LR**LT,Cur,R]) = new Zippable[ST,LR,LT,R**Cur]{
+      def l():Zipper[ST,LR,LT,R**Cur] = Zipper(z.f,z.depth + 1)
     }
-    implicit def genNewLocal[ST<:List](f:F[ST,Nil]) = new{
-      def l():Zipper[ST,Nil,Nil,Nil] = null
+    implicit def notEmptyZipper[ST<:List,L<:List,Cur,RR<:List,RT](z:Zipper[ST,L,Cur,RR**RT]) = new DeZippable[ST,L**Cur,RT,RR]{
+      def e():Zipper[ST,L**Cur,RT,RR] = Zipper(z.f,z.depth - 1)
     }
-    implicit def genNewLocalInZipper[ST<:List,Cur,R<:List](z:Zipper[ST,Nil,Cur,R]) = new {
-      def l():Zipper[ST,Nil,Nil,R**Cur] = null
+    implicit def emptyZipper[ST<:List,L<:List,Cur](z:Zipper[ST,L,Cur,Nil]) = new EndZipped[ST,L**Cur]{
+      def e():F[ST,L**Cur] = z.f.asInstanceOf[F[ST,L**Cur]]
+    }
+    implicit def zippable[ST<:List,R<:List,T](f:F[ST,R**T]) = new Zippable[ST,R,T,Nil]{
+      def l():Zipper[ST,R,T,Nil] = Zipper(f,0)
+    }
+    implicit def zipLoad[ST<:List,L<:List,Cur,R<:List](z:Zipper[ST,L,Cur,R]) = new Loadable[ST**Cur,L,Cur,R]{
+      def load():Zipper[ST**Cur,L,Cur,R] = Zipper(z.f.loadI(z.depth),z.depth)
+    }
+    implicit def zipStore[ST,SR<:List,L<:List,R<:List](z:Zipper[SR**ST,L,_,R]) = new Storeable[SR,L,ST,R]{
+      def store():Zipper[SR,L,ST,R] = Zipper(z.f.storeI(z.f.stack.rest,z.f.stack.top,z.depth),z.depth)
+    }
+    implicit def genNewLocal[ST<:List](f:F[ST,Nil]) = new Zippable[ST,Nil,Nil,Nil]{
+      def l():Zipper[ST,Nil,Nil,Nil] = Zipper(f,0)
+    }
+    implicit def genNewLocalInZipper[ST<:List,Cur,R<:List](z:Zipper[ST,Nil,Cur,R]) = new Zippable[ST,Nil,Nil,R**Cur]{
+      def l():Zipper[ST,Nil,Nil,R**Cur] = Zipper(z.f,z.depth + 1)
     }
   }
 
@@ -111,6 +127,19 @@ object Bytecode{
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
+
+      def get[T](i:Int,l:List):T = l match{
+        case N => throw new Error("not possible")
+        case Cons(r,t:T) => if (i == 0) t else get(i-1,r)
+      }
+      def store[T](i:Int,l:List,t:T):List = l match {
+        case N => if (i == 0) Cons(N,t) else Cons(store(i-1,N,t),N)
+        case Cons(r,old:T) => if (i == 0) Cons(r,t) else Cons(store(i-1,r,t),old)
+      }
+
+      def loadI[T](i:Int):F[ST**T,LT] = IF(stack**get(i,locals),locals)
+      def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] =
+        IF(rest,store(i,locals,top).asInstanceOf[NewLT])
     }
 
     def compile[T,U](cl:Class[T],code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
@@ -155,6 +184,15 @@ object Bytecode{
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         self
       }
+      def loadI[T](i:Int):F[ST**T,LT] = {
+        mv.visitVarInsn(ALOAD, i); // TODO: load the correct type
+        self
+      }
+      def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] = {
+        mv.visitVarInsn(ASTORE, i); // TODO: store the correct type
+        self
+      }
+
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
         import scala.reflect._
         def getClass(name:String):java.lang.Class[_] = name match{
@@ -239,6 +277,20 @@ object Test{
     import Bytecode._
     import Bytecode.Implicits._
     import java.lang.{Integer=>jInt}
+
+    val func = Interpreter.compile(classOf[AnyRef],(f2:S[AnyRef]) => f2.pop.bipush(12).dup.iadd.l.store.e.l.load.e.dup.imul)
+    System.out.println(func(null))
+
+    val func2 = ASMCompiler.compile(classOf[java.lang.String],
+                                   (f:S[java.lang.String]) =>
+      f.dup
+       .l.l.store.e.e
+       .method(_.toUpperCase)
+       .pop
+       .l.l.load.e.e)
+
+    System.out.println(func2("wurst"));
+
     val bcs =
       (f:S[jInt]) =>
       f.method(_.intValue)
@@ -269,7 +321,5 @@ object Test{
     System.out.println(f("123"))
     System.out.println(f("123456"))
 
-    val f2:F[Nil,Nil] = null
-    f2.bipush(12).dup.iadd.l.store.e.l.load.e.dup.imul
   }
 }
