@@ -21,19 +21,19 @@ object Compiler{
     }
   }
 
-  def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T],f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
+  def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
     = tok match {
       case Literal(str) => f.ldc(str).method2(_.append(_))
       case p@ParentExp(inner,parent) =>{
         val m = p.method(cl)
-        val f2 = f.l.load.e
-                  .swap
-                  .l.load.e
-                  .dynMethod(m,classOf[AnyRef])
-                  .l.store.e
-        compileTok(inner,m.getReturnType.asInstanceOf[Class[AnyRef]],f2)
-          .swap
-          .l.store.e
+        f.l.load.e
+         .swap
+         .l.load.e
+         .dynMethod(m,classOf[AnyRef])
+         .l.store.e
+         .op(compileTok(inner,m.getReturnType.asInstanceOf[Class[AnyRef]]))
+         .swap
+         .l.store.e
       }
       case Exp("this") =>{
         f.l.load.e
@@ -62,16 +62,14 @@ object Compiler{
           jmpTarget
              .l.load.e //sb,it
              .method(_.hasNext)
-             .ifeq(f=>{
-               val f2 =
+             .ifeq(f=>
                f.l.load.e
                 .swap
                 .l.load.e
                 .method(_.next)
                 .checkcast(eleType)
                 .l.store.e
-
-               compileToks(inner,eleType,f2)
+                .op(compileToks(inner,eleType))
                 .swap
                 .dup
                 .l.store.e
@@ -79,8 +77,8 @@ object Compiler{
                 .ifeq(f =>
                    f.ldc(sep:jString)
                     .method2(_.append(_))
-                    .jmp(jmpTarget))
-                .jmp(jmpTarget)})
+                    .jmp(jmpTarget)) //todo: introduce ifeq(thenCode,elseTarget)
+                .jmp(jmpTarget))
              .swap
              .l.store.e
         }
@@ -88,21 +86,21 @@ object Compiler{
           throw new java.lang.Error("can only iterate over iterables right now")
       }
     }
-  def compileToks[R<:List,LR<:List,T<:java.lang.Object](tok:Seq[StrToken],cl:Class[T],f:F[R**StringBuilder,LR**T]) = {
+  def compileToks[R<:List,LR<:List,T<:java.lang.Object](tok:Seq[StrToken],cl:Class[T])(f:F[R**StringBuilder,LR**T]) = {
     var mf:F[R**StringBuilder,LR**T] = f
     for (t<-tok)
-      mf = compileTok(t,cl,f)
+      mf = compileTok(t,cl)(f)
     mf
   }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
     val toks = parser.parse(format)
     ASMCompiler.compile(cl,
      (f:S[T]) => {
-       var mf = f.dup.l.store.e
-                .checkcast(classOf[StringBuildable])
-                .method(_.sb)
-       mf = compileToks(toks,cl,mf)
-       mf.method(_.toString)
+       f.dup.l.store.e
+         .checkcast(classOf[StringBuildable])
+         .method(_.sb)
+         .op(compileToks(toks,cl))
+         .method(_.toString)
      })
   }
   case class Bank(n:String){
