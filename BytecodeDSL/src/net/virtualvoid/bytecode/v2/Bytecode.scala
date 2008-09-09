@@ -35,7 +35,9 @@ object Bytecode{
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
+    def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
     def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT]
@@ -55,10 +57,12 @@ object Bytecode{
     def pop():F[R,LT]
     def dup():F[R**T**T,LT]
     def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
   trait TwoStack[R<:List,T2,T1,LT<:List]{
     def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
+    def swap():F[R**T1**T2,LT]
   }
   class BooleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]){
     def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
@@ -79,11 +83,17 @@ object Bytecode{
       def dup = f.dup_int(f.stack.rest,f.stack.top)
       def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT] =
         f.method_int(f.stack.rest,f.stack.top,code)
+      def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
+        if (resCl.isAssignableFrom(method.getReturnType))
+          f.method_int(f.stack.rest,f.stack.top,method,resCl)
+        else
+          throw new Error("incompatible Method")
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     }
     implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
+      def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
     implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT] = new BooleanStack[R,LT](f)
 
@@ -151,7 +161,10 @@ object Bytecode{
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
+      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
+      def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
+        IF(rest ** method.invoke(top).asInstanceOf[U],locals)
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
       def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = null
@@ -225,6 +238,10 @@ object Bytecode{
         mv.visitInsn(DUP)
         self
       }
+      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = {
+        mv.visitInsn(SWAP)
+        self
+      }
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         self
@@ -254,10 +271,19 @@ object Bytecode{
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
 
       /*
-       Function(
-       * List(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))), LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))
-       * ,Apply(Select(Ident(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))),Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))
-       * ,List(Ident(LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))
+       * Function(
+       *   List(LocalValue(NoSymbol,x$9,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.MyIterator))))
+       *    ,Select(Ident(LocalValue(NoSymbol,x$9,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.MyIterator)))),Method(net.virtualvoid.bytecode.v2.MyIterator.hasNext,PolyType(List(),List(),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.Boolean))))))
+       *
+       * Function(
+       *   List(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))), LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))
+       *   ,Apply(Select(Ident(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))),Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))
+       *   ,List(Ident(LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))
+       *
+       * Function(
+       *   List(
+       *     LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder))),
+       *     LocalValue(NoSymbol,x$2,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))),Apply(Select(Ident(LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder)))),Method(java.lang.StringBuilder.append,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder))))),List(Ident(LocalValue(NoSymbol,x$2,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))))
        */
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = {
         import scala.reflect._
@@ -277,10 +303,39 @@ object Bytecode{
         }
         self
       }
-
+      def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] = {
+        val cl = method.getDeclaringClass
+        mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),method.getName,Type.getMethodDescriptor(method))
+        self
+      }
+      /* Function(
+          List(LocalValue(NoSymbol,x$8,
+       *   PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.Person))))
+       * ,Select(Ident(LocalValue(NoSymbol,x$8,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.Person)))),Method(net.virtualvoid.bytecode.v2.Person.accountNames,PolyType(List(),List(),AppliedType(PrefixedType(ThisType(Class(java.util)),Class(java.util.List)),List(PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))))))))
+       *
+       * Function(
+       *   List(
+       *      LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(scala)),TypeField(scala.AnyRef,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.Object))))))
+       *      ,Apply(Select(Ident(LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(scala)),TypeField(scala.AnyRef,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.Object)))))),Method(java.lang.Object.toString,MethodType(List(),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))),List()))
+       *
+       * Function(
+       *  List(LocalValue(NoSymbol,x$9,NoType)),Apply(Select(Ident(LocalValue(NoSymbol,x$9,NoType)),Method(java.util.List.iterator,MethodType(List(),AppliedType(PrefixedType(ThisType(Class(java.util)),Class(java.util.Iterator)),List(PrefixedType(NoType,TypeField(java.util.List.E,TypeBounds(PrefixedType(ThisType(Class(scala)),Class(scala.Nothing)),PrefixedType(ThisType(Class(scala)),Class(scala.Any)))))))))),List()))
+       *
+       * Function(List(LocalValue(NoSymbol,names,AppliedType(PrefixedType(
+       * ThisType(Class(java.util)),
+       * Class(java.util.List)),List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))),Apply(Select(Ident(LocalValue(NoSymbol,names,AppliedType(PrefixedType(ThisType(Class(java.util)),Class(java.util.List)),List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))),Method(java.util.List.iterator,MethodType(List(),AppliedType(PrefixedType(ThisType(Class(java.util)),Class(java.util.Iterator)),List(PrefixedType(NoType,TypeField(java.util.List.E,TypeBounds(PrefixedType(ThisType(Class(scala)),Class(scala.Nothing)),PrefixedType(ThisType(Class(scala)),Class(scala.Any)))))))))),List()))
+      */
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
         import scala.reflect._
         code.tree match {
+        case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+          System.out.println("Classname: "+clazz)
+          System.out.println("Methodname: "+method)
+          val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
+          val methodName = method.substring(clazz.length+1)
+          val m = cl.getMethod(methodName)
+          mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+        }
         // that's very bad duplication from the next pattern: this matches same as next but for an applied type
         case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
           System.out.println("Classname: "+clazz)

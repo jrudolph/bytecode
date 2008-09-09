@@ -57,10 +57,10 @@ class StrLexer extends Lexical with RegexParsers{
   }
   case class Exp(identifier:String) extends StrToken{
     def chars = identifier
-    
+
     import java.lang.reflect.{Method}
     import java.lang.NoSuchMethodException
-    def method(c:Class[_],name:String):Option[Method] =
+    def findMethod(c:Class[_],name:String):Option[Method] =
      try {
        val res = c.getMethod(name,null)
        res.setAccessible(true)
@@ -68,10 +68,11 @@ class StrLexer extends Lexical with RegexParsers{
      }catch{
      case _:NoSuchMethodException => None
      }
+    def method(cl:Class[_]):Method = Array("get"+capitalize(identifier),identifier).flatMap(findMethod(cl,_).toList).first
     def capitalize(s:String):String = s.substring(0,1).toUpperCase + s.substring(1)
     def eval(o:AnyRef) = identifier match {
     case "this" => o
-    case _ => Array("get"+capitalize(identifier),identifier).flatMap(method(o.getClass,_).toList).first.invoke(o,null)
+    case _ => method(o.getClass).invoke(o,null)
     }
   }
   case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
@@ -87,7 +88,7 @@ class StrLexer extends Lexical with RegexParsers{
     case l : Seq[AnyRef] => realEval(l)
     }
   }
-  
+
   implicit def extendParser[T](x:Parser[T]):EParser[T] = EParser[T](x)
 
   val expStartChar = '#'
@@ -95,18 +96,18 @@ class StrLexer extends Lexical with RegexParsers{
   def char = "[^#\\]\\[]".r
   def idChar = "\\w".r
   def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
-  
-  def idPart:Parser[String] = idChar ~ rep(idChar) ^^ {case first ~ rest => first :: rest mkString ""} 
+
+  def idPart:Parser[String] = idChar ~ rep(idChar) ^^ {case first ~ rest => first :: rest mkString ""}
   def id:Parser[Exp] = idPart ~ opt("." ~> id) ^^ {case str ~ Some(inner) => ParentExp(inner,str)
-                                                   case str ~ None => Exp(str) 
-                                                  }  
+                                                   case str ~ None => Exp(str)
+                                                  }
 
   def exp:Parser[Exp] = expStartChar ~>
     (id | extendParser("{") ~!> id <~! "}")
 
   def sepChars = "[^)]*".r
   def spliceExp = exp ~ opt(inners) ~ opt(extendParser('(') ~!> sepChars <~! ')') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))))}
-  
+
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']'
 
@@ -115,13 +116,13 @@ class StrLexer extends Lexical with RegexParsers{
      | innerExp )
 
   override def whitespace = rep('`')
-  override def skipWhitespace = false  
-  
+  override def skipWhitespace = false
+
   case class EParser[T](oldThis:Parser[T]){
-    def ~!> [U](p: => Parser[U]): Parser[U] 
+    def ~!> [U](p: => Parser[U]): Parser[U]
       = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield b).named("~!>") }
-      
-    def <~! [U](p: => Parser[U]): Parser[T] 
+
+    def <~! [U](p: => Parser[U]): Parser[T]
       = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield a).named("<~!") }
   }
 }
@@ -132,7 +133,7 @@ trait StrParser extends TokenParsers{
 
   def value:Parser[StrToken] = elem("token",_.isInstanceOf[StrToken]) ^^ {case s:StrToken => s}
   def values = rep(value)
-  
+
   def parse(input:String):List[lexical.StrToken] = {
       val scanner:Input = new lexical.Scanner(input).asInstanceOf[Input]
       val output = phrase(values)(scanner)
@@ -142,11 +143,11 @@ trait StrParser extends TokenParsers{
 
 object ObjectFormatter extends IObjectFormatterFactory{
   val parser = new StrParser{}
-  
+
   def formatter[T<:AnyRef](fm:String):IObjectFormatter[T] = new IObjectFormatter[T]{
     val parsed = parser.parse(fm)
     def format(o:T) = parsed.map(_.eval(o)) mkString ""
   }
-  
+
   def format(format:String,o:AnyRef) = formatter(format).format(o)
 }
