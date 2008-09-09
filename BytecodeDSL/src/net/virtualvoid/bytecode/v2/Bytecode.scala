@@ -303,6 +303,14 @@ object Bytecode{
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
         import scala.reflect._
         code.tree match {
+        case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+          System.out.println("Classname: "+clazz)
+          System.out.println("Methodname: "+method)
+          val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
+          val methodName = method.substring(clazz.length+1)
+          val m = cl.getMethod(methodName)
+          mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+        }
         // that's very bad duplication from the next pattern: this matches same as next but for an applied type
         case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
           System.out.println("Classname: "+clazz)
