@@ -37,6 +37,7 @@ object Bytecode{
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
     def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
     def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT]
@@ -56,6 +57,7 @@ object Bytecode{
     def pop():F[R,LT]
     def dup():F[R**T**T,LT]
     def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
   trait TwoStack[R<:List,T2,T1,LT<:List]{
@@ -81,6 +83,11 @@ object Bytecode{
       def dup = f.dup_int(f.stack.rest,f.stack.top)
       def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT] =
         f.method_int(f.stack.rest,f.stack.top,code)
+      def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
+        if (resCl.isAssignableFrom(method.getReturnType))
+          f.method_int(f.stack.rest,f.stack.top,method,resCl)
+        else
+          throw new Error("incompatible Method")
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     }
     implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
@@ -156,6 +163,8 @@ object Bytecode{
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
+      def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
+        IF(rest ** method.invoke(top).asInstanceOf[U],locals)
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
       def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = null
@@ -283,6 +292,11 @@ object Bytecode{
           }
           case _ => throw new Error("Can't match this "+code.tree)
         }
+        self
+      }
+      def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] = {
+        val cl = method.getDeclaringClass
+        mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),method.getName,Type.getMethodDescriptor(method))
         self
       }
 
