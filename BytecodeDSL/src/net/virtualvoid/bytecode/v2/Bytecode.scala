@@ -205,6 +205,7 @@ object Bytecode{
         case "scala.Int" => Integer.TYPE
         case _ => java.lang.Class.forName(name)
       }
+      def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
 
       /*
        Function(
@@ -224,7 +225,7 @@ object Bytecode{
             val cl = java.lang.Class.forName(clName)
             val cl2 = java.lang.Class.forName(paramClass)
             val m = cl.getMethod(methodName,cl2)
-            mv.visitMethodInsn(INVOKEVIRTUAL,Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+            mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
           }
           case _ => throw new Error("Can't match this "+code.tree)
         }
@@ -241,7 +242,7 @@ object Bytecode{
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
-          mv.visitMethodInsn(INVOKEVIRTUAL,Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+          mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
         }
         case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
           System.out.println("Classname: "+clazz)
