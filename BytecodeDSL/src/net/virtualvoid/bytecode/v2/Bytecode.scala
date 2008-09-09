@@ -35,6 +35,7 @@ object Bytecode{
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
+    def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
@@ -59,6 +60,7 @@ object Bytecode{
   }
   trait TwoStack[R<:List,T2,T1,LT<:List]{
     def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
+    def swap():F[R**T1**T2,LT]
   }
   class BooleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]){
     def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
@@ -84,6 +86,7 @@ object Bytecode{
     implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
+      def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
     implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT] = new BooleanStack[R,LT](f)
 
@@ -151,6 +154,7 @@ object Bytecode{
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
+      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
@@ -223,6 +227,10 @@ object Bytecode{
       }
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = {
         mv.visitInsn(DUP)
+        self
+      }
+      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = {
+        mv.visitInsn(SWAP)
         self
       }
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
