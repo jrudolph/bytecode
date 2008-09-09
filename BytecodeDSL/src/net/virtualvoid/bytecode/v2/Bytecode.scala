@@ -271,10 +271,19 @@ object Bytecode{
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
 
       /*
-       Function(
-       * List(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))), LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))
-       * ,Apply(Select(Ident(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))),Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))
-       * ,List(Ident(LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))
+       * Function(
+       *   List(LocalValue(NoSymbol,x$9,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.MyIterator))))
+       *    ,Select(Ident(LocalValue(NoSymbol,x$9,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.MyIterator)))),Method(net.virtualvoid.bytecode.v2.MyIterator.hasNext,PolyType(List(),List(),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.Boolean))))))
+       *
+       * Function(
+       *   List(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))), LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))
+       *   ,Apply(Select(Ident(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))),Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))
+       *   ,List(Ident(LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))
+       *
+       * Function(
+       *   List(
+       *     LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder))),
+       *     LocalValue(NoSymbol,x$2,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))),Apply(Select(Ident(LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder)))),Method(java.lang.StringBuilder.append,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder))))),List(Ident(LocalValue(NoSymbol,x$2,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))))
        */
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = {
         import scala.reflect._
