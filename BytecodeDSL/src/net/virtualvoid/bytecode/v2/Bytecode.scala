@@ -410,27 +410,5 @@ object Test{
       (f:S[java.lang.String]) => f.method(_.length).bipush(3).imul.method(Integer.valueOf(_)))
     System.out.println(f("123"))
     System.out.println(f("123456"))
-
-    def compile{
-    /*
-     * "Name #name"
-     *
-     */
-      val f: Person=>String = ASMCompiler.compile(classOf[Person],
-        (f:S[Person]) =>
-      f.dup
-       .method(x => x.sb())
-       .l.store.e
-       .l.l.store.e.e
-       .l.load.e
-       .l.l.load.e.e
-       .method(_.name)
-       .method2(_.append(_))
-       .method(_.toString)
-    )
-    System.out.println(f(new Person))
-
-    }
-    compile
-    }
+  }
 }
