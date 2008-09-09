@@ -60,7 +60,7 @@ class StrLexer extends Lexical with RegexParsers{
 
     import java.lang.reflect.{Method}
     import java.lang.NoSuchMethodException
-    def method(c:Class[_],name:String):Option[Method] =
+    def findMethod(c:Class[_],name:String):Option[Method] =
      try {
        val res = c.getMethod(name,null)
        res.setAccessible(true)
@@ -68,10 +68,11 @@ class StrLexer extends Lexical with RegexParsers{
      }catch{
      case _:NoSuchMethodException => None
      }
+    def method(cl:Class[_]):Method = Array("get"+capitalize(identifier),identifier).flatMap(findMethod(cl,_).toList).first
     def capitalize(s:String):String = s.substring(0,1).toUpperCase + s.substring(1)
     def eval(o:AnyRef) = identifier match {
     case "this" => o
-    case _ => Array("get"+capitalize(identifier),identifier).flatMap(method(o.getClass,_).toList).first.invoke(o,null)
+    case _ => method(o.getClass).invoke(o,null)
     }
   }
   case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
