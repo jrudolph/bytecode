@@ -376,5 +376,41 @@ object Test{
 
     }
     compile
+
+    def t[T,R[_]]:T=>R[T] = null
+    def u[T]:T=>Cons[Nil,T] = t => Cons(N,t)
+    def v[T]:T=>Cons[Cons[Nil,T],Int] = t => Cons(Cons(N,t),4)
+    def w[T](f:T=>Cons[Nil,T]):T=>Cons[Cons[Nil,T],Int] = t => Cons(f(t),4)
+    def x[T,X](x:X,f:T=>Cons[Nil,T]):T=>Cons[Cons[Nil,T],X] = t=> Cons(f(t),x)
+    def y[T,X,R[_]<:List](x:X,f:T=>R[T]):T=>Cons[R[T],X] = t => Cons(f(t),x)
+
+    trait papply[f2[_,_],x]{
+      type f[y] = f2[x,y]
     }
+
+    type apply[f[_],x] = f[x]
+
+    def u2[T]:papply[Cons,Nil]#f[T] = null
+    //y("String",u2)
+
+    def i[T](inner:T):papply[Cons,T]#f[_] = null
+    def appl[T,R[_]](t:T,r:R[_]):apply[R,T] = null.asInstanceOf[apply[R,T]]
+
+
+
+    /*
+Severity and Description	Path	Resource	Location	Creation Time	Id
+inferred the kinds of the type arguments
+     * (T,Int,net.virtualvoid.bytecode.v2.Bytecode.Cons[net.virtualvoid.bytecode.v2.Bytecode.Nil,Nothing])
+     * do not conform to the expected kinds of the type parameters (type T,type X,type R).
+net.virtualvoid.bytecode.v2.Bytecode.Cons[net.virtualvoid.bytecode.v2.Bytecode.Nil,Nothing]'s type parameter
+do not match type R's expected parameters:
+class Cons has two type parameters, but type R has one	BytecodeDSL/src/net/virtualvoid/bytecode/v2	Bytecode.scala	Unknown	1220693588894	41642
+
+
+     */
+
+    null
+    }
+
 }
