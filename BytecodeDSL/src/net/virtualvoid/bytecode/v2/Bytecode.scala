@@ -1,6 +1,10 @@
 package net.virtualvoid.bytecode.v2
 
 object Bytecode{
+  import java.lang.{String => jString,
+                    Boolean => jBoolean
+  }
+
   trait List
   trait Nil extends List
   object N extends Nil
@@ -16,11 +20,16 @@ object Bytecode{
   // define an infix operator shortcut for the cons type
   type ** [x<:List,y] = Cons[x,y]
 
+  trait Target[ST<:List,LT<:List] extends F[ST,LT]
+
   trait F[ST<:List,LT<:List]{
     def stack:ST
     def locals:LT
 
     def bipush(i1:Int):F[ST**Int,LT]
+    def ldc(str:jString):F[ST**jString,LT]
+    def target:Target[ST,LT]
+    def jmp(t:Target[ST,LT]):Nothing
 
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
@@ -29,6 +38,7 @@ object Bytecode{
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
+    def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT]
 
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
@@ -49,6 +59,10 @@ object Bytecode{
   }
   trait TwoStack[R<:List,T2,T1,LT<:List]{
     def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
+  }
+  class BooleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]){
+    def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
+      f.ifeq_int(f.stack.rest,f.stack.top,inner)
   }
   case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int)
   object Implicits{
@@ -71,6 +85,7 @@ object Bytecode{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
     }
+    implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT] = new BooleanStack[R,LT](f)
 
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
       def l():Zipper[ST,L,Cur,R]
@@ -128,6 +143,9 @@ object Bytecode{
     case class IF[ST<:List,LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
 
       def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
+      def ldc(str:jString):F[ST**jString,LT] = IF(stack ** str,locals)
+      def target:Target[ST,LT] = null
+      def jmp(t:Target[ST,LT]):Nothing = null.asInstanceOf[Nothing]
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
@@ -136,6 +154,7 @@ object Bytecode{
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
+      def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = null
 
       def get[T](i:Int,l:List):T = l match{
         case N => throw new Error("not possible")
@@ -173,6 +192,23 @@ object Bytecode{
         mv.visitIntInsn(BIPUSH, i1)
         self
       }
+      def ldc(str:jString):F[ST**jString,LT] = {
+        mv.visitLdcInsn(str)
+        self
+      }
+      case class ASMTarget[ST<:List,LT<:List](mv:MethodVisitor,label:Label)
+          extends ASMFrame[ST,LT](mv) with Target[ST,LT]
+      def target:Target[ST,LT] = {
+        val label = new Label
+        mv.visitLabel(label)
+        ASMTarget(mv,label)
+      }
+
+      def jmp(t:Target[ST,LT]):Nothing = {
+        mv.visitJumpInsn(GOTO,t.asInstanceOf[ASMTarget[ST,LT]].label)
+        null.asInstanceOf[Nothing]
+      }
+
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IADD)
         self
@@ -193,6 +229,15 @@ object Bytecode{
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         self
       }
+      def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = {
+        val l = new Label
+        mv.visitJumpInsn(IFEQ,l)
+
+        inner(self)
+
+        mv.visitLabel(l)
+        self
+      }
       def loadI[T](i:Int):F[ST**T,LT] = {
         mv.visitVarInsn(ALOAD, i); // TODO: load the correct type
         self
@@ -203,6 +248,7 @@ object Bytecode{
       }
       def getClass(name:String):java.lang.Class[_] = name match{
         case "scala.Int" => Integer.TYPE
+        case "scala.Boolean" => java.lang.Boolean.TYPE
         case _ => java.lang.Class.forName(name)
       }
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
