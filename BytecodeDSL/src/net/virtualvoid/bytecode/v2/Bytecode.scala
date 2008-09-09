@@ -31,6 +31,8 @@ object Bytecode{
     def target:Target[ST,LT]
     def jmp(t:Target[ST,LT]):Nothing
 
+    def op[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
+
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]

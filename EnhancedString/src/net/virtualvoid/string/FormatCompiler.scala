@@ -21,12 +21,23 @@ object Compiler{
     }
   }
 
-  def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T],f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
+  def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
     = tok match {
       case Literal(str) => f.ldc(str).method2(_.append(_))
+      case p@ParentExp(inner,parent) =>{
+        val m = p.method(cl)
+        f.l.load.e
+         .swap
+         .l.load.e
+         .dynMethod(m,classOf[AnyRef])
+         .l.store.e
+         .op(compileTok(inner,m.getReturnType.asInstanceOf[Class[AnyRef]]))
+         .swap
+         .l.store.e
+      }
       case Exp("this") =>{
         f.l.load.e
-         .checkcast(classOf[java.lang.Object]) // don't know why we need this
+         .checkcast(classOf[java.lang.Object]) // TODO: don't know why we need this, examine it
          .method((_:java.lang.Object).toString)
          .method2((sb:StringBuilder,s:jString)=>sb.append(s))}
       case e:Exp => {
@@ -51,16 +62,14 @@ object Compiler{
           jmpTarget
              .l.load.e //sb,it
              .method(_.hasNext)
-             .ifeq(f=>{
-               val f2 =
+             .ifeq(f=>
                f.l.load.e
                 .swap
                 .l.load.e
                 .method(_.next)
                 .checkcast(eleType)
                 .l.store.e
-
-               compileToks(inner,eleType,f2)
+                .op(compileToks(inner,eleType))
                 .swap
                 .dup
                 .l.store.e
@@ -68,8 +77,8 @@ object Compiler{
                 .ifeq(f =>
                    f.ldc(sep:jString)
                     .method2(_.append(_))
-                    .jmp(jmpTarget))
-                .jmp(jmpTarget)})
+                    .jmp(jmpTarget)) //todo: introduce ifeq(thenCode,elseTarget)
+                .jmp(jmpTarget))
              .swap
              .l.store.e
         }
@@ -77,36 +86,42 @@ object Compiler{
           throw new java.lang.Error("can only iterate over iterables right now")
       }
     }
-  def compileToks[R<:List,LR<:List,T<:AnyRef](tok:Seq[StrToken],cl:Class[T],f:F[R**StringBuilder,LR**T]) = {
+  def compileToks[R<:List,LR<:List,T<:java.lang.Object](tok:Seq[StrToken],cl:Class[T])(f:F[R**StringBuilder,LR**T]) = {
     var mf:F[R**StringBuilder,LR**T] = f
     for (t<-tok)
-      mf = compileTok(t,cl,f)
+      mf = compileTok(t,cl)(f)
     mf
   }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
     val toks = parser.parse(format)
     ASMCompiler.compile(cl,
      (f:S[T]) => {
-       var mf = f.dup.l.store.e
-                .checkcast(classOf[StringBuildable])
-                .method(_.sb)
-       mf = compileToks(toks,cl,mf)
-       mf.method(_.toString)
+       f.dup.l.store.e
+         .checkcast(classOf[StringBuildable])
+         .method(_.sb)
+         .op(compileToks(toks,cl))
+         .method(_.toString)
      })
   }
-  case class Account(n:String) {
-    def bank():jString = n
+  case class Bank(n:String){
+    def name():jString = n
+  }
+  case class Account(n:String,b:Bank) {
+    def number():jString = n
+    def bank() = b
   }
   class Person extends StringBuildable{
       def name():java.lang.String = "Joe"
       def sb():java.lang.StringBuilder = new java.lang.StringBuilder
       def accountNames():java.util.List[java.lang.String] = java.util.Arrays.asList("a","b")
-      def accounts():java.lang.Iterable[Account] = java.util.Arrays.asList(Account("Sparkasse"),Account("Volksbank"))
+      val sparkasse = Bank("Sparkasse")
+      def accounts():java.lang.Iterable[Account] = java.util.Arrays.asList(Account("78910",sparkasse),Account("12345",Bank("Volksbank")))
   }
   def main(args:Array[String]){
     def output(format:String) = System.out.println(compile(format,classOf[Person])(new Person))
     output("Name: #name Accounts: ")
     output("Name: #name Accounts: #accountNames(,)*")
-    output("Name: #name Accounts: #accounts[#bank](, )*")
+    output("Name: #name Accounts: #accounts[#number](, )*")
+    output("Name: #name Accounts: #accounts[#number(#bank.name)](, )*")
   }
 }
