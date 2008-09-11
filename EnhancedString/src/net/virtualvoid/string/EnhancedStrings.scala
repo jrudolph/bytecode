@@ -11,7 +11,7 @@ package net.virtualvoid.string
  * String[] specs;
  * }
  * val t:Table
- * ObjectFormatter.format("create table #name (#columns[#name #type #specs(,)*\n](,)*)",t)
+ * ObjectFormatter.format("create table #name (#columns[#name #type #specs(,)*\n]{,}*)",t)
  * is short for
  * "create table" + t.name + "(" +
  * t.columns.map(c=> c.name + " " + c.type + " " + c.specs.join(",")).join(",")
@@ -105,8 +105,8 @@ class StrLexer extends Lexical with RegexParsers{
   def exp:Parser[Exp] = expStartChar ~>
     (id | extendParser("{") ~!> id <~! "}")
 
-  def sepChars = "[^)]*".r
-  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('(') ~!> sepChars <~! ')') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))))}
+  def sepChars = "[^}]*".r
+  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))))}
 
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']'

@@ -120,8 +120,8 @@ object Compiler{
   def main(args:Array[String]){
     def output(format:String) = System.out.println(compile(format,classOf[Person])(new Person))
     output("Name: #name Accounts: ")
-    output("Name: #name Accounts: #accountNames(,)*")
-    output("Name: #name Accounts: #accounts[#number](, )*")
-    output("Name: #name Accounts: #accounts[#number(#bank.name)](, )*")
+    output("Name: #name Accounts: #accountNames{,}*")
+    output("Name: #name Accounts: #accounts[#number]{, }*")
+    output("Name: #name Accounts: #accounts[#number(#bank.name)]{, }*")
   }
 }

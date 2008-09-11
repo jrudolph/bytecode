@@ -4,7 +4,7 @@ import org.specs._
 
 object ParserSpecs extends Specification with StrParser  {
   import lexical._
-  
+
   import org.specs.matcher.Matcher
   def beParsedAs(ts:StrToken*) = new Matcher[String]{
     val tokens = List(ts:_*)
@@ -14,7 +14,7 @@ object ParserSpecs extends Specification with StrParser  {
     }
   }
   def splice(e:Exp,sep:String,inner:StrToken*) = SpliceExp(e,sep,List(inner:_*))
-  
+
   import org.specs.specification.Example
   def parseCorrectly(e: =>Example) = { currentSut.verb += " parse correctly"; e }
 
@@ -25,14 +25,14 @@ object ParserSpecs extends Specification with StrParser  {
     "'#{prop.member}'" in {"#{prop.member}" must beParsedAs(ParentExp(Exp("member"),"prop"))}
     "'#prop.member'" in {"#prop.member" must beParsedAs(ParentExp(Exp("member"),"prop"))}
     "'#listProp*'" in {"#listProp*" must beParsedAs(splice(Exp("listProp"),"",Exp("this")))}
-    "'#listProp(,)*'" in {"#listProp(,)*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
-    "'#{listProp}(,)*'" in {"#{listProp}(,)*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
-    "'#listProp[test](,)*'" in {"#listProp[test](,)*" must beParsedAs(splice(Exp("listProp"),",",Literal("test")))}
-    
+    "'#listProp{,}*'" in {"#listProp{,}*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
+    "'#{listProp}{,}*'" in {"#{listProp}{,}*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
+    "'#listProp[test]{,}*'" in {"#listProp[test]{,}*" must beParsedAs(splice(Exp("listProp"),",",Literal("test")))}
+
     // test weird control combinations
     "Dots in normal literals 'This is a sentence.'" in {"This is a sentence." must beParsedAs(Literal("This is a sentence."))}
     "Dots after curly braced expressions 'This is a #{exp}.'" in {"This is a #{exp}." must beParsedAs(Literal("This is a "),Exp("exp"),Literal("."))}
-    
+
     "Curly Braces somewhere in between 'This is {braced}'" in {"This is {braced}" must beParsedAs(Literal("This is {braced}"))}
   }
 }
@@ -56,7 +56,7 @@ case class Account(nummer:String,bank:String,owner:IPerson) extends IAccount{
 object Peter extends IPerson{
   def getFirstName:String = "Peter"
   def getLastName:String = "Paul"
-  def getAccounts():java.util.List[IAccount] = 
+  def getAccounts():java.util.List[IAccount] =
     java.util.Arrays.asList(Array(Account("234234","Rich Bank Berlin",this),Account("3424234","Park Bank",this)))
 }
 System.out.println(eval("Name: #firstName #lastName\nAccounts:\n#accounts[#accountNo at #bank](\n)*",Peter))
