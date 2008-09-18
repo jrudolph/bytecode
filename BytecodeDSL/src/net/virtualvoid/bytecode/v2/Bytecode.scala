@@ -192,31 +192,40 @@ object Bytecode{
     import org.objectweb.asm._
     import org.objectweb.asm.Opcodes._
 
-    class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor) extends F[ST,LT]{
+    case class ClassStack(mrest:ClassStack,mtop:Class[_]) extends Cons[ClassStack,Class[_]](mrest,mtop){
+      def **(cl:Class[_]) = ClassStack(this,cl)
+      
+      def get(i:Int):Class[_] = if (i>0) rest.get(i-1) else top
+      def set(i:Int,cl:Class[_]):ClassStack = if (i>0) ClassStack(rest.set(i-1,cl),top) else ClassStack(rest,cl)
+    }
+    
+    class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack) extends F[ST,LT]{
       def self[T]:T = this.asInstanceOf[T]
 
       val loopingList = new Cons(null.asInstanceOf[List],null){
         override val rest = this
         override val top = null
       }
-
-      def locals:LT=loopingList.asInstanceOf[LT]
-      def stack:ST=loopingList.asInstanceOf[ST]
+      
+      def stack = loopingList.asInstanceOf[ST]
+      def locals = loopingList.asInstanceOf[LT]
+      
+      def newStacked[T](cl:Class[T]) = new ASMFrame[ST**T,LT](mv,stackClass**cl,localsClass)
       
       def bipush(i1:Int):F[ST**Int,LT] = {
         mv.visitIntInsn(BIPUSH, i1)
-        self
+        newStacked(classOf[Int])
       }
       def ldc(str:jString):F[ST**jString,LT] = {
         mv.visitLdcInsn(str)
-        self
+        newStacked(classOf[jString])
       }
-      case class ASMTarget[ST<:List,LT<:List](mv:MethodVisitor,label:Label)
-          extends ASMFrame[ST,LT](mv) with Target[ST,LT]
+      case class ASMTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
+          extends ASMFrame[ST,LT](mv,stackClass,localsClass) with Target[ST,LT]
       def target:Target[ST,LT] = {
         val label = new Label
         mv.visitLabel(label)
-        ASMTarget(mv,label)
+        ASMTarget(mv,stackClass,localsClass,label)
       }
 
       def jmp(t:Target[ST,LT]):Nothing = {
@@ -226,27 +235,27 @@ object Bytecode{
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IADD)
-        self
+        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
       }
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IMUL)
-        self
+        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
       }
       def pop_int[R<:List](rest:R):F[R,LT] = {
         mv.visitInsn(POP)
-        self
+        new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
       }
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = {
         mv.visitInsn(DUP)
-        self
+        new ASMFrame[R**T**T,LT](mv,stackClass**stackClass.top,localsClass)
       }
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = {
         mv.visitInsn(SWAP)
-        self
+        new ASMFrame[R**T1**T2,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top,localsClass)
       }
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
-        self
+        new ASMFrame[R**U,LT](mv,stackClass.rest**cl,localsClass)
       }
       def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
@@ -255,38 +264,39 @@ object Bytecode{
         inner(self)
 
         mv.visitLabel(l)
-        self
+        new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+      }
+      def opcode(cl:Class[_],opcode:Int) = {
+        val realType = getClass(cl.getName)
+        System.out.println(java.lang.Integer.TYPE.getName)
+        System.out.println("Trying to find opcode for " + cl.getName + " changed to: " + realType.getName)
+        Type.getType(getClass(cl.getName)).getOpcode(opcode)
       }
       def loadI[T](i:Int):F[ST**T,LT] = {
-        mv.visitVarInsn(ALOAD, i); // TODO: load the correct type
-        self
+        val toLoad = localsClass.get(i)
+        mv.visitVarInsn(opcode(toLoad,ILOAD), i);
+        new ASMFrame[ST**T,LT](mv,stackClass**toLoad,localsClass)
       }
       def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] = {
-        mv.visitVarInsn(ASTORE, i); // TODO: store the correct type
-        self
+        mv.visitVarInsn(opcode(stackClass.top,ISTORE), i);
+        new ASMFrame[R,NewLT](mv,stackClass.rest,localsClass.set(i,stackClass.top))
       }
       def getClass(name:String):java.lang.Class[_] = name match{
+        case "int" => Integer.TYPE
         case "scala.Int" => Integer.TYPE
+        case "boolean" => java.lang.Boolean.TYPE
         case "scala.Boolean" => java.lang.Boolean.TYPE
+        case "double" => java.lang.Double.TYPE
+        case "scala.Double" => java.lang.Double.TYPE
         case _ => java.lang.Class.forName(name)
       }
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
+      def getInvokeMethod2(m:java.lang.reflect.Method) = 
+        if ((m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0)
+          INVOKESTATIC
+        else
+          getInvokeMethod(m.getDeclaringClass)
 
-      /*
-       * Function(
-       *   List(LocalValue(NoSymbol,x$9,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.MyIterator))))
-       *    ,Select(Ident(LocalValue(NoSymbol,x$9,PrefixedType(ThisType(Class(net.virtualvoid.bytecode.v2)),Class(net.virtualvoid.bytecode.v2.MyIterator)))),Method(net.virtualvoid.bytecode.v2.MyIterator.hasNext,PolyType(List(),List(),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.Boolean))))))
-       *
-       * Function(
-       *   List(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))), LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))
-       *   ,Apply(Select(Ident(LocalValue(NoSymbol,x$2,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))),Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))
-       *   ,List(Ident(LocalValue(NoSymbol,x$3,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))
-       *
-       * Function(
-       *   List(
-       *     LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder))),
-       *     LocalValue(NoSymbol,x$2,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))),Apply(Select(Ident(LocalValue(NoSymbol,x$1,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder)))),Method(java.lang.StringBuilder.append,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.StringBuilder))))),List(Ident(LocalValue(NoSymbol,x$2,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))))
-       */
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = {
         import scala.reflect._
         code.tree match {
@@ -299,18 +309,23 @@ object Bytecode{
             val cl = java.lang.Class.forName(clName)
             val cl2 = java.lang.Class.forName(paramClass)
             val m = cl.getMethod(methodName,cl2)
-            mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+            invokeMethod2(m)
           }
           case _ => throw new Error("Can't match this "+code.tree)
         }
-        self
       }
       def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] = {
-        val cl = method.getDeclaringClass
-        mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),method.getName,Type.getMethodDescriptor(method))
-        self
+        invokeMethod(method)
       }
 
+      def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method) = {
+        val cl = m.getDeclaringClass
+        mv.visitMethodInsn(getInvokeMethod2(m),Type.getInternalName(cl),m.getName,Type.getMethodDescriptor(m))
+        new ASMFrame[R**U,LT](mv,rest ** m.getReturnType,localsClass)
+      }
+      def invokeMethod[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest,m)
+      def invokeMethod2[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest.rest,m)
+      
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
         import scala.reflect._
         code.tree match {
@@ -320,7 +335,7 @@ object Bytecode{
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
-          mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+          invokeMethod(m)
         }
         // that's very bad duplication from the next pattern: this matches same as next but for an applied type
         case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
@@ -329,7 +344,7 @@ object Bytecode{
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
-          mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+          invokeMethod(m)
         }
         // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
         case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
@@ -338,7 +353,7 @@ object Bytecode{
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
-          mv.visitMethodInsn(getInvokeMethod(cl),Type.getInternalName(cl),methodName,Type.getMethodDescriptor(m))
+          invokeMethod(m)
         }
         case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
           System.out.println("Classname: "+clazz)
@@ -347,11 +362,10 @@ object Bytecode{
           val argCl = getClass(argClazz)
           System.out.println("static Methodname: "+methodName)
           val m = cl.getMethod(methodName,argCl)
-          mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(cl), methodName, Type.getMethodDescriptor(m));
+          invokeMethod(m)
         }
         case _ => throw new Error("Can't match this "+code.tree)
         }
-        self
       }
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
@@ -385,11 +399,11 @@ object Bytecode{
       { // apply
         val mv = cw.visitMethod(ACC_PUBLIC, "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", null, null);
         mv.visitCode()
-        // put the parameter on the stack
+        // put the parameter on the stackClass
         mv.visitVarInsn(ALOAD, 1);
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
 
-        code(new ASMFrame[Nil**T,Nil](mv))
+        code(new ASMFrame[Nil**T,Nil](mv,ClassStack(ClassStack(null,null),cl),ClassStack(null,null)))
 
         mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)
