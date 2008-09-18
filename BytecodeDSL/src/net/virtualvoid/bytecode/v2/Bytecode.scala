@@ -145,7 +145,7 @@ object Bytecode{
 
   trait ByteletCompiler{
 	  // compile a piece of code which
-	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],
+	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
                        code: F[Nil**T,Nil] // gets a parameter of type T on the stack
 	                      => F[Nil**U,_]   // and uses it and has then a value of type U on the stack
 	  ): T => U
@@ -185,7 +185,7 @@ object Bytecode{
         IF(rest,store(i,locals,top).asInstanceOf[NewLT])
     }
 
-    def compile[T,U](cl:Class[T],code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
+    def compile[T,U](cl:Class[T])(code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
       t => code(IF(N**t,N)).stack.top
   }
   object ASMCompiler extends ByteletCompiler{
@@ -202,7 +202,7 @@ object Bytecode{
 
       def locals:LT=loopingList.asInstanceOf[LT]
       def stack:ST=loopingList.asInstanceOf[ST]
-
+      
       def bipush(i1:Int):F[ST**Int,LT] = {
         mv.visitIntInsn(BIPUSH, i1)
         self
@@ -365,7 +365,7 @@ object Bytecode{
       }.loadClass(className)
     }
     var i = 0
-    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
+    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
       i+=1
       val className = "Compiled" + i
 
@@ -409,12 +409,11 @@ object Test{
     import Bytecode.Implicits._
     import java.lang.{Integer=>jInt}
 
-    val func = Interpreter.compile(classOf[AnyRef],(f2:S[AnyRef]) => f2.pop.bipush(12).dup.iadd.l.store.e.l.load.e.dup.imul)
+    val func = Interpreter.compile(classOf[AnyRef])(_.pop.bipush(12).dup.iadd.l.store.e.l.load.e.dup.imul)
     System.out.println(func(null))
 
-    val func2 = ASMCompiler.compile(classOf[java.lang.String],
-                                   (f:S[java.lang.String]) =>
-      f.dup
+    val func2 = ASMCompiler.compile(classOf[java.lang.String])(
+      _.dup
        .l.l.store.e.e
        .method(_.toUpperCase)
        .dup.method2(_.concat(_))
@@ -436,7 +435,7 @@ object Test{
        .method(jInt.valueOf(_))
 
     //val isucc: jInt => jInt = Bytecode.Interpreter.compile(bcs)
-    val csucc: jInt => jInt = Bytecode.ASMCompiler.compile(classOf[jInt],bcs)
+    val csucc: jInt => jInt = Bytecode.ASMCompiler.compile(classOf[jInt])(bcs)
     val isucc = csucc
 
     def testRun(i:Int) {
@@ -447,8 +446,8 @@ object Test{
     testRun(1)
     testRun(2)
 
-    val f = ASMCompiler.compile(classOf[java.lang.String],
-      (f:S[java.lang.String]) => f.method(_.length).bipush(3).imul.method(Integer.valueOf(_)))
+    val f = ASMCompiler.compile(classOf[java.lang.String])(
+      _.method(_.length).bipush(3).imul.method(Integer.valueOf(_)))
     System.out.println(f("123"))
     System.out.println(f("123456"))
   }

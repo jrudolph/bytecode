@@ -94,14 +94,14 @@ object Compiler{
   }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
     val toks = parser.parse(format)
-    ASMCompiler.compile(cl,
-     (f:S[T]) => {
+    ASMCompiler.compile(cl)(
+     f =>
        f.dup.l.store.e
          .checkcast(classOf[StringBuildable])
          .method(_.sb)
          .op(compileToks(toks,cl))
          .method(_.toString)
-     })
+     )
   }
   case class Bank(n:String){
     def name():jString = n

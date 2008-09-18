@@ -21,8 +21,8 @@ object Test2 {
      * "Name: Joe Account: a,b"
      *
      */
-    val f: Person=>String = ASMCompiler.compile(classOf[Person],
-        (f:S[Person]) =>{
+    val f: Person=>String = ASMCompiler.compile(classOf[Person])(
+        f => {
       val jmpTarget = f.dup
        .method(x => x.sb())
        .l.store.e  // store sb in l0
