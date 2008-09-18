@@ -198,6 +198,11 @@ object Bytecode{
       def get(i:Int):Class[_] = if (i>0) rest.get(i-1) else top
       def set(i:Int,cl:Class[_]):ClassStack = if (i>0) ClassStack(rest.set(i-1,cl),top) else ClassStack(rest,cl)
     }
+    class UnsetClassStack(lrest:ClassStack) extends ClassStack(lrest,null){
+      override def get(i:Int):Class[_] = if (i==0) throw new Error("tried to get local which never was saved") else super.get(i)
+      override def set(i:Int,cl:Class[_]):ClassStack = if (i>0) new UnsetClassStack(set(i-1,cl)) else ClassStack(this,cl)  
+    }
+    case object EmptyClassStack extends UnsetClassStack(null)
     
     class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack) extends F[ST,LT]{
       def self[T]:T = this.asInstanceOf[T]
@@ -403,7 +408,7 @@ object Bytecode{
         mv.visitVarInsn(ALOAD, 1);
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
 
-        code(new ASMFrame[Nil**T,Nil](mv,ClassStack(ClassStack(null,null),cl),ClassStack(null,null)))
+        code(new ASMFrame[Nil**T,Nil](mv,EmptyClassStack ** cl,EmptyClassStack))
 
         mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)

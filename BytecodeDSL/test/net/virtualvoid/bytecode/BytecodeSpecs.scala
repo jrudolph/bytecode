@@ -114,8 +114,11 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
       .apply(12.453) must be_==(12.453)}
     "store double after method2" in {
       compiler.compile(classOf[java.lang.Double])(_.method(_.doubleValue).ldc("test").dup.method2(_.concat(_)).pop.l.store.e.l.load.e.method(java.lang.Double.valueOf(_)))
-      .apply(12.453) must be_==(12.453)
-    }
+      .apply(12.453) must be_==(12.453)}
+    "store something more than 1 level deep" in {
+      compiler.compile(classOf[String])(_.l.l.store.e.e.l.l.load.e.e)
+      .apply("test") must be_==("test")
+    }    
   }
   
   "Compiler" should {
