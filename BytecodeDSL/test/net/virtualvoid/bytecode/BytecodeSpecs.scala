@@ -113,10 +113,10 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
   }
   
   "Compiler" should {
-    compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)
   }
   "Interpreter" should {
-    compiledTests(net.virtualvoid.bytecode.v2.Bytecode.Interpreter)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.Interpreter)
   }
 }
 
