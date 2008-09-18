@@ -271,12 +271,9 @@ object Bytecode{
         mv.visitLabel(l)
         new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
       }
-      def opcode(cl:Class[_],opcode:Int) = {
-        val realType = getClass(cl.getName)
-        System.out.println(java.lang.Integer.TYPE.getName)
-        System.out.println("Trying to find opcode for " + cl.getName + " changed to: " + realType.getName)
+      def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(getClass(cl.getName)).getOpcode(opcode)
-      }
+
       def loadI[T](i:Int):F[ST**T,LT] = {
         val toLoad = localsClass.get(i)
         mv.visitVarInsn(opcode(toLoad,ILOAD), i);
@@ -309,8 +306,6 @@ object Bytecode{
             val i = method.lastIndexOf(".")
             val clName = method.substring(0,i)
             val methodName = method.substring(i+1)
-            System.out.println(clName);
-            System.out.println(methodName);
             val cl = java.lang.Class.forName(clName)
             val cl2 = java.lang.Class.forName(paramClass)
             val m = cl.getMethod(methodName,cl2)
@@ -335,8 +330,6 @@ object Bytecode{
         import scala.reflect._
         code.tree match {
         case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-          System.out.println("Classname: "+clazz)
-          System.out.println("Methodname: "+method)
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
@@ -344,8 +337,6 @@ object Bytecode{
         }
         // that's very bad duplication from the next pattern: this matches same as next but for an applied type
         case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-          System.out.println("Classname: "+clazz)
-          System.out.println("Methodname: "+method)
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
@@ -353,19 +344,15 @@ object Bytecode{
         }
         // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
         case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-          System.out.println("Classname: "+clazz)
-          System.out.println("Methodname: "+method)
           val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
           val methodName = method.substring(clazz.length+1)
           val m = cl.getMethod(methodName)
           invokeMethod(m)
         }
         case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
-          System.out.println("Classname: "+clazz)
           val cl = java.lang.Class.forName(clazz)
           val methodName = method.substring(clazz.length+1)
           val argCl = getClass(argClazz)
-          System.out.println("static Methodname: "+methodName)
           val m = cl.getMethod(methodName,argCl)
           invokeMethod(m)
         }
