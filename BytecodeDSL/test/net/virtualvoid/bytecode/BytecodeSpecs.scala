@@ -60,8 +60,8 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
 
   import org.specs.specification.Example
   def suffix(suffix:String)(e: =>Example) = {currentSut.verb += suffix;e}
-  def apply = suffix(" apply")(_)
-  def notApply = suffix(" not apply")(_)
+  val apply = suffix(" apply")(_)
+  val notApply = suffix(" not apply")(_)
   
   "implicits" should apply {
     "dup on Int Stack" in {Stack("Nil**Int") must haveOp("dup")}
@@ -78,5 +78,35 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
     "pop on empty Stack" in {Stack("Nil") mustNot haveOp("pop")}
     
     "iadd on String**Int" in {Stack("Nil**String**Int") mustNot haveOp("iadd")}
+  }
+  
+  import net.virtualvoid.bytecode.v2.Bytecode._
+  def calcValue[U<:AnyRef](tuple:(String,U)) = new Matcher[S[String]=>F[Nil**U,_]]{
+    import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
+    def apply(f: => S[String]=>F[Nil**U,_]) = {
+      val compiled = ASMCompiler.compile(classOf[String])(f)
+      val res = compiled(tuple._1)
+      (res == tuple._2,"executed correctly","wrong result "+res+" instead of " +tuple._2)
+    }
+  }
+  
+  
+  def compiledTests(compiler:net.virtualvoid.bytecode.v2.Bytecode.ByteletCompiler){
+    import net.virtualvoid.bytecode.v2.Bytecode._
+    import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
+    
+    val f1 = compiler.compile(classOf[String])(_.pop.bipush(20).method(Integer.valueOf(_)))
+    "bipush(20)" in {f1("Test") must be_==(20)}
+    val f2 = compiler.compile(classOf[String])(_.method(_.length).method(Integer.valueOf(_)))
+    "method(_.length)" in {f2("Test") must be_==(4)}
+    val f3 = compiler.compile(classOf[java.lang.String])(_.l.store.e.l.load.e.l.load.e.method2(_.concat(_)))
+    "locals + String.concat" in {f3("Test") must be_==("TestTest")}
+  }
+  
+  "Compiler" should {
+    compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)
+  }
+  "Interpreter" should {
+    compiledTests(net.virtualvoid.bytecode.v2.Bytecode.Interpreter)
   }
 }
