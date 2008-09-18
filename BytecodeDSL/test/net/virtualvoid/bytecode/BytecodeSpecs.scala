@@ -110,3 +110,7 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
     compiledTests(net.virtualvoid.bytecode.v2.Bytecode.Interpreter)
   }
 }
+
+import org.specs.runner.JUnit4
+
+class MySpecTest extends JUnit4(BytecodeSpecs)
