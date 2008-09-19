@@ -31,8 +31,25 @@ object BytecodeCompilerSpecs extends Specification{
     "store something more than 1 level deep" in {
       compiler.compile(classOf[String])(_.l.l.store.e.e.l.l.load.e.e)
       .apply("test") must be_==("test")
-    }    
+    }
+    "load element with index 1 from a string array" in {
+      compiler.compile(classOf[Array[String]])(_.bipush(1).aload)
+      .apply(array("That","is","a","Test")) must be_==("is")
+    }
+    "get array length" in {
+      compiler.compile(classOf[Array[String]])(_.arraylength.method(Integer.valueOf(_)))
+      .apply(array("That","is","a","problem")) must be_==(4)
+    }
+    "isub" in {
+      compiler.compile(classOf[java.lang.Integer])(_.method(_.intValue).bipush(3).isub.method(Integer.valueOf(_)))
+      .apply(12) must be_==(9)
+    }
+    "dup_x1" in {
+      compiler.compile(classOf[java.lang.Integer])(_.dup.method(_.toString).swap.method(_.intValue).dup_x1.swap.pop.iadd.method(Integer.valueOf(_)))
+      .apply(12) must be_==(24)
+    }
   }
+  def array(els:String*):Array[String] = Array(els:_*)
   
   "Compiler" should {
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)

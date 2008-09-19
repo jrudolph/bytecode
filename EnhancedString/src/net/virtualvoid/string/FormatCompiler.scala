@@ -60,7 +60,7 @@ object Compiler{
              .l.store.e
              .target
           jmpTarget
-             .l.load.e //sb,it
+             .l.load.e
              .method(_.hasNext)
              .ifeq(f=>
                f.l.load.e
@@ -83,22 +83,59 @@ object Compiler{
              .l.store.e
         }
         else if (m.getReturnType.isArray){
-          val eleType:Class[_] = m.getReturnType.getComponentType
+          val eleType:Class[AnyRef] = m.getReturnType.getComponentType.asInstanceOf[Class[AnyRef]]
+
+          val retType:Class[Array[AnyRef]] = m.getReturnType.asInstanceOf[Class[Array[AnyRef]]]
 
           if (eleType.isPrimitive)
             throw new java.lang.Error("can't handle primitive arrays right now");
 
-          val jmpTarget = f.l.load.e
+          val jmpTarget =
+          f.l.load.e
            .swap
            .l.load.e
-           .dynMethod(m,m.getReturnType)
+           .dynMethod(m,retType)
            .l.store.e
+           .bipush(0)
            .target
-          //jmpTarget
-           //.l.load.e
-           //.arraylength
-           //.
-          null
+
+          jmpTarget
+           .dup
+           .l.load.e
+           .arraylength
+           .swap
+           .isub
+           .ifeq(f =>
+             f.dup_x1
+              .l.load.e
+              .swap
+              .aload
+              .l.load.e
+              .swap
+              .l.store.e
+              .swap
+              .op(compileToks(inner,eleType))
+              .swap
+              .l.store.e
+              .swap
+              .bipush(1) // TODO: better use iinc
+              .iadd
+              .dup
+              .l.load.e
+              .arraylength
+              .isub
+              .ifeq(f=>
+                 f.swap
+                  .ldc(sep)
+                  .method2(_.append(_))
+                  .swap
+                  .jmp(jmpTarget)
+              )
+              .jmp(jmpTarget)
+           )
+           .pop
+           .swap
+           .l.store.e
         }
         else
           throw new java.lang.Error("can only iterate over iterables and arrays right now")

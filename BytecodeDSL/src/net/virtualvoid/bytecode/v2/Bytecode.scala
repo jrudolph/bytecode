@@ -34,15 +34,19 @@ object Bytecode{
     def op[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
 
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
+    def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
     def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT]
+    def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
-    def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT]
+    def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT]
+    def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T,LT]
+    def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
 
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
@@ -53,6 +57,7 @@ object Bytecode{
     def rest:ST
     def frame:F[_,LT]
     def iadd():F[ST**Int,LT] = frame.iadd_int[ST](rest,i1,i2)
+    def isub():F[ST**Int,LT] = frame.isub_int[ST](rest,i1,i2)
     def imul():F[ST**Int,LT] = frame.imul_int[ST](rest,i1,i2)
   }
   trait OneStack[R<:List,T,LT<:List]{
@@ -65,8 +70,9 @@ object Bytecode{
   trait TwoStack[R<:List,T2,T1,LT<:List]{
     def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
     def swap():F[R**T1**T2,LT]
+    def dup_x1():F[R**T1**T2**T1,LT]
   }
-  class BooleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]){
+  class BooleanStack[R<:List,LT<:List,X](f:F[R**X,LT]){
     def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
       f.ifeq_int(f.stack.rest,f.stack.top,inner)
   }
@@ -96,8 +102,22 @@ object Bytecode{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
       def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+      def dup_x1():F[R**T1**T2**T1,LT] = f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
-    implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT] = new BooleanStack[R,LT](f)
+    implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT,Boolean] = new BooleanStack(f)
+    implicit def intBooleanStack[R<:List,LT<:List](f:F[R**Int,LT]):BooleanStack[R,LT,Int] = new BooleanStack(f)
+    trait ArrayLoadStack[R<:List,T,LT<:List]{
+      def aload():F[R**T,LT]
+    }
+    implicit def arrayLoadStack[R<:List,T,LT<:List](f:F[R**Array[T]**Int,LT]) = new ArrayLoadStack[R,T,LT](){
+      def aload() = f.aload_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    }
+    trait ArrayLengthStack[R<:List,LT<:List]{
+      def arraylength():F[R**Int,LT]
+    }
+    implicit def arrayLengthStack[R<:List,LT<:List,T](f:F[R**Array[T],LT]) = new ArrayLengthStack[R,LT]{
+      def arraylength():F[R**Int,LT] = f.arraylength_int(f.stack.rest,f.stack.top)
+    }
 
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
       def l():Zipper[ST,L,Cur,R]
@@ -160,16 +180,20 @@ object Bytecode{
       def jmp(t:Target[ST,LT]):Nothing = null.asInstanceOf[Nothing]
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
+      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
+      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = IF(rest**t1**t2**t1,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
       def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
         IF(rest ** method.invoke(top).asInstanceOf[U],locals)
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
-      def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = null
+      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = null
+      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = IF(rest**array.asInstanceOf[Array[T]](i),locals)
+      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = IF(rest**array.asInstanceOf[Array[_]].length,locals)
 
       def get[T](i:Int,l:List):T = l match{
         case N => throw new Error("not possible")
@@ -242,6 +266,10 @@ object Bytecode{
         mv.visitInsn(IADD)
         new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
       }
+      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
+        mv.visitInsn(ISUB)
+        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
+      }
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IMUL)
         new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
@@ -258,11 +286,15 @@ object Bytecode{
         mv.visitInsn(SWAP)
         new ASMFrame[R**T1**T2,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top,localsClass)
       }
+      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = {
+        mv.visitInsn(DUP_X1)
+        new ASMFrame[R**T1**T2**T1,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top**stackClass.top,localsClass)
+      }
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         new ASMFrame[R**U,LT](mv,stackClass.rest**cl,localsClass)
       }
-      def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = {
+      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
         mv.visitJumpInsn(IFEQ,l)
 
@@ -270,6 +302,18 @@ object Bytecode{
 
         mv.visitLabel(l)
         new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+      }
+      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {
+        val elType = stackClass.rest.top.getComponentType
+        
+        mv.visitInsn(opcode(elType,IALOAD))
+        
+        new ASMFrame[R**T,LT](mv,stackClass.rest.rest ** elType,localsClass)
+      }
+      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = {
+        mv.visitInsn(ARRAYLENGTH)
+        
+        new ASMFrame[R**Int,LT](mv,stackClass.rest ** classOf[Int],localsClass)
       }
       def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(getClass(cl.getName)).getOpcode(opcode)
