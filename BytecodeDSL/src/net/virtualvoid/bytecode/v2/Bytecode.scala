@@ -121,6 +121,8 @@ object Bytecode{
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
 
+    def newInstance[T](cl:Class[T]):F[ST**T,LT]
+    
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
@@ -298,6 +300,9 @@ object Bytecode{
       def loadI[T](i:Int):F[ST**T,LT] = IF(stack**get(i,locals),locals)
       def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] =
         IF(rest,store(i,locals,top).asInstanceOf[NewLT])
+      
+      def newInstance[T](cl:Class[T]):F[ST**T,LT] = 
+        IF(stack**cl.newInstance,locals)
     }
 
     def compile[T,U](cl:Class[T])(code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
@@ -425,7 +430,16 @@ object Bytecode{
       def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] = {
         mv.visitVarInsn(opcode(stackClass.top,ISTORE), i);
         new ASMFrame[R,NewLT](mv,stackClass.rest,localsClass.set(i,stackClass.top))
-      }      
+      }
+      
+      def newInstance[T](cl:Class[T]):F[ST**T,LT] = {
+        val cons = cl.getConstructor()
+        mv.visitTypeInsn(NEW,Type.getInternalName(cl))
+        mv.visitInsn(DUP)
+        mv.visitMethodInsn(INVOKESPECIAL,Type.getInternalName(cl),"<init>",Type.getConstructorDescriptor(cons))
+        new ASMFrame[ST**T,LT](mv,stackClass**cl,localsClass)
+      }
+      
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
       def getInvokeMethod2(m:java.lang.reflect.Method) = 
         if ((m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0)

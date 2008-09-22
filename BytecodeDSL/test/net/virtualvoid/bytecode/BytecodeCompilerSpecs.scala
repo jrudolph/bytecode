@@ -56,6 +56,10 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.Integer])(_.dup.method(_.toString).swap.method(_.intValue).dup_x1.swap.pop.iadd.method(Integer.valueOf(_)))
       .apply(12) must be_==(24)
     }
+    "create new StringBuilder" in {
+      compiler.compile(classOf[java.lang.String])(_.dup.newInstance(classOf[java.lang.StringBuilder]).swap.method2(_.append(_)).swap.method2(_.append(_)).method(_.toString))
+      .apply("test") must be_==("testtest") 
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)
