@@ -170,5 +170,6 @@ object Compiler{
     output("Name: #name Accounts: #accs[#number(#bank.name)]{, }*")
     val p = new Person
     System.out.println(compile[Array[Account]]("#this[#number(#bank.name)]{, }*",p.accs.getClass.asInstanceOf[Class[Array[Account]]])(p.accs))
+    System.out.println(compile[java.lang.Iterable[Account]]("#this[#number(#bank.name)]{, }*",p.accounts.getClass.asInstanceOf[Class[java.lang.Iterable[Account]]])(p.accounts))
   }
 }
