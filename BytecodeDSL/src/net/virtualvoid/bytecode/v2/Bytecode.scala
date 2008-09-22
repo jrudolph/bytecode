@@ -1,5 +1,51 @@
 package net.virtualvoid.bytecode.v2
 
+object CodeTools{
+  import scala.reflect._
+  import java.lang.reflect.{Method=>jMethod}
+  
+  def cleanClass(name:String):java.lang.Class[_] = name match{
+    case "int" => Integer.TYPE
+    case "scala.Int" => Integer.TYPE
+    case "boolean" => java.lang.Boolean.TYPE
+    case "scala.Boolean" => java.lang.Boolean.TYPE
+    case "double" => java.lang.Double.TYPE
+    case "scala.Double" => java.lang.Double.TYPE
+    case _ => java.lang.Class.forName(name)
+  }
+  
+  def methodFromTree(tree:Tree):jMethod = tree match{
+    case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+      val cl = java.lang.Class.forName(clazz)
+      val methodName = method.substring(clazz.length+1)
+      val m = cl.getMethod(methodName)
+      m
+    }
+    // that's very bad duplication from the next pattern: this matches same as next but for an applied type
+    case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+      val cl = java.lang.Class.forName(clazz)
+      val methodName = method.substring(clazz.length+1)
+      val m = cl.getMethod(methodName)
+      m
+    }
+    // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
+    case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+      val cl = java.lang.Class.forName(clazz)
+      val methodName = method.substring(clazz.length+1)
+      val m = cl.getMethod(methodName)
+      m
+    }
+    case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
+      val cl = java.lang.Class.forName(clazz)
+      val methodName = method.substring(clazz.length+1)
+      val argCl = cleanClass(argClazz)
+      val m = cl.getMethod(methodName,argCl)
+      m
+    }
+    case _ => throw new Error("Can't match this "+tree)
+  } 
+}
+
 object Bytecode{
   import java.lang.{String => jString,
                     Boolean => jBoolean
@@ -286,8 +332,11 @@ object Bytecode{
         mv.visitLabel(l)
         new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
       }
+      
+      import CodeTools._
+      
       def opcode(cl:Class[_],opcode:Int) = 
-        Type.getType(getClass(cl.getName)).getOpcode(opcode)
+        Type.getType(cleanClass(cl.getName)).getOpcode(opcode)
 
       def loadI[T](i:Int):F[ST**T,LT] = {
         val toLoad = localsClass.get(i)
@@ -298,15 +347,7 @@ object Bytecode{
         mv.visitVarInsn(opcode(stackClass.top,ISTORE), i);
         new ASMFrame[R,NewLT](mv,stackClass.rest,localsClass.set(i,stackClass.top))
       }
-      def getClass(name:String):java.lang.Class[_] = name match{
-        case "int" => Integer.TYPE
-        case "scala.Int" => Integer.TYPE
-        case "boolean" => java.lang.Boolean.TYPE
-        case "scala.Boolean" => java.lang.Boolean.TYPE
-        case "double" => java.lang.Double.TYPE
-        case "scala.Double" => java.lang.Double.TYPE
-        case _ => java.lang.Class.forName(name)
-      }
+
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
       def getInvokeMethod2(m:java.lang.reflect.Method) = 
         if ((m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0)
@@ -341,39 +382,8 @@ object Bytecode{
       def invokeMethod[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest,m)
       def invokeMethod2[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest.rest,m)
       
-      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = {
-        import scala.reflect._
-        code.tree match {
-        case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-          val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
-          val methodName = method.substring(clazz.length+1)
-          val m = cl.getMethod(methodName)
-          invokeMethod(m)
-        }
-        // that's very bad duplication from the next pattern: this matches same as next but for an applied type
-        case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-          val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
-          val methodName = method.substring(clazz.length+1)
-          val m = cl.getMethod(methodName)
-          invokeMethod(m)
-        }
-        // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
-        case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-          val cl = java.lang.Class.forName(clazz).asInstanceOf[scala.Predef.Class[T]]
-          val methodName = method.substring(clazz.length+1)
-          val m = cl.getMethod(methodName)
-          invokeMethod(m)
-        }
-        case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
-          val cl = java.lang.Class.forName(clazz)
-          val methodName = method.substring(clazz.length+1)
-          val argCl = getClass(argClazz)
-          val m = cl.getMethod(methodName,argCl)
-          invokeMethod(m)
-        }
-        case _ => throw new Error("Can't match this "+code.tree)
-        }
-      }
+      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
+        invokeMethod(methodFromTree(code.tree))
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader{
