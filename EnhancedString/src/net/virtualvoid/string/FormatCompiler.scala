@@ -2,10 +2,6 @@ package net.virtualvoid.string
 
 import java.lang.{StringBuilder,String=>jString}
 
-trait StringBuildable{
-  def sb():java.lang.StringBuilder
-}
-
 object Compiler{
   import net.virtualvoid.bytecode.v2.Bytecode
   import Bytecode._
@@ -147,9 +143,8 @@ object Compiler{
     val toks = parser.parse(format)
     ASMCompiler.compile(cl)(
      f =>
-       f.dup.l.store.e
-         .checkcast(classOf[StringBuildable])
-         .method(_.sb)
+       f.l.store.e
+         .newInstance(classOf[StringBuilder])
          .op(compileToks(toks,cl))
          .method(_.toString)
      )
@@ -161,9 +156,8 @@ object Compiler{
     def number():jString = n
     def bank() = b
   }
-  class Person extends StringBuildable{
+  class Person{
       def name():java.lang.String = "Joe"
-      def sb():java.lang.StringBuilder = new java.lang.StringBuilder
       def accountNames():java.util.List[java.lang.String] = java.util.Arrays.asList("a","b")
       val sparkasse = Bank("Sparkasse")
       def accounts():java.util.List[Account] = java.util.Arrays.asList(Account("78910",sparkasse),Account("12345",Bank("Volksbank")))
