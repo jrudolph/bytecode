@@ -14,6 +14,18 @@ object CodeTools{
     case _ => java.lang.Class.forName(name)
   }
   
+  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = code.tree match{
+    case Function(List(p1,p2@LocalValue(_,_,PrefixedType(_,Class(paramClass)))),Apply(Select(Ident(th),Method(method,_)),List(Ident(x)))) if th == p1 && x == p2 =>{
+      val i = method.lastIndexOf(".")
+      val clName = method.substring(0,i)
+      val methodName = method.substring(i+1)
+      val cl = java.lang.Class.forName(clName)
+      val cl2 = java.lang.Class.forName(paramClass)
+      val m = cl.getMethod(methodName,cl2)
+      m
+    }	
+    case _ => throw new Error("Can't match this "+code.tree)
+  }
   def methodFromTree(tree:Tree):jMethod = tree match{
     case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
       val cl = java.lang.Class.forName(clazz)
@@ -43,7 +55,21 @@ object CodeTools{
       m
     }
     case _ => throw new Error("Can't match this "+tree)
-  } 
+  }
+  
+  def box(a:Any):AnyRef = a match{
+    case i:Int => Integer.valueOf(i)
+    case d:Double => java.lang.Double.valueOf(d)
+    case f:Float => java.lang.Float.valueOf(f)
+    case b:Boolean => java.lang.Boolean.valueOf(b)
+    case o:AnyRef => o
+  }
+  def invokeMethod(method:jMethod,args:Any*) = {
+    if ((method.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
+      method.invoke(null,args.map(box).toArray:_*)
+    else
+      method.invoke(args(0),args.drop(1).map(box).toArray:_*)
+  }
 }
 
 object Bytecode{
@@ -204,7 +230,8 @@ object Bytecode{
 
   object Interpreter extends ByteletCompiler{
     case class IF[ST<:List,LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
-
+      import CodeTools._
+      
       def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
       def ldc(str:jString):F[ST**jString,LT] = IF(stack ** str,locals)
       def target:Target[ST,LT] = null
@@ -217,10 +244,12 @@ object Bytecode{
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
       def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = IF(rest**t1**t2**t1,locals)
-      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
+      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
+        IF(rest ** invokeMethod(methodFromTree(code.tree),top).asInstanceOf[U],locals)
       def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
         IF(rest ** method.invoke(top).asInstanceOf[U],locals)
-      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = null
+      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
+        IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
       def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = null
 
@@ -355,21 +384,8 @@ object Bytecode{
         else
           getInvokeMethod(m.getDeclaringClass)
 
-      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = {
-        import scala.reflect._
-        code.tree match {
-          case Function(List(p1,p2@LocalValue(_,_,PrefixedType(_,Class(paramClass)))),Apply(Select(Ident(th),Method(method,_)),List(Ident(x)))) if th == p1 && x == p2 =>{
-            val i = method.lastIndexOf(".")
-            val clName = method.substring(0,i)
-            val methodName = method.substring(i+1)
-            val cl = java.lang.Class.forName(clName)
-            val cl2 = java.lang.Class.forName(paramClass)
-            val m = cl.getMethod(methodName,cl2)
-            invokeMethod2(m)
-          }
-          case _ => throw new Error("Can't match this "+code.tree)
-        }
-      }
+      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
+        invokeMethod2(methodFromCode(code))
       def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] = {
         invokeMethod(method)
       }
