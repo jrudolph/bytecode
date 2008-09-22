@@ -32,6 +32,22 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[String])(_.l.l.store.e.e.l.l.load.e.e)
       .apply("test") must be_==("test")
     }
+    "load element with index 1 from a string array" in {
+      compiler.compile(classOf[Array[String]])(_.bipush(1).aload)
+      .apply(array("That","is","a","Test")) must be_==("is")
+    }
+    "save string element to array and load it afterwards" in {
+      compiler.compile(classOf[Array[String]])(_.dup.bipush(1).ldc("test").astore.bipush(1).aload)
+      .apply(array("That","is","a","Test")) must be_==("test")
+    }
+    "save int element to array and load it afterwards" in {
+      compiler.compile(classOf[Array[Int]])(_.dup.bipush(1).bipush(13).astore.bipush(1).aload.dup.iadd.method(Integer.valueOf(_)))
+      .apply(array(1,2,3,4)) must be_==(26)
+    }
+    "get array length" in {
+      compiler.compile(classOf[Array[String]])(_.arraylength.method(Integer.valueOf(_)))
+      .apply(array("That","is","a","problem")) must be_==(4)
+    }
     "isub" in {
       compiler.compile(classOf[java.lang.Integer])(_.method(_.intValue).bipush(3).isub.method(Integer.valueOf(_)))
       .apply(12) must be_==(9)
@@ -41,6 +57,8 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(12) must be_==(24)
     }
   }
+  def array(els:Int*):Array[Int] = Array(els:_*)
+  def array(els:String*):Array[String] = Array(els:_*)
   
   "Compiler" should {
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)

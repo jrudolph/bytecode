@@ -117,6 +117,9 @@ object Bytecode{
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
     def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT]
+    def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T,LT]
+    def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
+    def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
 
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
@@ -176,6 +179,24 @@ object Bytecode{
     }
     implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT,Boolean] = new BooleanStack(f)
     implicit def intBooleanStack[R<:List,LT<:List](f:F[R**Int,LT]):BooleanStack[R,LT,Int] = new BooleanStack(f)
+    trait ArrayLoadStack[R<:List,T,LT<:List]{
+      def aload():F[R**T,LT]
+    }
+    implicit def arrayLoadStack[R<:List,T,LT<:List](f:F[R**Array[T]**Int,LT]) = new ArrayLoadStack[R,T,LT](){
+      def aload() = f.aload_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    }
+    trait ArrayStoreStack[R<:List,LT<:List]{
+      def astore():F[R,LT]
+    }
+    implicit def arrayStoreStack[R<:List,T,LT<:List](f:F[R**Array[T]**Int**T,LT]) = new ArrayStoreStack[R,LT]{
+      def astore():F[R,LT] = f.astore_int(f.stack.rest.rest.rest,f.stack.rest.rest.top,f.stack.rest.top,f.stack.top)
+    }
+    trait ArrayLengthStack[R<:List,LT<:List]{
+      def arraylength():F[R**Int,LT]
+    }
+    implicit def arrayLengthStack[R<:List,LT<:List,T](f:F[R**Array[T],LT]) = new ArrayLengthStack[R,LT]{
+      def arraylength():F[R**Int,LT] = f.arraylength_int(f.stack.rest,f.stack.top)
+    }
 
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
       def l():Zipper[ST,L,Cur,R]
@@ -253,6 +274,17 @@ object Bytecode{
         IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
       def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = null
+      
+      import java.lang.reflect.{Array => jArray}
+      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {
+        IF(rest**jArray.get(array,i).asInstanceOf[T],locals)
+      }
+      def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT] = {
+        jArray.set(array,index,t)
+        IF(rest,locals)
+      }
+      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = 
+        IF(rest**jArray.getLength(array),locals)
 
       def get[T](i:Int,l:List):T = l match{
         case N => throw new Error("not possible")
@@ -362,9 +394,26 @@ object Bytecode{
         mv.visitLabel(l)
         new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
       }
-      
       import CodeTools._
-      
+      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {
+        val elType = stackClass.rest.top.getComponentType
+        
+        mv.visitInsn(opcode(elType,IALOAD))
+        
+        new ASMFrame[R**T,LT](mv,stackClass.rest.rest ** elType,localsClass)
+      }
+      def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT] = {
+        val elType = stackClass.rest.rest.top.getComponentType
+        
+        mv.visitInsn(opcode(elType,IASTORE))
+        
+        new ASMFrame[R,LT](mv,stackClass.rest.rest.rest,localsClass)
+      }
+      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = {
+        mv.visitInsn(ARRAYLENGTH)
+        
+        new ASMFrame[R**Int,LT](mv,stackClass.rest ** classOf[Int],localsClass)
+      }      
       def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(cleanClass(cl.getName)).getOpcode(opcode)
 
@@ -376,8 +425,7 @@ object Bytecode{
       def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] = {
         mv.visitVarInsn(opcode(stackClass.top,ISTORE), i);
         new ASMFrame[R,NewLT](mv,stackClass.rest,localsClass.set(i,stackClass.top))
-      }
-
+      }      
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
       def getInvokeMethod2(m:java.lang.reflect.Method) = 
         if ((m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0)
