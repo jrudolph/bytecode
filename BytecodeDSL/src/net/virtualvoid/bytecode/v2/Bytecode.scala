@@ -116,7 +116,7 @@ object Bytecode{
     def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
-    def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT]
+    def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT]
 
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
@@ -142,7 +142,7 @@ object Bytecode{
     def swap():F[R**T1**T2,LT]
     def dup_x1():F[R**T1**T2**T1,LT]
   }
-  class BooleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]){
+  class BooleanStack[R<:List,LT<:List,X](f:F[R**X,LT]){
     def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
       f.ifeq_int(f.stack.rest,f.stack.top,inner)
   }
@@ -174,7 +174,8 @@ object Bytecode{
       def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
       def dup_x1():F[R**T1**T2**T1,LT] = f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
-    implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT] = new BooleanStack[R,LT](f)
+    implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT,Boolean] = new BooleanStack(f)
+    implicit def intBooleanStack[R<:List,LT<:List](f:F[R**Int,LT]):BooleanStack[R,LT,Int] = new BooleanStack(f)
 
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
       def l():Zipper[ST,L,Cur,R]
@@ -251,7 +252,7 @@ object Bytecode{
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
         IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
-      def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = null
+      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = null
 
       def get[T](i:Int,l:List):T = l match{
         case N => throw new Error("not possible")
@@ -352,7 +353,7 @@ object Bytecode{
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         new ASMFrame[R**U,LT](mv,stackClass.rest**cl,localsClass)
       }
-      def ifeq_int[R<:List](rest:R,top:Boolean,inner:F[R,LT] => Nothing):F[R,LT] = {
+      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
         mv.visitJumpInsn(IFEQ,l)
 

@@ -72,6 +72,8 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
     "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("l.load.e.dup.iadd")}
     "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("l.store.e.l.load.e.method(_.length)")}
     "dup_x1" in {Stack("Nil**String**Int") must haveOp("dup_x1")}
+    
+    "ifeq with int stack" in {Stack("Nil**Int") must haveOp("ifeq(null)")}
   }
   
   "implicits" should notApply {
