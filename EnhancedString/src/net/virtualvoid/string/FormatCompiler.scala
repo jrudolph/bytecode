@@ -48,9 +48,9 @@ object Compiler{
       }
       case SpliceExp(exp,sep,inner) => {
         val m = exp.method(cl)
-        val eleType:Class[AnyRef] = elementType(m.getGenericReturnType).asInstanceOf[Class[AnyRef]]
 
         if (classOf[java.lang.Iterable[_]].isAssignableFrom(m.getReturnType)){
+          val eleType:Class[AnyRef] = elementType(m.getGenericReturnType).asInstanceOf[Class[AnyRef]]
           val jmpTarget =
             f.l.load.e
              .swap // save one instance of T for later
@@ -60,7 +60,7 @@ object Compiler{
              .l.store.e
              .target
           jmpTarget
-             .l.load.e //sb,it
+             .l.load.e
              .method(_.hasNext)
              .ifeq(f=>
                f.l.load.e
@@ -82,8 +82,63 @@ object Compiler{
              .swap
              .l.store.e
         }
+        else if (m.getReturnType.isArray){
+          val eleType:Class[AnyRef] = m.getReturnType.getComponentType.asInstanceOf[Class[AnyRef]]
+
+          val retType:Class[Array[AnyRef]] = m.getReturnType.asInstanceOf[Class[Array[AnyRef]]]
+
+          if (eleType.isPrimitive)
+            throw new java.lang.Error("can't handle primitive arrays right now");
+
+          val jmpTarget =
+          f.l.load.e
+           .swap
+           .l.load.e
+           .dynMethod(m,retType)
+           .l.store.e
+           .bipush(0)
+           .target
+
+          jmpTarget
+           .dup
+           .l.load.e
+           .arraylength
+           .swap
+           .isub
+           .ifeq(f =>
+             f.dup_x1
+              .l.load.e
+              .swap
+              .aload
+              .l.load.e
+              .swap
+              .l.store.e
+              .swap
+              .op(compileToks(inner,eleType))
+              .swap
+              .l.store.e
+              .swap
+              .bipush(1) // TODO: better use iinc
+              .iadd
+              .dup
+              .l.load.e
+              .arraylength
+              .isub
+              .ifeq(f=>
+                 f.swap
+                  .ldc(sep)
+                  .method2(_.append(_))
+                  .swap
+                  .jmp(jmpTarget)
+              )
+              .jmp(jmpTarget)
+           )
+           .pop
+           .swap
+           .l.store.e
+        }
         else
-          throw new java.lang.Error("can only iterate over iterables right now")
+          throw new java.lang.Error("can only iterate over iterables and arrays right now")
       }
     }
   def compileToks[R<:List,LR<:List,T<:java.lang.Object](tok:Seq[StrToken],cl:Class[T])(f:F[R**StringBuilder,LR**T]) = {
@@ -115,7 +170,8 @@ object Compiler{
       def sb():java.lang.StringBuilder = new java.lang.StringBuilder
       def accountNames():java.util.List[java.lang.String] = java.util.Arrays.asList("a","b")
       val sparkasse = Bank("Sparkasse")
-      def accounts():java.lang.Iterable[Account] = java.util.Arrays.asList(Account("78910",sparkasse),Account("12345",Bank("Volksbank")))
+      def accounts():java.util.List[Account] = java.util.Arrays.asList(Account("78910",sparkasse),Account("12345",Bank("Volksbank")))
+      def accs():Array[Account] = accounts().toArray(new Array[Account](0))
   }
   def main(args:Array[String]){
     def output(format:String) = System.out.println(compile(format,classOf[Person])(new Person))
@@ -123,5 +179,6 @@ object Compiler{
     output("Name: #name Accounts: #accountNames{,}*")
     output("Name: #name Accounts: #accounts[#number]{, }*")
     output("Name: #name Accounts: #accounts[#number(#bank.name)]{, }*")
+    output("Name: #name Accounts: #accs[#number(#bank.name)]{, }*")
   }
 }
