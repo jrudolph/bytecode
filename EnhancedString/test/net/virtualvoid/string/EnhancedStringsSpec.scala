@@ -29,6 +29,10 @@ object ParserSpecs extends Specification with StrParser  {
     "'#{listProp}{,}*'" in {"#{listProp}{,}*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
     "'#listProp[test]{,}*'" in {"#listProp[test]{,}*" must beParsedAs(splice(Exp("listProp"),",",Literal("test")))}
 
+    "#this" in {"#this" must beParsedAs(ThisExp)}
+    "#{this}" in {"#{this}" must beParsedAs(ThisExp)}
+    "#this[]*" in {"#this[]*" must beParsedAs(splice(ThisExp,""))}
+
     // test weird control combinations
     "Dots in normal literals 'This is a sentence.'" in {"This is a sentence." must beParsedAs(Literal("This is a sentence."))}
     "Dots after curly braced expressions 'This is a #{exp}.'" in {"This is a #{exp}." must beParsedAs(Literal("This is a "),Exp("exp"),Literal("."))}

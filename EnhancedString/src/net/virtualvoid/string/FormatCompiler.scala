@@ -17,16 +17,16 @@ object Compiler{
     }
   }
 
-  def compileGetExp[R<:List,LR<:List,T](exp:Exp,cl:Class[T])(f:F[R**T,LR]):F[R**AnyRef,LR] = exp match{
+  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp,cl:Class[T],retType:Class[Ret])(f:F[R**T,LR]):F[R**Ret,LR] = exp match{
     case p@ParentExp(inner,parent) =>{
       val m = p.method(cl)
       f.dynMethod(m,classOf[AnyRef])
-       .op(compileGetExp(inner,m.getReturnType.asInstanceOf[Class[Object]]))
+       .op(compileGetExp(inner,m.getReturnType.asInstanceOf[Class[Object]],retType))
     }
-    case Exp("this") =>
-      f.checkcast(classOf[java.lang.Object]) // TODO: don't know why we need this, examine it
+    case ThisExp =>
+      f.checkcast(retType) // TODO: don't know why we need this, examine it
     case e:Exp => {
-      f.dynMethod(e.method(cl),classOf[AnyRef])
+      f.dynMethod(e.method(cl),retType)
     }
   }
 
@@ -35,19 +35,19 @@ object Compiler{
       case Literal(str) => f.ldc(str).method2(_.append(_))
       case e:Exp =>
         f.l.load.e
-         .op(compileGetExp(e,cl))
+         .op(compileGetExp(e,cl,classOf[AnyRef]))
          .method(_.toString)
          .method2(_.append(_))
       case SpliceExp(exp,sep,inner) => {
-        val m = exp.method(cl)
+        val retType = exp.returnType(cl)
 
-        if (classOf[java.lang.Iterable[_]].isAssignableFrom(m.getReturnType)){
-          val eleType:Class[AnyRef] = elementType(m.getGenericReturnType).asInstanceOf[Class[AnyRef]]
+        if (classOf[java.lang.Iterable[_]].isAssignableFrom(retType)){
+          val eleType:Class[AnyRef] = elementType(exp.genericReturnType(cl)).asInstanceOf[Class[AnyRef]]
           val jmpTarget =
             f.l.load.e
              .swap // save one instance of T for later
              .l.load.e
-             .dynMethod(exp.method(cl),classOf[java.lang.Iterable[AnyRef]])
+             .op(compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]))
              .method(_.iterator)
              .l.store.e
              .target
@@ -74,22 +74,20 @@ object Compiler{
              .swap
              .l.store.e
         }
-        else if (m.getReturnType.isArray){
-          val eleType:Class[AnyRef] = m.getReturnType.getComponentType.asInstanceOf[Class[AnyRef]]
-
-          val retType:Class[Array[AnyRef]] = m.getReturnType.asInstanceOf[Class[Array[AnyRef]]]
+        else if (retType.isArray){
+          val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
 
           if (eleType.isPrimitive)
             throw new java.lang.Error("can't handle primitive arrays right now");
 
           val jmpTarget =
-          f.l.load.e
-           .swap
-           .l.load.e
-           .dynMethod(m,retType)
-           .l.store.e
-           .bipush(0)
-           .target
+            f.l.load.e
+             .swap
+             .l.load.e
+             .op(compileGetExp(exp,cl,retType.asInstanceOf[Class[Array[AnyRef]]]))
+             .l.store.e
+             .bipush(0)
+             .target
 
           jmpTarget
            .dup

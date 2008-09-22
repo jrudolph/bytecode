@@ -68,12 +68,17 @@ class StrLexer extends Lexical with RegexParsers{
      }catch{
      case _:NoSuchMethodException => None
      }
-    def method(cl:Class[_]):Method = Array("get"+capitalize(identifier),identifier).flatMap(findMethod(cl,_).toList).first
+    def method(cl:Class[_]):Method = Array("get"+capitalize(identifier),identifier).flatMap(findMethod(cl,_).toList).firstOption.getOrElse(throw new java.lang.Error("couldn't find method" + identifier + "in class "+cl.getName))
+    def returnType(callingCl:Class[_]):Class[_] = method(callingCl).getReturnType
+    def genericReturnType(callingCl:Class[_]):java.lang.reflect.Type = method(callingCl).getGenericReturnType
     def capitalize(s:String):String = s.substring(0,1).toUpperCase + s.substring(1)
-    def eval(o:AnyRef) = identifier match {
-    case "this" => o
-    case _ => method(o.getClass).invoke(o,null)
-    }
+    def eval(o:AnyRef) = method(o.getClass).invoke(o,null)
+  }
+  case object ThisExp extends Exp(""){
+    override def eval(o:AnyRef) = o
+    override def returnType(callingCl:Class[_]):Class[_] = callingCl
+    override def genericReturnType(callingCl:Class[_]):java.lang.reflect.Type =
+      throw new java.lang.Error("no generic type information available for "+callingCl.getName+" since it is erased")
   }
   case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
     override def eval(o:AnyRef) = inner.eval(super.eval(o))
@@ -98,15 +103,16 @@ class StrLexer extends Lexical with RegexParsers{
   def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
 
   def idPart:Parser[String] = idChar ~ rep(idChar) ^^ {case first ~ rest => first :: rest mkString ""}
-  def id:Parser[Exp] = idPart ~ opt("." ~> id) ^^ {case str ~ Some(inner) => ParentExp(inner,str)
-                                                   case str ~ None => Exp(str)
-                                                  }
+  def id:Parser[Exp] =
+    "this" 					^^ {str => ThisExp} |
+    idPart ~ opt("." ~> id) ^^ {case str ~ Some(inner) => ParentExp(inner,str)
+                                case str ~ None => Exp(str)}
 
   def exp:Parser[Exp] = expStartChar ~>
     (id | extendParser("{") ~!> id <~! "}")
 
   def sepChars = "[^}]*".r
-  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(Exp("this"))))}
+  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(List(ThisExp)))}
 
   def innerExp:Parser[StrToken] = spliceExp | exp | lit
   def inners = '[' ~> rep(innerExp) <~ ']'
