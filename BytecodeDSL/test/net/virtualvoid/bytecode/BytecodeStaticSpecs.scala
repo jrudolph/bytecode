@@ -71,11 +71,13 @@ import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
    
     "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("l.load.e.dup.iadd")}
     "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("l.store.e.l.load.e.method(_.length)")}
+    "dup_x1" in {Stack("Nil**String**Int") must haveOp("dup_x1")}
   }
   
   "implicits" should notApply {
     "dup on empty Stack" in {Stack("Nil") mustNot haveOp("dup")}
     "pop on empty Stack" in {Stack("Nil") mustNot haveOp("pop")}
+    "dup_x1 on one Stack" in {Stack("Nil**String") mustNot haveOp("dup_x1")}
     
     "iadd on String**Int" in {Stack("Nil**String**Int") mustNot haveOp("iadd")}
   }

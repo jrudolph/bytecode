@@ -31,7 +31,15 @@ object BytecodeCompilerSpecs extends Specification{
     "store something more than 1 level deep" in {
       compiler.compile(classOf[String])(_.l.l.store.e.e.l.l.load.e.e)
       .apply("test") must be_==("test")
-    }    
+    }
+    "isub" in {
+      compiler.compile(classOf[java.lang.Integer])(_.method(_.intValue).bipush(3).isub.method(Integer.valueOf(_)))
+      .apply(12) must be_==(9)
+    }
+    "dup_x1" in {
+      compiler.compile(classOf[java.lang.Integer])(_.dup.method(_.toString).swap.method(_.intValue).dup_x1.swap.pop.iadd.method(Integer.valueOf(_)))
+      .apply(12) must be_==(24)
+    }
   }
   
   "Compiler" should {

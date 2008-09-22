@@ -34,10 +34,12 @@ object Bytecode{
     def op[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
 
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
+    def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def pop_int[R<:List](rest:R):F[R,LT]
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
     def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT]
+    def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT]
     def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
@@ -53,6 +55,7 @@ object Bytecode{
     def rest:ST
     def frame:F[_,LT]
     def iadd():F[ST**Int,LT] = frame.iadd_int[ST](rest,i1,i2)
+    def isub():F[ST**Int,LT] = frame.isub_int[ST](rest,i1,i2)
     def imul():F[ST**Int,LT] = frame.imul_int[ST](rest,i1,i2)
   }
   trait OneStack[R<:List,T,LT<:List]{
@@ -65,6 +68,7 @@ object Bytecode{
   trait TwoStack[R<:List,T2,T1,LT<:List]{
     def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
     def swap():F[R**T1**T2,LT]
+    def dup_x1():F[R**T1**T2**T1,LT]
   }
   class BooleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]){
     def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
@@ -96,6 +100,7 @@ object Bytecode{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
       def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+      def dup_x1():F[R**T1**T2**T1,LT] = f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
     implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT] = new BooleanStack[R,LT](f)
 
@@ -160,10 +165,12 @@ object Bytecode{
       def jmp(t:Target[ST,LT]):Nothing = null.asInstanceOf[Nothing]
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
+      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
+      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = IF(rest**t1**t2**t1,locals)
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = null
       def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
         IF(rest ** method.invoke(top).asInstanceOf[U],locals)
@@ -242,6 +249,10 @@ object Bytecode{
         mv.visitInsn(IADD)
         new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
       }
+      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
+        mv.visitInsn(ISUB)
+        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
+      }
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IMUL)
         new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
@@ -257,6 +268,10 @@ object Bytecode{
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = {
         mv.visitInsn(SWAP)
         new ASMFrame[R**T1**T2,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top,localsClass)
+      }
+      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = {
+        mv.visitInsn(DUP_X1)
+        new ASMFrame[R**T1**T2**T1,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top**stackClass.top,localsClass)
       }
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
