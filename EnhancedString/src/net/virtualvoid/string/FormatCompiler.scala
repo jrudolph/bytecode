@@ -21,31 +21,27 @@ object Compiler{
     }
   }
 
+  def compileGetExp[R<:List,LR<:List,T](exp:Exp,cl:Class[T])(f:F[R**T,LR]):F[R**AnyRef,LR] = exp match{
+    case p@ParentExp(inner,parent) =>{
+      val m = p.method(cl)
+      f.dynMethod(m,classOf[AnyRef])
+       .op(compileGetExp(inner,m.getReturnType.asInstanceOf[Class[Object]]))
+    }
+    case Exp("this") =>
+      f.checkcast(classOf[java.lang.Object]) // TODO: don't know why we need this, examine it
+    case e:Exp => {
+      f.dynMethod(e.method(cl),classOf[AnyRef])
+    }
+  }
+
   def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
     = tok match {
       case Literal(str) => f.ldc(str).method2(_.append(_))
-      case p@ParentExp(inner,parent) =>{
-        val m = p.method(cl)
+      case e:Exp =>
         f.l.load.e
-         .swap
-         .l.load.e
-         .dynMethod(m,classOf[AnyRef])
-         .l.store.e
-         .op(compileTok(inner,m.getReturnType.asInstanceOf[Class[AnyRef]]))
-         .swap
-         .l.store.e
-      }
-      case Exp("this") =>{
-        f.l.load.e
-         .checkcast(classOf[java.lang.Object]) // TODO: don't know why we need this, examine it
-         .method((_:java.lang.Object).toString)
-         .method2((sb:StringBuilder,s:jString)=>sb.append(s))}
-      case e:Exp => {
-        f.l.load.e
-         .dynMethod(e.method(cl),classOf[AnyRef])
+         .op(compileGetExp(e,cl))
          .method(_.toString)
          .method2(_.append(_))
-      }
       case SpliceExp(exp,sep,inner) => {
         val m = exp.method(cl)
 
@@ -180,5 +176,7 @@ object Compiler{
     output("Name: #name Accounts: #accounts[#number]{, }*")
     output("Name: #name Accounts: #accounts[#number(#bank.name)]{, }*")
     output("Name: #name Accounts: #accs[#number(#bank.name)]{, }*")
+    val p = new Person
+    System.out.println(compile[Array[Account]]("#this[#number(#bank.name)]{, }*",p.accs.getClass.asInstanceOf[Class[Array[Account]]])(p.accs))
   }
 }
