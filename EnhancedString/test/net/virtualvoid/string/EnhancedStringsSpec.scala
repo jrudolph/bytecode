@@ -24,9 +24,9 @@ object ParserSpecs extends Specification with StrParser  {
     "'#{prop}'" in {"#{prop}" must beParsedAs(Exp("prop"))}
     "'#{prop.member}'" in {"#{prop.member}" must beParsedAs(ParentExp(Exp("member"),"prop"))}
     "'#prop.member'" in {"#prop.member" must beParsedAs(ParentExp(Exp("member"),"prop"))}
-    "'#listProp*'" in {"#listProp*" must beParsedAs(splice(Exp("listProp"),"",Exp("this")))}
-    "'#listProp{,}*'" in {"#listProp{,}*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
-    "'#{listProp}{,}*'" in {"#{listProp}{,}*" must beParsedAs(splice(Exp("listProp"),",",Exp("this")))}
+    "'#listProp*'" in {"#listProp*" must beParsedAs(splice(Exp("listProp"),"",ThisExp))}
+    "'#listProp{,}*'" in {"#listProp{,}*" must beParsedAs(splice(Exp("listProp"),",",ThisExp))}
+    "'#{listProp}{,}*'" in {"#{listProp}{,}*" must beParsedAs(splice(Exp("listProp"),",",ThisExp))}
     "'#listProp[test]{,}*'" in {"#listProp[test]{,}*" must beParsedAs(splice(Exp("listProp"),",",Literal("test")))}
 
     "#this" in {"#this" must beParsedAs(ThisExp)}
