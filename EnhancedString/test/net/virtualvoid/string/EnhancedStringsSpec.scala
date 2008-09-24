@@ -33,6 +33,15 @@ object ParserSpecs extends Specification with StrParser  {
     "#{this}" in {"#{this}" must beParsedAs(ThisExp)}
     "#this[]*" in {"#this[]*" must beParsedAs(splice(ThisExp,""))}
 
+    //escaped square brackets
+    "[[abc]]" in {"[[abc]]" must beParsedAs(Literal("[abc]"))}
+
+    //escaped hash
+    "##abc" in {"##abc" must beParsedAs(Literal("#abc"))}
+
+    // more complex escape situations
+    "##]] ####blub ##[[" in {"##]] ####blub ##[[" must beParsedAs(Literal("#] ##blub #["))}
+
     // test weird control combinations
     "Dots in normal literals 'This is a sentence.'" in {"This is a sentence." must beParsedAs(Literal("This is a sentence."))}
     "Dots after curly braced expressions 'This is a #{exp}.'" in {"This is a #{exp}." must beParsedAs(Literal("This is a "),Exp("exp"),Literal("."))}

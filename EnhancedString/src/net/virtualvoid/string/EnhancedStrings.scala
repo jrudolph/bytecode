@@ -96,9 +96,11 @@ class StrLexer extends Lexical with RegexParsers{
 
   implicit def extendParser[T](x:Parser[T]):EParser[T] = EParser[T](x)
 
+  def escapedByDoubling(char:String):Parser[String] = char ~ char ^^ (x=>char)
+
   val expStartChar = '#'
 
-  def char = "[^#\\]\\[]".r
+  def char = "[^#\\]\\[]".r | escapedByDoubling("[") | escapedByDoubling("]") | escapedByDoubling("#")
   def idChar = "\\w".r
   def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
 
