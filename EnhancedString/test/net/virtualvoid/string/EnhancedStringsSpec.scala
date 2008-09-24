@@ -2,7 +2,9 @@ package net.virtualvoid.string
 
 import org.specs._
 
-object ParserSpecs extends Specification with StrParser  {
+object ParserSpecs extends Specification {
+
+  import EnhancedStringFormatParser.{parse,lexical}
   import lexical._
 
   import org.specs.matcher.Matcher

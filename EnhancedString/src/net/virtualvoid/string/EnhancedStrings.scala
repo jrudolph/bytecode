@@ -134,7 +134,7 @@ class StrLexer extends Lexical with RegexParsers{
       = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield a).named("<~!") }
   }
 }
-trait StrParser extends TokenParsers{
+object EnhancedStringFormatParser extends TokenParsers{
   type Tokens = StrLexer
   override val lexical = new StrLexer
   import lexical._
@@ -150,7 +150,7 @@ trait StrParser extends TokenParsers{
 }
 
 object ObjectFormatter extends IObjectFormatterFactory{
-  val parser = new StrParser{}
+  val parser = EnhancedStringFormatParser
 
   def formatter[T<:AnyRef](fm:String):IObjectFormatter[T] = new IObjectFormatter[T]{
     val parsed = parser.parse(fm)

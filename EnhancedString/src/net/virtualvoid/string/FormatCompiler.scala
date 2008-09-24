@@ -7,7 +7,7 @@ object Compiler{
   import Bytecode._
   import Bytecode.Implicits._
 
-  val parser = new StrParser{}
+  val parser = EnhancedStringFormatParser
   import parser.lexical._
 
   def elementType(it:java.lang.reflect.Type):Class[_ <: AnyRef] = {
