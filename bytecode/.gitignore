@@ -1,3 +1,7 @@
 /target
 /*.class
 /*.swp
+/.classpath
+/.project
+/.manager
+/.settings
