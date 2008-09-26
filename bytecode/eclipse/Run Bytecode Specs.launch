@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <launchConfiguration type="scala.application">
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/BytecodeDSL"/>
@@ -14,5 +14,5 @@
 </listAttribute>
 <booleanAttribute key="org.eclipse.jdt.launching.DEFAULT_CLASSPATH" value="false"/>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.virtualvoid.bytecode.BytecodeCompilerSpecs"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="BytecodeDSL"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="bytecode"/>
 </launchConfiguration>
