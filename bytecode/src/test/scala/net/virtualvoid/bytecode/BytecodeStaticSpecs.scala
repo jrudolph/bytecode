@@ -1,11 +1,11 @@
 package net.virtualvoid.bytecode
 
-import org.specs._
+import _root_.org.specs._
 
-import scala.tools.nsc.{Interpreter,Settings}
+import _root_.scala.tools.nsc.{Interpreter,Settings}
 
 object BytecodeStaticSpecs extends Specification {
-  import scala.tools.nsc.reporters._
+  import _root_.scala.tools.nsc.reporters._
 
   val mySettings = new Settings
   object interpreter extends Interpreter(mySettings){
@@ -28,8 +28,8 @@ object BytecodeStaticSpecs extends Specification {
     }
   }
   
-  interpreter.interpret("import net.virtualvoid.bytecode.v2.Bytecode._")
-  interpreter.interpret("import net.virtualvoid.bytecode.v2.Bytecode.Implicits._")
+  interpreter.interpret("import net.virtualvoid.bytecode.Bytecode._")
+  interpreter.interpret("import net.virtualvoid.bytecode.Bytecode.Implicits._")
   
   import org.specs.matcher.Matcher
   def compilePrefixed(prefix:String,suffix:String) = new Matcher[String]{
@@ -38,8 +38,8 @@ object BytecodeStaticSpecs extends Specification {
         interpreter.myReporter.reset
         interpreter.compileString(
           """object Test {
-import net.virtualvoid.bytecode.v2.Bytecode._
-import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
+import net.virtualvoid.bytecode.Bytecode._
+import net.virtualvoid.bytecode.Bytecode.Implicits._
 """+prefix+str+suffix+"}")
         (!interpreter.myReporter.hasErrors,"compiled","did not compile with error: "+interpreter.lastError)
       }      

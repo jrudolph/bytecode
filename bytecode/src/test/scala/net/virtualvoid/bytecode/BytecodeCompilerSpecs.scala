@@ -1,11 +1,11 @@
 package net.virtualvoid.bytecode
 
-import org.specs._
+import _root_.org.specs._
 
 object BytecodeCompilerSpecs extends Specification{
-  def compiledTests(compiler:net.virtualvoid.bytecode.v2.Bytecode.ByteletCompiler){
-    import net.virtualvoid.bytecode.v2.Bytecode._
-    import net.virtualvoid.bytecode.v2.Bytecode.Implicits._
+  def compiledTests(compiler:net.virtualvoid.bytecode.Bytecode.ByteletCompiler){
+    import Bytecode._
+    import Bytecode.Implicits._
     
     "bipush(20)" in {
       compiler.compile(classOf[String])(_.pop.bipush(20).method(Integer.valueOf(_)))
@@ -65,10 +65,10 @@ object BytecodeCompilerSpecs extends Specification{
   def array(els:String*):Array[String] = Array(els:_*)
   
   "Compiler" should {
-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.ASMCompiler)
   }
   "Interpreter" should {
-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.Interpreter)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.Interpreter)
   }
 }
 
