@@ -1,4 +1,4 @@
-package net.virtualvoid.bytecode.v2
+package net.virtualvoid.bytecode
 
 import Bytecode._
 import java.lang.{String=>jString}
@@ -175,13 +175,13 @@ object ASMCompiler extends ByteletCompiler{
       val className = "Compiled" + i
 
       val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
-      cw.visit(V1_5,ACC_PUBLIC + ACC_SUPER,className,null,"net/virtualvoid/bytecode/v2/AbstractFunction1", null)
+      cw.visit(V1_5,ACC_PUBLIC + ACC_SUPER,className,null,"net/virtualvoid/bytecode/AbstractFunction1", null)
 
       { // constructor
         val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, "net/virtualvoid/bytecode/v2/AbstractFunction1", "<init>", "()V");
+        mv.visitMethodInsn(INVOKESPECIAL, "net/virtualvoid/bytecode/AbstractFunction1", "<init>", "()V");
         mv.visitInsn(RETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();

@@ -1,8 +1,8 @@
-package net.virtualvoid.bytecode.v2
+package net.virtualvoid.bytecode
 
 object CodeTools{
-  import scala.reflect._
-  import java.lang.reflect.{Method=>jMethod}
+  import _root_.scala.reflect._
+  import _root_.java.lang.reflect.{Method=>jMethod}
   
   def cleanClass(name:String):java.lang.Class[_] = name match{
     case "int" => Integer.TYPE

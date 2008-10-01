@@ -1,4 +1,4 @@
-package net.virtualvoid.bytecode.v2
+package net.virtualvoid.bytecode
 
 import Bytecode._
 
