@@ -65,10 +65,10 @@ object BytecodeCompilerSpecs extends Specification{
   def array(els:String*):Array[String] = Array(els:_*)
   
   "Compiler" should {
-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.ASMCompiler)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.ASMCompiler)
   }
   "Interpreter" should {
-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Bytecode.Interpreter)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.v2.Interpreter)
   }
 }
 
