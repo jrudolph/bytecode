@@ -31,8 +31,8 @@ object Bytecode{
     def target:Target[ST,LT]
     def jmp(t:Target[ST,LT]):Nothing
 
-    def op[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
-
+    def ~[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
+    
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
@@ -80,6 +80,14 @@ object Bytecode{
       f.ifeq_int(f.stack.rest,f.stack.top,inner)
   }
   case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int)
+  
+  object Operations{
+    def iadd[R<:List,LT<:List]:F[R**Int**Int,LT] => F[R**Int,LT] = 
+      f => f.iadd_int[R](f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    def method[T,U,R<:List,LT<:List](code:scala.reflect.Code[T=>U]):F[R**T,LT] => F[R**U,LT] = 
+      f => f.method_int(f.stack.rest,f.stack.top,code)
+  }
+  
   object Implicits{
     implicit def int2Stack[R<:List,LT<:List](f:F[R**Int**Int,LT]):Int2Stack[R,LT] = new Int2Stack[R,LT]{
       val frame = f
