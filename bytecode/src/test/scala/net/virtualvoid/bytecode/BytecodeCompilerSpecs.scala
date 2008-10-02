@@ -9,17 +9,17 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode.Operations._
     
     "bipush(20)" in {
-      compiler.compile(classOf[String])(_.pop.bipush(20).method(Integer.valueOf(_)))
+      compiler.compile(classOf[String])(_~pop~bipush(20)~method(Integer.valueOf(_)))
         .apply("Test") must be_==(20)}
     "method(_.length)" in {
-      compiler.compile(classOf[String])(_.method(_.length).method(Integer.valueOf(_)))
+      compiler.compile(classOf[String])(_~method(_.length)~method(Integer.valueOf(_)))
         .apply("Test") must be_==(4)}
     "locals + method2" in {
       compiler.compile(classOf[java.lang.String])(_.l.store.e.l.load.e.l.load.e.method2(_.concat(_)))
       .apply("Test") must be_==("TestTest")}
     "iadd with operations" in {
       compiler.compile(classOf[java.lang.Integer])(
-        _.method(_.intValue).dup
+        _ ~ method(_.intValue) ~ dup
         ~ iadd
         ~ method(Integer.valueOf(_))
       ).apply(12) must be_==(24)

@@ -28,8 +28,8 @@ object BytecodeStaticSpecs extends Specification {
     }
   }
   
-  interpreter.interpret("import net.virtualvoid.bytecode.Bytecode._")
-  interpreter.interpret("import net.virtualvoid.bytecode.Bytecode.Implicits._")
+  //interpreter.interpret("import net.virtualvoid.bytecode.Bytecode._")
+  //interpreter.interpret("import net.virtualvoid.bytecode.Bytecode.Implicits._")
   
   import org.specs.matcher.Matcher
   def compilePrefixed(prefix:String,suffix:String) = new Matcher[String]{
@@ -39,6 +39,7 @@ object BytecodeStaticSpecs extends Specification {
         interpreter.compileString(
           """object Test {
 import net.virtualvoid.bytecode.Bytecode._
+import net.virtualvoid.bytecode.Bytecode.Operations._
 import net.virtualvoid.bytecode.Bytecode.Implicits._
 """+prefix+str+suffix+"}")
         (!interpreter.myReporter.hasErrors,"compiled","did not compile with error: "+interpreter.lastError)
@@ -54,7 +55,7 @@ import net.virtualvoid.bytecode.Bytecode.Implicits._
   case class Locals(l:String) extends Frame("Nil",l)
   
   def haveOp(op:String) = new Matcher[Frame]{
-    val inner = compilePrefixed("(null:F[","])."+op)
+    val inner = compilePrefixed("(null:F[","]) ~ "+op)
     def apply(f: =>Frame) = inner(f.state) 
   }  
 
@@ -69,8 +70,9 @@ import net.virtualvoid.bytecode.Bytecode.Implicits._
     "iadd on Int**Int" in {Stack("Nil**Int**Int") must haveOp("iadd")}
     "iadd on _**Int**Int" in {Stack("(_<:List)**Int**Int") must haveOp("iadd")}
    
-    "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("l.load.e.dup.iadd")}
-    "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("l.store.e.l.load.e.method(_.length)")}
+    "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("(_.l.load.e)~dup~iadd")}
+    "l.l.load.e.e.dup.iadd with Int local on place 2" in {Locals("Nil**Int**Int") must haveOp("l~l~load~e~e~dup~iadd")}
+    "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("l~store~e~l~load~e~method(_.length)")}
     
     "aload with String[]" in {Stack("Nil**Array[String]**Int") must haveOp("aload")}
     "aload with int[]" in {Stack("Nil**Array[Int]**Int") must haveOp("aload")}

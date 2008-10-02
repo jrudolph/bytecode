@@ -85,7 +85,7 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         new ASMFrame[R**U,LT](mv,stackClass.rest**cl,localsClass)
       }
-      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = {
+      def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
         mv.visitJumpInsn(IFEQ,l)
 
