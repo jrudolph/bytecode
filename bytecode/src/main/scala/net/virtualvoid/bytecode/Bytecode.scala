@@ -8,8 +8,10 @@ object Bytecode{
   trait List
   trait Nil extends List
   object N extends Nil
-  case class Cons[+R<:List,+T](rest:R,top:T) extends List
-
+  
+  case class Cons[+R<:List,+T](rest:R,top:T) extends List{
+    def l = rest
+  }
   trait Consable[T<:List]{
     def **[U](next:U): T**U
   }
@@ -142,23 +144,30 @@ object Bytecode{
     def l[ST<:List,LT<:List,L2,L1]:Loadable2[ST,LT**L2**L1,ST**L1,LT**L2**L1] => Loadable2[ST,LT**L2**L1,ST**L2,LT**L2**L1] = null
     def load[ST1<:List,ST2<:List,LT](x:Loadable2[ST1,LT1,ST2,LT2]):F[ST1,LT1]=>F[ST2,LT2] = null*/
     //def load0[ST<:List,LT<:List,T] = (f:F[ST,LT**T]) => f.l.load.e
-    trait L[LT]{
-      def ~[X](f:L[LT]=>X):X = f(this)
-    }
-    def load[ST<:List,LT<:List,T](l:L[LT]=>T):F[ST,LT]=>F[ST**T,LT] = null
     
-    def l0[R,T]:L[R**T]=>T = null
-    def l1[R,T2,T1]:L[R**T2**T1]=>T2 = null
-    //def l[R,T]:L[R**T] => L[R] = null
+    trait X[F]{
+      def x:F
+    }
+    
+    def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = null
+    
+    //def store[ST<:List,LT<:List,T,R](l:LT=>):F[ST**T,LT] =>
+    
+    def l0[R<:List,T] = (f:R**T) => f
+    def l1[R<:List,T2,T1] = (f:R**T2**T1) => f.rest
+    def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.rest.rest
     
     val f:F[Nil,Nil**Int] = null
     f~load(l0)~dup~iadd
     
     val f2:F[Nil,Nil**String**Int] = null
-    val i:F[Nil**Int,Nil**String**Int] = f~load(l0)
+    
+    val x0:F[Nil**Int,Nil**String**Int] = f2~load(x=>x)
+    val x:F[Nil**String,Nil**String**Int] = f2~load(l1)
+    val f3:F[Nil,Nil**String**Int**Float] = null
+    val y:F[Nil**String,Nil**String**Int**Float] = f3~load(l2)
   }
-  /*
-*/
+
   object Implicits{
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
       def l():Zipper[ST,L,Cur,R]
