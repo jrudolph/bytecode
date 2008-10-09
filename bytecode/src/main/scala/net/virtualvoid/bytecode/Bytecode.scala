@@ -136,28 +136,71 @@ object Bytecode{
     def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
     def newInstance[ST<:List,LT<:List,T](cl:Class[T]) = (f:F[ST,LT]) => f.newInstance(cl)
     
-    /*//def load0[ST<:List,LT<:List,T]:F[ST,LT**T]=>F[ST**T,LT**T] = (f:F[ST,LT**T]) => f.l.load.e
-    trait Loadable2[ST1,ST2,LT]{
-      //def ~[X](f:Loadable2[ST1,LT1,ST2,LT2] => X):X
+    def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = f=>{
+      var i = 0;
+      val c:LT = new Cons(null.asInstanceOf[Cons[Nothing,Nothing]],null){
+        override def l = {
+          i+=1
+          this.asInstanceOf[Cons[Nothing,Nothing]]
+        }
+      }.asInstanceOf[LT]
+      l(c)
+      f.loadI(i).asInstanceOf[F[ST**T,LT]]
     }
-    def loadable0[ST<:List,LT<:List,T]:Loadable2[ST,LT,ST**T,LT] = null
-    def l[ST<:List,LT<:List,L2,L1]:Loadable2[ST,LT**L2**L1,ST**L1,LT**L2**L1] => Loadable2[ST,LT**L2**L1,ST**L2,LT**L2**L1] = null
-    def load[ST1<:List,ST2<:List,LT](x:Loadable2[ST1,LT1,ST2,LT2]):F[ST1,LT1]=>F[ST2,LT2] = null*/
-    //def load0[ST<:List,LT<:List,T] = (f:F[ST,LT**T]) => f.l.load.e
+    def store[ST<:List,LT<:List,T,R,XT](l:(XT,T)=>LT):F[ST**T,XT] => F[ST,LT] = null
     
-    trait X[F]{
-      def x:F
+    def l0[R<:List,T]:R**T=>R**T = (f:R**T) => f
+    def l1[R<:List,T2,T1]:R**T2**T1=>R**T2 = (f:R**T2**T1) => f.l
+    def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.l.l
+    
+    trait partial[F[_,_],x]{
+      type f[y] = F[x,y]
     }
     
-    def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = null
+    trait partial2[F1[_,_],F2[_],y]{
+      type f[x] = F1[F2[x],y]
+    }
     
-    //def store[ST<:List,LT<:List,T,R](l:LT=>):F[ST**T,LT] =>
+    trait Func[f[_]]{
+      type applied[x] = f[x]
+      
+      def apply[X]:f[X]
+      def next[X]:Func[partial2[Cons,f,X]#f]
+    }
     
-    def l0[R<:List,T] = (f:R**T) => f
-    def l1[R<:List,T2,T1] = (f:R**T2**T1) => f.rest
-    def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.rest.rest
+    def s0[R<:List,T]:(R**_,T)=>R**T = null
+    def s1[R<:List,T1,T]: (R**_**T1,T)=>R**T**T1 = null
+    def s2[R<:List,T1,T,T2]: (R**_**T2**T1,T)=>R**T**T2**T1 = null
     
-    val f:F[Nil,Nil**Int] = null
+    type wurst = Func[partial[Cons,Nil]#f]
+    type wurst2 = wurst#applied[Int]
+    val x:wurst2 = null
+    val y:Nil**Int = x
+    
+    def t0[R<:List]:Func[partial[Cons,R]#f] = null
+    def t1[R<:List,T] = t0[R].next[T]
+    def t2[R<:List,T2,T1] = t0[R].next[T2].next[T1]
+    
+    //def store2[ST<:List,T,OLT<:List,LT<:List](func:(OLT,T)=>LT) : F[ST**T,OLT] => F[ST,LT] = null
+    
+    //def next[X[_],T](f:Func[X]):Func[partial2[Cons,X,T]#f] = null
+    
+    //val func = t1[Nil,Int]
+    
+    //val test:Nil**String**Int = func.apply[String]
+    
+    //def next[R<:List]:(R**_,T)=>R**T
+    //implicit def convertL(f:X=>Y)
+    
+    val f:F[Nil**Int,Nil**String] = null
+    val n:F[Nil,Nil**Int] = f ~ store(s0)
+    
+    val f2:F[Nil**Int,Nil**String**Double] = null
+    val n2:F[Nil,Nil**Int**Double] = f2 ~ store(s1)
+    
+    //def store0 = f:F[ST**T,LT]
+    
+    /*val f:F[Nil,Nil**Int] = null
     f~load(l0)~dup~iadd
     
     val f2:F[Nil,Nil**String**Int] = null
@@ -165,7 +208,77 @@ object Bytecode{
     val x0:F[Nil**Int,Nil**String**Int] = f2~load(x=>x)
     val x:F[Nil**String,Nil**String**Int] = f2~load(l1)
     val f3:F[Nil,Nil**String**Int**Float] = null
-    val y:F[Nil**String,Nil**String**Int**Float] = f3~load(l2)
+    val y:F[Nil**String,Nil**String**Int**Float] = f3~load(l2)*/
+/*               
+java.lang.Error: 
+Can't match this Function(List(LocalValue(NoSymbol,x$26,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),
+ TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))), 
+ LocalValue(NoSymbol,x$27,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),
+ TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))))
+ ,Apply(Select(Ident(LocalValue(NoSymbol,x$26,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))),
+ Method(java.lang.String.concat,MethodType(List(PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))),PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))),List(Ident(LocalValue(NoSymbol,x$27,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String)))))))))
+	at net.virtualvoid.bytecode.CodeTools$.methodFromCode(Tools.scala:27)
+	at net.virtualvoid.bytecode.Interpreter$IF.method_int(Interpreter.scala:28)
+	at net.virtualvoid.bytecode.Bytecode$Operations$$anonfun$method2$1.apply(Bytecode.scala:115)
+	at net.virtualvoid.bytecode.Bytecode$Operations$$anonfun$method2$1.apply(Bytecode.scala:115)
+	at net.virtualvoid.bytecode.Bytecode$F$class.$tilde(Bytecode.scala:52)
+	at net.virtualvoid.bytecode.Interpreter$IF.$tilde(Interpreter.scala:8)
+	at net.virtualvoid.bytecode.BytecodeCompilerSpecs$$anonfun$compiledTests$8$$anonfun$apply$32$$anonfun$apply$33.apply(BytecodeCompilerSpecs.scala:37)
+	at net.virtualvoid.bytecode.BytecodeCompilerSpecs$$anonfun$compiledTests$8$$anonfun$apply$32$$anonfun$apply$33.apply(BytecodeCompilerSpecs.scala:37)
+	at net.virtualvoid.bytecode.Interpreter$$anonfun$compile$1.apply(Interpreter.scala:61)
+	at net.virtualvoid.bytecode.BytecodeCompilerSpecs$$anonfun$compiledTests$8$$anonfun$apply$32.apply(BytecodeCompilerSpecs.scala:38)
+	at net.virtualvoid.bytecode.BytecodeCompilerSpecs$$anonfun$compiledTests$8$$anonfun$apply$32.apply(BytecodeCompilerSpecs.scala:38)
+	at org.specs.matcher.AnyMatchers$$anon$3.apply(AnyMatchers.scala:48)
+	at org.specs.specification.Assertable$class.executeMatch$1(Assert.scala:40)
+	at org.specs.specification.Assertable$class.applyMatcher(Assert.scala:47)
+	at org.specs.specification.Assert.applyMatcher(Assert.scala:68)
+	at org.specs.specification.Assert.must(Assert.scala:72)
+	at net.virtualvoid.bytecode.BytecodeCompilerSpecs$$anonfun$compiledTests$8.apply(BytecodeCompilerSpecs.scala:38)
+	at net.virtualvoid.bytecode.BytecodeCompilerSpecs$$anonfun$compiledTests$8.apply(BytecodeCompilerSpecs.scala:38)
+	at org.specs.specification.ExampleLifeCycle$class.executeTest(ExampleLifeCycle.scala:20)
+	at org.specs.Specification.executeTest(Specification.scala:25)
+	at org.specs.specification.Sut.executeTest(Sut.scala:99)
+	at org.specs.specification.Example$$anonfun$2.apply(Example.scala:87)
+	at org.specs.specification.Example$$anonfun$2.apply(Example.scala:74)
+	at org.specs.specification.Example$$anonfun$in$1.apply(Example.scala:103)
+	at org.specs.specification.Example.execute(Example.scala:116)
+	at org.specs.specification.Example.subExamples(Example.scala:61)
+	at org.specs.runner.ExamplesTestSuite$$anonfun$initialize$2.apply(JUnit.scala:114)
+	at org.specs.runner.ExamplesTestSuite$$anonfun$initialize$2.apply(JUnit.scala:113)
+	at scala.Iterator$class.foreach(Iterator.scala:410)
+	at scala.collection.mutable.SingleLinkedList$$anon$1.foreach(SingleLinkedList.scala:50)
+	at scala.Iterable$class.foreach(Iterable.scala:256)
+	at scala.collection.mutable.Queue.foreach(Queue.scala:24)
+	at org.specs.runner.ExamplesTestSuite.initialize(JUnit.scala:113)
+	at org.specs.runner.JUnitSuite$class.init(JUnit.scala:30)
+	at org.specs.runner.ExamplesTestSuite.init(JUnit.scala:106)
+	at org.specs.runner.JUnitSuite$class.getName(JUnit.scala:39)
+	at org.specs.runner.ExamplesTestSuite.getName(JUnit.scala:106)
+	at org.specs.runner.TestDescription$class.asDescription(JUnitSuiteRunner.scala:79)
+	at org.specs.runner.JUnitSuiteRunner.asDescription(JUnitSuiteRunner.scala:13)
+	at org.specs.runner.TestDescription$class.makeDescription(JUnitSuiteRunner.scala:87)
+	at org.specs.runner.JUnitSuiteRunner.makeDescription(JUnitSuiteRunner.scala:13)
+	at org.specs.runner.TestDescription$$anonfun$makeDescription$1.apply(JUnitSuiteRunner.scala:89)
+	at org.specs.runner.TestDescription$$anonfun$makeDescription$1.apply(JUnitSuiteRunner.scala:88)
+	at scala.List.foreach(List.scala:834)
+	at org.specs.runner.TestDescription$class.makeDescription(JUnitSuiteRunner.scala:88)
+	at org.specs.runner.JUnitSuiteRunner.makeDescription(JUnitSuiteRunner.scala:13)
+	at org.specs.runner.TestDescription$$anonfun$makeDescription$1.apply(JUnitSuiteRunner.scala:89)
+	at org.specs.runner.TestDescription$$anonfun$makeDescription$1.apply(JUnitSuiteRunner.scala:88)
+	at scala.List.foreach(List.scala:834)
+	at org.specs.runner.TestDescription$class.makeDescription(JUnitSuiteRunner.scala:88)
+	at org.specs.runner.JUnitSuiteRunner.makeDescription(JUnitSuiteRunner.scala:13)
+	at org.specs.runner.JUnitSuiteRunner.getDescription(JUnitSuiteRunner.scala:37)
+	at org.junit.runner.Runner.testCount(Runner.java:38)
+	at org.eclipse.jdt.internal.junit4.runner.JUnit4TestClassReference.countTestCases(JUnit4TestClassReference.java:29)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.countTests(RemoteTestRunner.java:480)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:448)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:673)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:386)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:196)
+
+               
+               */
   }
 
   object Implicits{
