@@ -147,7 +147,7 @@ object Bytecode{
       l(c)
       f.loadI(i).asInstanceOf[F[ST**T,LT]]
     }
-    def store[ST<:List,LT<:List,T,R,XT](l:(XT,T)=>LT):F[ST**T,XT] => F[ST,LT] = null
+    def store[ST<:List,T,XT,f[_]](l:XT=>Func[f]):F[ST**T,XT] => F[ST,f[T]] = null
     
     def l0[R<:List,T]:R**T=>R**T = (f:R**T) => f
     def l1[R<:List,T2,T1]:R**T2**T1=>R**T2 = (f:R**T2**T1) => f.l
@@ -172,31 +172,40 @@ object Bytecode{
     def s1[R<:List,T1,T]: (R**_**T1,T)=>R**T**T1 = null
     def s2[R<:List,T1,T,T2]: (R**_**T2**T1,T)=>R**T**T2**T1 = null
     
+    type consed[x] = partial[Cons,Nil]#f[x]
+    
+    trait inner[R,x]{
+      type consed[y] = R**y**x
+    }
+    //type innercons[x] = partial2[Cons,partial[Cons,Nil]#f,x] 
+    
     type wurst = Func[partial[Cons,Nil]#f]
     type wurst2 = wurst#applied[Int]
     val x:wurst2 = null
     val y:Nil**Int = x
     
-    def t0[R<:List]:Func[partial[Cons,R]#f] = null
-    def t1[R<:List,T] = t0[R].next[T]
-    def t2[R<:List,T2,T1] = t0[R].next[T2].next[T1]
+    def t0[R<:List,Y]:R**Y => Func[partial[Cons,R]#f] = null
+    def t1[R<:List,T,X[_]] = (l:R**_**T) => t0(l.rest).next[T]
     
-    //def store2[ST<:List,T,OLT<:List,LT<:List](func:(OLT,T)=>LT) : F[ST**T,OLT] => F[ST,LT] = null
     
-    //def next[X[_],T](f:Func[X]):Func[partial2[Cons,X,T]#f] = null
+    //def eval2[f[_]](func:Func[f[_]]):f[String] = null.asInstanceOf[f[String]]
     
-    //val func = t1[Nil,Int]
-    
-    //val test:Nil**String**Int = func.apply[String]
-    
-    //def next[R<:List]:(R**_,T)=>R**T
-    //implicit def convertL(f:X=>Y)
+    object Tester{
+	    trait F[f[_]]
+	    
+	    trait Test[X]
+	    def eval[f[_]](f:F[f]):f[String] = null.asInstanceOf[f[String]]
+	    
+	    val test:F[Test] = null
+	    eval(test)
+    }
     
     val f:F[Nil**Int,Nil**String] = null
-    val n:F[Nil,Nil**Int] = f ~ store(s0)
-    
+    val func = t0[Nil,String]
+    /*val n:F[Nil,Nil**Int] = *///f ~ store(func)
+    //[Nil,Int,Nil**String,
     val f2:F[Nil**Int,Nil**String**Double] = null
-    val n2:F[Nil,Nil**Int**Double] = f2 ~ store(s1)
+    val n2:F[Nil,Nil**Int**Double] = f2 ~ store[Nil,Int,Nil**String**Double,partial2[Cons,partial[Cons,Nil]#f,Double]#f](t1)
     
     //def store0 = f:F[ST**T,LT]
     
@@ -210,6 +219,21 @@ object Bytecode{
     val f3:F[Nil,Nil**String**Int**Float] = null
     val y:F[Nil**String,Nil**String**Int**Float] = f3~load(l2)*/
 /*               
+ * 
+Description	Resource	Path	Location	Type
+the kinds of the type arguments 
+(net.virtualvoid.bytecode.Bytecode.Nil,Int,net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,String],
+net.virtualvoid.bytecode.Bytecode.Operations.partial[net.virtualvoid.bytecode.Bytecode.Cons,net.virtualvoid.bytecode.Bytecode.Nil]#f[_]) do not conform to the expected kinds of the type parameters (type ST,type T,type XT,type f).
+net.virtualvoid.bytecode.Bytecode.Operations.partial[net.virtualvoid.bytecode.Bytecode.Cons,net.virtualvoid.bytecode.Bytecode.Nil]#f[_]'s type parameters do not match type f's expected parameters: 
+type f (in trait partial) has one type parameter, but type f has one
+
+ * Description	Resource	Path	Location	Type
+type mismatch;
+ found: 
+ *         (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.Nil,net.virtualvoid.bytecode.Bytecode.Operations.partial[net.virtualvoid.bytecode.Bytecode.Cons,net.virtualvoid.bytecode.Bytecode.Nil]#f[Int]]
+ * 
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,String]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.Nil,net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
 java.lang.Error: 
 Can't match this Function(List(LocalValue(NoSymbol,x$26,PrefixedType(SingleType(ThisType(Class(scala)),Field(scala.Predef,PrefixedType(ThisType(Class(scala)),Class(scala.Predef)))),
  TypeField(scala.Predef.String,PrefixedType(ThisType(Class(java.lang)),Class(java.lang.String))))), 
