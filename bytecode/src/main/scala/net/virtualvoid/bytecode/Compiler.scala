@@ -58,7 +58,7 @@ object ASMCompiler extends ByteletCompiler{
         val label = new Label
         ASMForwardTarget(label)
       }
-      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = {
+      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = { // TODO: make sure a label isn't visited twice
         mv.visitLabel(t.asInstanceOf[ASMForwardTarget[ST,LT]].label)
         this
       }
