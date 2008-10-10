@@ -104,7 +104,7 @@ object Bytecode{
         if (resCl.isAssignableFrom(method.getReturnType))
           f.method_int(f.stack.rest,f.stack.top,method,resCl)
         else
-          throw new Error("incompatible Method")
+          throw new Error("incompatible Method, the requested result type "+resCl.getName+" is not compatible with the methods return type " + method.getReturnType.getName)
       def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     }
     implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
