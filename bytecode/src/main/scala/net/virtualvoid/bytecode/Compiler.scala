@@ -40,16 +40,31 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitLdcInsn(str)
         newStacked(classOf[jString])
       }
-      case class ASMTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
-          extends ASMFrame[ST,LT](mv,stackClass,localsClass) with Target[ST,LT]
-      def target:Target[ST,LT] = {
+      
+      trait ASMTarget{
+        def label:Label
+      }
+      
+      case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
+          extends ASMFrame[ST,LT](mv,stackClass,localsClass) with BackwardTarget[ST,LT] with ASMTarget
+      def target:BackwardTarget[ST,LT] = {
         val label = new Label
         mv.visitLabel(label)
-        ASMTarget(mv,stackClass,localsClass,label)
+        ASMBackwardTarget(mv,stackClass,localsClass,label)
+      }
+      
+      case class ASMForwardTarget[ST<:List,LT<:List](label:Label) extends ForwardTarget[ST,LT] with ASMTarget
+      def forwardTarget[ST<:List,LT<:List] = {
+        val label = new Label
+        ASMForwardTarget(label)
+      }
+      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = {
+        mv.visitLabel(t.asInstanceOf[ASMForwardTarget[ST,LT]].label)
+        this
       }
 
       def jmp(t:Target[ST,LT]):Nothing = {
-        mv.visitJumpInsn(GOTO,t.asInstanceOf[ASMTarget[ST,LT]].label)
+        mv.visitJumpInsn(GOTO,t.asInstanceOf[ASMTarget].label)
         null.asInstanceOf[Nothing]
       }
 

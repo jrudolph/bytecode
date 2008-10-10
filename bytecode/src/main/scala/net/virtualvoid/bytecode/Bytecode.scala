@@ -20,7 +20,9 @@ object Bytecode{
   // define an infix operator shortcut for the cons type
   type ** [x<:List,y] = Cons[x,y]
 
-  trait Target[ST<:List,LT<:List] extends F[ST,LT]
+  trait Target[ST<:List,LT<:List]
+  trait BackwardTarget[ST<:List,LT<:List] extends F[ST,LT] with Target[ST,LT] 
+  trait ForwardTarget[ST<:List,LT<:List] extends Target[ST,LT]
 
   trait F[ST<:List,LT<:List]{
     def stack:ST
@@ -28,8 +30,12 @@ object Bytecode{
 
     def bipush(i1:Int):F[ST**Int,LT]
     def ldc(str:jString):F[ST**jString,LT]
-    def target:Target[ST,LT]
+    def target:BackwardTarget[ST,LT]
     def jmp(t:Target[ST,LT]):Nothing
+    
+    // support for forward declaring targets
+    def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT]
+    def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT]
 
     def op[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
 
