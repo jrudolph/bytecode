@@ -77,6 +77,7 @@ object Bytecode{
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
   trait TwoStack[R<:List,T2,T1,LT<:List]{
+    def method2WS[U](code:scala.reflect.Code[(T2,T1) => Unit]):F[R,LT] // TODO: unify with method2 if scala allows this
     def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
     def swap():F[R**T1**T2,LT]
     def dup_x1():F[R**T1**T2**T1,LT]
@@ -110,6 +111,8 @@ object Bytecode{
     implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
+      def method2WS[U](code:scala.reflect.Code[(T2,T1) => Unit]):F[R,LT] =
+        f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code).asInstanceOf[F[R,LT]]
       def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
       def dup_x1():F[R**T1**T2**T1,LT] = f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
