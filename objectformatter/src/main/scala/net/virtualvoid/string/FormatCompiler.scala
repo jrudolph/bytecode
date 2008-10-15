@@ -30,7 +30,7 @@ object Compiler{
       f.dynMethod(e.method(cl),retType)
     }
   }
-
+  
   def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
     = tok match {
       case StrTokens(toks) => {

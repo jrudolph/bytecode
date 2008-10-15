@@ -47,6 +47,24 @@ object EvaluateSpecs extends Specification{
     "format dates properly" in {"#this->date[dd.MM.yyyy]" must evaluateObjectAs(new GregorianCalendar(2008,OCTOBER,1),"01.10.2008")}
     "evaluate conditionals true" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(true),"yes")}
     "evaluate conditionals false" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(false),"no")}
+    "evaluate primitives" in {"#amount" must evaluateObjectAs(Transaction(null,50),"50")}
+    
+    "complex test" in {
+"""#name has these bank accounts:
+  #accs[#number at #bank.name having these transactions:
+    #transactions[#isWithdrawal?[Withdrawal|Deposit]: #amount Euros at #date->date[dd.MM.yyyy]]{ 
+    }*]{
+  }*
+""" must evaluateAs(
+"""Joe has these bank accounts:
+  78910 at Sparkasse having these transactions:
+    Deposit: 5 Euros at 01.10.2008 
+    Withdrawal: 4 Euros at 03.10.2008
+  12345 at Volksbank having these transactions:
+    Deposit: 5 Euros at 01.10.2008 
+    Withdrawal: 4 Euros at 03.10.2008
+""")
+    }
   }
 
   "The format interpreter" should {
@@ -54,19 +72,6 @@ object EvaluateSpecs extends Specification{
   }
   "The format compiler" should {
     evaluate(FormatCompiler)
-  }
-}
-
-object Test{
-  def main(args:Array[String]){
-    System.out.println("Hello")
-    System.out.println(FormatCompiler.format(
-"""#name has these bank accounts:
-  #accs[#number at #bank.name having these transactions:
-    #transactions[#isWithdrawal?[Withdrawal|Deposit]: #amount Euros at #date->date[dd.MM.yyyy]]{ 
-    }*]{
-  }*
-""",EvaluateSpecs.thePerson))
   }
 }
 
