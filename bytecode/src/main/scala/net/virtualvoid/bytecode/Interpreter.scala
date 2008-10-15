@@ -42,6 +42,8 @@ object Interpreter extends ByteletCompiler{
       }
       def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = 
         IF(rest**jArray.getLength(array),locals)
+      
+      def pop_unit_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)      
 
       def get[T](i:Int,l:List):T = l match{
         case N => throw new Error("not possible")

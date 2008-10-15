@@ -60,6 +60,10 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.String])(_.dup.newInstance(classOf[java.lang.StringBuilder]).swap.method2(_.append(_)).swap.method2(_.append(_)).method(_.toString))
       .apply("test") must be_==("testtest") 
     }
+    "store string after void method" in {
+      compiler.compile(classOf[java.lang.String])(_.newInstance(classOf[java.text.SimpleDateFormat]).ldc("yyyy").method2(_.applyPattern(_)).pop_unit.l.store.e.l.load.e)
+      .apply("test") must be_==("test")
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)

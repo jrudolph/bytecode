@@ -54,6 +54,8 @@ object Bytecode{
     def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T,LT]
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
+    
+    def pop_unit_int[R<:List](rest:R):F[R,LT]
 
     def newInstance[T](cl:Class[T]):F[ST**T,LT]
     
@@ -72,13 +74,12 @@ object Bytecode{
   trait OneStack[R<:List,T,LT<:List]{
     def pop():F[R,LT]
     def dup():F[R**T**T,LT]
-    def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def method[U<:Any](code:scala.reflect.Code[T=>U]):F[R**U,LT]
     def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def checkcast[U](cl:Class[U]):F[R**U,LT]
   }
   trait TwoStack[R<:List,T2,T1,LT<:List]{
-    def method2WS[U](code:scala.reflect.Code[(T2,T1) => Unit]):F[R,LT] // TODO: unify with method2 if scala allows this
-    def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
+    def method2[U<:Any](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
     def swap():F[R**T1**T2,LT]
     def dup_x1():F[R**T1**T2**T1,LT]
   }
@@ -111,8 +112,6 @@ object Bytecode{
     implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
       def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
         f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
-      def method2WS[U](code:scala.reflect.Code[(T2,T1) => Unit]):F[R,LT] =
-        f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code).asInstanceOf[F[R,LT]]
       def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
       def dup_x1():F[R**T1**T2**T1,LT] = f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     }
@@ -135,6 +134,13 @@ object Bytecode{
     }
     implicit def arrayLengthStack[R<:List,LT<:List,T](f:F[R**Array[T],LT]) = new ArrayLengthStack[R,LT]{
       def arraylength():F[R**Int,LT] = f.arraylength_int(f.stack.rest,f.stack.top)
+    }
+    
+    trait UnitStack[ST<:List,LT<:List]{
+      def pop_unit:F[ST,LT]
+    }
+    implicit def removeUnit[ST<:List,LT<:List](f:F[ST**Unit,LT]):UnitStack[ST,LT] = new UnitStack[ST,LT]{
+      def pop_unit:F[ST,LT] = f.pop_unit_int(f.stack.rest)
     }
 
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{

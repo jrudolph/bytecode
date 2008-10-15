@@ -173,6 +173,8 @@ object ASMCompiler extends ByteletCompiler{
       
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
         invokeMethod(methodFromTree(code.tree))
+      
+      def pop_unit_int[R<:List](rest:R):F[R,LT] = new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader{
