@@ -86,6 +86,8 @@ object Bytecode{
       f => f.method_int(f.stack.rest,f.stack.top,code)
     def method2[T1,T2,U,R<:List,LT<:List](code:scala.reflect.Code[(T1,T2)=>U]):
       F[R**T1**T2,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
+    def dynMethod[T,U,R<:List,LT<:List](method:java.lang.reflect.Method,resT:Class[U]):
+      F[R**T,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest,f.stack.top,method,resT)
     
     def pop[R<:List,LT<:List,T]:F[R**T,LT]=>F[R,LT] = f=>f.pop_int(f.stack.rest)
     def dup[R<:List,LT<:List,T]:F[R**T,LT]=>F[R**T**T,LT] = f => f.dup_int(f.stack.rest,f.stack.top)
