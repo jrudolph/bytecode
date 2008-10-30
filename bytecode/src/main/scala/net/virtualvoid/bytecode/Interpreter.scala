@@ -30,7 +30,7 @@ object Interpreter extends ByteletCompiler{
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
         IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
-      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = null
+      def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = null
       
       import java.lang.reflect.{Array => jArray}
       def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {

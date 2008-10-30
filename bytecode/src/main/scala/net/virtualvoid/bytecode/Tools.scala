@@ -14,8 +14,16 @@ object CodeTools{
     case _ => java.lang.Class.forName(name)
   }
   
+  def extractClass(tpe:Type):String = tpe match {
+    case PrefixedType(_,Class(name)) => name
+    case AppliedType(tp2,_) => extractClass(tp2)
+    case PrefixedType(_,TypeField(_,tp2:PrefixedType)) => extractClass(tp2)
+  }
+  
   def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = code.tree match{
-    case Function(List(p1,p2@LocalValue(_,_,PrefixedType(_,Class(paramClass)))),Apply(Select(Ident(th),Method(method,_)),List(Ident(x)))) if th == p1 && x == p2 =>{
+    case Function(List(p1,p2@LocalValue(_,_,tpe:PrefixedType)),Apply(Select(Ident(th),Method(method,_)),List(Ident(x)))) if th == p1 && x == p2 =>{
+      val paramClass = extractClass(tpe)
+      
       val i = method.lastIndexOf(".")
       val clName = method.substring(0,i)
       val methodName = method.substring(i+1)
@@ -27,26 +35,15 @@ object CodeTools{
     case _ => throw new Error("Can't match this "+code.tree)
   }
   def methodFromTree(tree:Tree):jMethod = tree match{
-    case Function(List(x@LocalValue(_,_,PrefixedType(_,TypeField(_,PrefixedType(_,Class(clazz)))))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+    // method call with variable receiver like '_.toString'
+    case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+      val clazz = extractClass(tpe)
       val cl = java.lang.Class.forName(clazz)
       val methodName = method.substring(clazz.length+1)
       val m = cl.getMethod(methodName)
       m
     }
-    // that's very bad duplication from the next pattern: this matches same as next but for an applied type
-    case Function(List(x@LocalValue(_,_,AppliedType(PrefixedType(_,Class(clazz)),_))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-      val cl = java.lang.Class.forName(clazz)
-      val methodName = method.substring(clazz.length+1)
-      val m = cl.getMethod(methodName)
-      m
-    }
-    // match simple function applications like i=>i.intValue or (_:java.lang.Integer).intValue
-    case Function(List(x@LocalValue(_,_,PrefixedType(_,Class(clazz)))),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-      val cl = java.lang.Class.forName(clazz)
-      val methodName = method.substring(clazz.length+1)
-      val m = cl.getMethod(methodName)
-      m
-    }
+    // static method call with variable first parameter 'Integer.valueOf(_)'
     case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
       val cl = java.lang.Class.forName(clazz)
       val methodName = method.substring(clazz.length+1)

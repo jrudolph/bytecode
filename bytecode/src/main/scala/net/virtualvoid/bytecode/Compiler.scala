@@ -4,8 +4,8 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object ASMCompiler extends ByteletCompiler{
-    import org.objectweb.asm._
-    import org.objectweb.asm.Opcodes._
+    import _root_.org.objectweb.asm._
+    import Opcodes._
 
     case class ClassStack(mrest:ClassStack,mtop:Class[_]) extends Cons[ClassStack,Class[_]](mrest,mtop){
       def **(cl:Class[_]) = ClassStack(this,cl)
@@ -100,7 +100,7 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         new ASMFrame[R**U,LT](mv,stackClass.rest**cl,localsClass)
       }
-      def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT] = {
+      def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
         mv.visitJumpInsn(IFEQ,l)
 

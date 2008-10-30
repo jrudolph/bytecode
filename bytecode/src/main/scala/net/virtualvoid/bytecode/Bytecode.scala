@@ -8,8 +8,10 @@ object Bytecode{
   trait List
   trait Nil extends List
   object N extends Nil
-  case class Cons[+R<:List,+T](rest:R,top:T) extends List
-
+  
+  case class Cons[+R<:List,+T](rest:R,top:T) extends List{
+    def l = rest
+  }
   trait Consable[T<:List]{
     def **[U](next:U): T**U
   }
@@ -23,8 +25,23 @@ object Bytecode{
   trait Target[ST<:List,LT<:List]
   trait BackwardTarget[ST<:List,LT<:List] extends F[ST,LT] with Target[ST,LT] 
   trait ForwardTarget[ST<:List,LT<:List] extends Target[ST,LT]
+  
+  case class JVMInt(v:Int)
 
+  trait Zippable[ST<:List,L<:List,Cur,R<:List]{
+    def depth:Int
+    def frame:F[ST,_]
+  }
+  
+  case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int) extends Zippable[ST,L,Cur,R]{
+    def ~[X](f:Zipper[ST,L,Cur,R]=>X) = f(this)
+    def frame = f
+  }
+  
   trait F[ST<:List,LT<:List]{
+    def depth = -1
+    def frame = this
+    
     def stack:ST
     def locals:LT
 
@@ -37,8 +54,8 @@ object Bytecode{
     def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT]
     def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT]
 
-    def op[STR<:List,LTR<:List](f:F[ST,LT]=>F[STR,LTR]):F[STR,LTR] = f(this)
-
+    def ~[X](f:F[ST,LT]=>X):X = f(this)
+    
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
@@ -50,7 +67,7 @@ object Bytecode{
     def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
-    def ifeq_int[R<:List](rest:R,top:Any,inner:F[R,LT] => Nothing):F[R,LT]
+    def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT]
     def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T,LT]
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
@@ -62,87 +79,68 @@ object Bytecode{
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
-  trait Int2Stack[ST<:List,LT<:List]{
-    def i1:Int
-    def i2:Int
-    def rest:ST
-    def frame:F[_,LT]
-    def iadd():F[ST**Int,LT] = frame.iadd_int[ST](rest,i1,i2)
-    def isub():F[ST**Int,LT] = frame.isub_int[ST](rest,i1,i2)
-    def imul():F[ST**Int,LT] = frame.imul_int[ST](rest,i1,i2)
-  }
-  trait OneStack[R<:List,T,LT<:List]{
-    def pop():F[R,LT]
-    def dup():F[R**T**T,LT]
-    def method[U<:Any](code:scala.reflect.Code[T=>U]):F[R**U,LT]
-    def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
-    def checkcast[U](cl:Class[U]):F[R**U,LT]
-  }
-  trait TwoStack[R<:List,T2,T1,LT<:List]{
-    def method2[U<:Any](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT]
-    def swap():F[R**T1**T2,LT]
-    def dup_x1():F[R**T1**T2**T1,LT]
-  }
-  class BooleanStack[R<:List,LT<:List,X](f:F[R**X,LT]){
-    def ifeq(inner:F[R,LT] => Nothing):F[R,LT] =
-      f.ifeq_int(f.stack.rest,f.stack.top,inner)
-  }
-  case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int)
-  object Implicits{
-    implicit def int2Stack[R<:List,LT<:List](f:F[R**Int**Int,LT]):Int2Stack[R,LT] = new Int2Stack[R,LT]{
-      val frame = f
-      val stack = f.stack
-      val rest = stack.rest.rest
-      val i1 = stack.rest.top
-      val i2 = stack.top
-    }
-    implicit def oneStack[R<:List,LT<:List,T](f:F[R**T,LT]):OneStack[R,T,LT] = new OneStack[R,T,LT]{
-      def pop = f.pop_int(f.stack.rest)
+  object Operations{
+    def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT]):
+      F[R**Int**Int,LT] => F[R**Int,LT] = f => func(f,f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    
+    def iadd[R<:List,LT<:List] = 
+      iop[R,LT](_.iadd_int(_,_,_))
+    def imul[R<:List,LT<:List] = 
+      iop[R,LT](_.imul_int(_,_,_))
+    def isub[R<:List,LT<:List] = 
+      iop[R,LT](_.isub_int(_,_,_))
+    
+    def method[T,U,R<:List,LT<:List](code:scala.reflect.Code[T=>U]):F[R**T,LT] => F[R**U,LT] = 
+      f => f.method_int(f.stack.rest,f.stack.top,code)
+    def method2[T1,T2,U,R<:List,LT<:List](code:scala.reflect.Code[(T1,T2)=>U]):
+      F[R**T1**T2,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
+    def dynMethod[T,U,R<:List,LT<:List](method:java.lang.reflect.Method,resT:Class[U]):
+      F[R**T,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest,f.stack.top,method,resT)
+    
+    def pop_unit[R<:List,LT<:List]:F[R**Unit,LT] => F[R,LT] =
+      f => f.pop_unit_int(f.stack.rest)
+    
+    def pop[R<:List,LT<:List,T]:F[R**T,LT]=>F[R,LT] = f=>f.pop_int(f.stack.rest)
+    def dup[R<:List,LT<:List,T]:F[R**T,LT]=>F[R**T**T,LT] = f => f.dup_int(f.stack.rest,f.stack.top)
+    def dup_x1[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2**T1,LT] = f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    def swap[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2,LT] = f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    
+    def checkcast[T,U,R<:List,LT<:List](cl:Class[U]):F[R**T,LT]=>F[R**U,LT] = f => f.checkcast_int(f.stack.rest,f.stack.top)(cl)
+    
+    def bipush[R<:List,LT<:List](i:Int):F[R,LT]=>F[R**Int,LT] = _.bipush(i)
+    def ldc[R<:List,LT<:List](str:String):F[R,LT]=>F[R**String,LT] = _.ldc(str)
+    
+    def aload[R<:List,LT<:List,T]:F[R**Array[T]**Int,LT] => F[R**T,LT] = f=>f.aload_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    def astore[R<:List,LT<:List,T]:F[R**Array[T]**Int**T,LT] => F[R,LT] = f=>f.astore_int(f.stack.rest.rest.rest,f.stack.rest.rest.top,f.stack.rest.top,f.stack.top)
+    def arraylength[R<:List,LT<:List,T]:F[R**Array[T],LT] => F[R**Int,LT] = f=>f.arraylength_int(f.stack.rest,f.stack.top)
 
-      def dup = f.dup_int(f.stack.rest,f.stack.top)
-      def method[U](code:scala.reflect.Code[T=>U]):F[R**U,LT] =
-        f.method_int(f.stack.rest,f.stack.top,code)
-      def dynMethod[U](method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] =
-        if (resCl.isAssignableFrom(method.getReturnType))
-          f.method_int(f.stack.rest,f.stack.top,method,resCl)
-        else
-          throw new Error("incompatible method, the requested result type "+resCl.getName+" is not compatible with the method's return type " + method.getReturnType.getName)
-      def checkcast[U](cl:Class[U]):F[R**U,LT] = f.checkcast_int(f.stack.rest,f.stack.top)(cl)
-    }
-    implicit def twoStack[R<:List,LT<:List,T1,T2](f:F[R**T2**T1,LT]):TwoStack[R,T2,T1,LT] = new TwoStack[R,T2,T1,LT]{
-      def method2[U](code:scala.reflect.Code[(T2,T1) => U]):F[R**U,LT] =
-        f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
-      def swap():F[R**T1**T2,LT] = f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-      def dup_x1():F[R**T1**T2**T1,LT] = f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-    }
-    implicit def booleanStack[R<:List,LT<:List](f:F[R**Boolean,LT]):BooleanStack[R,LT,Boolean] = new BooleanStack(f)
-    implicit def intBooleanStack[R<:List,LT<:List](f:F[R**Int,LT]):BooleanStack[R,LT,Int] = new BooleanStack(f)
-    trait ArrayLoadStack[R<:List,T,LT<:List]{
-      def aload():F[R**T,LT]
-    }
-    implicit def arrayLoadStack[R<:List,T,LT<:List](f:F[R**Array[T]**Int,LT]) = new ArrayLoadStack[R,T,LT](){
-      def aload() = f.aload_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-    }
-    trait ArrayStoreStack[R<:List,LT<:List]{
-      def astore():F[R,LT]
-    }
-    implicit def arrayStoreStack[R<:List,T,LT<:List](f:F[R**Array[T]**Int**T,LT]) = new ArrayStoreStack[R,LT]{
-      def astore():F[R,LT] = f.astore_int(f.stack.rest.rest.rest,f.stack.rest.rest.top,f.stack.rest.top,f.stack.top)
-    }
-    trait ArrayLengthStack[R<:List,LT<:List]{
-      def arraylength():F[R**Int,LT]
-    }
-    implicit def arrayLengthStack[R<:List,LT<:List,T](f:F[R**Array[T],LT]) = new ArrayLengthStack[R,LT]{
-      def arraylength():F[R**Int,LT] = f.arraylength_int(f.stack.rest,f.stack.top)
+    implicit def int2JVMInt(i:Int) = JVMInt(i)
+    implicit def bool2JVMInt(b:Boolean) = JVMInt(if (b) 1 else 0)
+    
+    def ifeq[R<:List,LT<:List,T<%JVMInt](inner:F[R,LT]=>Nothing):F[R**T,LT] => F[R,LT] = f=>f.ifeq_int(f.stack.rest,f.stack.top,inner)
+    def target[ST<:List,LT<:List] = (f:F[ST,LT]) => f.target
+    def targetHere[ST<:List,LT<:List](t:ForwardTarget[ST,LT]) = (f:F[ST,LT]) => f.targetHere(t)
+    def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
+    def newInstance[ST<:List,LT<:List,T](cl:Class[T]) = (f:F[ST,LT]) => f.newInstance(cl)
+    
+    def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = f=>{
+      var i = 0;
+      val c:LT = new Cons(null.asInstanceOf[Cons[Nothing,Nothing]],null){
+        override def l = {
+          i+=1
+          this.asInstanceOf[Cons[Nothing,Nothing]]
+        }
+      }.asInstanceOf[LT]
+      l(c)
+      f.loadI(i).asInstanceOf[F[ST**T,LT]]
     }
     
-    trait UnitStack[ST<:List,LT<:List]{
-      def pop_unit:F[ST,LT]
-    }
-    implicit def removeUnit[ST<:List,LT<:List](f:F[ST**Unit,LT]):UnitStack[ST,LT] = new UnitStack[ST,LT]{
-      def pop_unit:F[ST,LT] = f.pop_unit_int(f.stack.rest)
-    }
+    def l0[R<:List,T]:R**T=>R**T = (f:R**T) => f
+    def l1[R<:List,T2,T1]:R**T2**T1=>R**T2 = (f:R**T2**T1) => f.l
+    def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.l.l
+  }
 
+  object Implicits{
     trait Zippable[ST<:List,L<:List,Cur,R<:List]{
       def l():Zipper[ST,L,Cur,R]
     }
