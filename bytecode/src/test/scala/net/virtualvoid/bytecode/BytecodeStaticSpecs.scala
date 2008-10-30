@@ -72,7 +72,7 @@ import net.virtualvoid.bytecode.Bytecode.Implicits._
    
     "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("load(l0)~dup~iadd")}
     "l.l.load.e.e.dup.iadd with Int local on place 2" in {Locals("Nil**Int**Int") must haveOp("load(l1)~dup~iadd")}
-    "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("(_l.store.e)~load(l0)~method(_.length)")}
+    "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("(_.l.store.e)~load(l0)~method(_.length)")}
     
     "aload with String[]" in {Stack("Nil**Array[String]**Int") must haveOp("aload")}
     "aload with int[]" in {Stack("Nil**Array[Int]**Int") must haveOp("aload")}
