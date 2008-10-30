@@ -4,8 +4,8 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object ASMCompiler extends ByteletCompiler{
-    import org.objectweb.asm._
-    import org.objectweb.asm.Opcodes._
+    import _root_.org.objectweb.asm._
+    import Opcodes._
 
     case class ClassStack(mrest:ClassStack,mtop:Class[_]) extends Cons[ClassStack,Class[_]](mrest,mtop){
       def **(cl:Class[_]) = ClassStack(this,cl)
