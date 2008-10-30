@@ -124,22 +124,6 @@ object Bytecode{
     def l0[R<:List,T]:R**T=>R**T = (f:R**T) => f
     def l1[R<:List,T2,T1]:R**T2**T1=>R**T2 = (f:R**T2**T1) => f.l
     def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.l.l
-    
-    def store[ST<:List,LT<:List,T,R,XT](l:(XT,T)=>LT):F[ST**T,XT] => F[ST,LT] = null
-    
-    def s0[R<:List,T]:(R**_,T)=>R**T = null
-    def s1[R<:List,T1,T]: (R**_**T1,T)=>R**T**T1 = null
-    def s2[R<:List,T1,T,T2]: (R**_**T2**T1,T)=>R**T**T2**T1 = null
-    
-    def g[R<:List,T,T1](x:(R**T1,T)):(R,T) = null 
-    
-    //def x[R<:List,T]:((Nil**Int,T))=>Nil**T = h(g((_:(Nil**Int),T)))
-    
-    val f:F[Nil**Int,Nil**String] = null
-    val n:F[Nil,Nil**Int] = f ~ store(s0)
-    
-    val f2:F[Nil**Int,Nil**String**Double] = null
-    val n2:F[Nil,Nil**Int**Double] = f2 ~ store(s1)
   }
 
   object Implicits{
