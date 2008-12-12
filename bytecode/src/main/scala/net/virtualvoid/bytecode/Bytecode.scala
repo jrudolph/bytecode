@@ -68,6 +68,7 @@ object Bytecode{
     def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
     def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT]
+    def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R,top:JVMInt,then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2]
     def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T,LT]
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
@@ -121,7 +122,12 @@ object Bytecode{
     def target[ST<:List,LT<:List] = (f:F[ST,LT]) => f.target
     def targetHere[ST<:List,LT<:List](t:ForwardTarget[ST,LT]) = (f:F[ST,LT]) => f.targetHere(t)
     def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
+    
+    //def jmp2
+    
     def newInstance[ST<:List,LT<:List,T](cl:Class[T]) = (f:F[ST,LT]) => f.newInstance(cl)
+    
+    def after[ST<:List,LT<:List](f:F[_,_]=>F[ST,LT]):F[ST,LT]=>F[ST,LT] = f => f
     
     def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = f=>{
       var i = 0;
@@ -181,6 +187,10 @@ object Bytecode{
     implicit def genNewLocalInZipper[ST<:List,Cur,R<:List](z:Zipper[ST,Nil,Cur,R]) = new Zippable[ST,Nil,Nil,R**Cur]{
       def l():Zipper[ST,Nil,Nil,R**Cur] = Zipper(z.f,z.depth + 1)
     }
+    
+    implicit def richFunc[ST1<:List,ST2<:List,LT1<:List,LT2<:List](func:F[ST1,LT1] => F[ST2,LT2]):RichFunc[ST1,LT1,ST2,LT2] = new RichFunc[ST1,LT1,ST2,LT2]{
+      def apply(f:F[ST1,LT1]):F[ST2,LT2] = func(f)
+    }
   }
 
   type S[s] = F[Nil**s,Nil]
@@ -193,7 +203,57 @@ object Bytecode{
 	  ): T => U
   }
 
+  trait RichFunc[ST1<:List,LT1<:List,ST2<:List,LT2<:List] extends (F[ST1,LT1] => F[ST2,LT2]){ first =>
+    def ~[ST3<:List,LT3<:List](second:F[ST2,LT2]=>F[ST3,LT3]):RichFunc[ST1,LT1,ST3,LT3] = new RichFunc[ST1,LT1,ST3,LT3]{
+      def apply(f:F[ST1,LT1]):F[ST3,LT3] = second(first(f))
+    }
+  }
   
+  def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
+  
+  def test{
+    import Operations._
+    implicit def richFunc[ST1<:List,ST2<:List,LT1<:List,LT2<:List](func:F[ST1,LT1] => F[ST2,LT2]):RichFunc[ST1,LT1,ST2,LT2] = null
+    val compiler:ByteletCompiler = null
+    
+    val l:List = null
+    //val u:Nothing = l
+    def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
+    
+    val x = stack[String] ~ method(_.length) ~ dup ~ iadd ~ method(Integer.valueOf(_))
+    //val y = richFunc(method((_:String).length))
+    
+    
+    //val f:F[Nil**String,Nil]=>F[Nil**Integer,Nil] = richFunc(method((_:String).length)) ~ dup ~ iadd ~ method(Integer.valueOf(_))
+    def test[T](a:T,b:T):T = null.asInstanceOf[T]
+    val x5:Number = test(3.2,5)
+    
+    def ifeq[R<:List,LT<:List,ST2<:List,LT2<:List](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**Int,LT]=>F[ST2,LT2] = null
+    
+    val ifop:F[Nil**Int,Nil]=>F[Nil**String,Nil] = stack[Int] ~ ifeq(ldc("wurst"),ldc("gustav"));
+    
+    compiler.compile(classOf[String])(x)
+  ()
+  }  
 }
+/*
+ * 
+ * Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[Nothing,Nothing]) => net.virtualvoid.bytecode.Bytecode.F[Nothing,Nothing]
+ required: (net.virtualvoid.bytecode.Bytecode.F[ST1,LT1]) => net.virtualvoid.bytecode.Bytecode.F[ST2,LT2]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+ * Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],Nothing]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],Nothing]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],LT1]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],LT2]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+                                                                                  * Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],Nothing]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],Nothing]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],LT1]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],LT2]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+ * 
+*/
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]

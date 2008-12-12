@@ -72,6 +72,33 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.String])(_ ~ newInstance(classOf[java.text.SimpleDateFormat]) ~ ldc("yyyy") ~ method2(_.applyPattern(_)) ~ pop_unit ~ (_.l.store.e) ~ load(l0))
       .apply("test") must be_==("test")
     }
+    "ifeq and jmp" in {
+      compiler.compile(classOf[java.lang.Integer])(
+        f => {
+          val start = f ~
+            method(_.intValue) ~
+            (_.l.store.e) ~
+            bipush(0) ~
+            (_.l.l.store.e.e) ~
+            target
+          
+          start ~
+            load(l0) ~
+            ifeq(f => 
+              f ~ load(l0) ~
+                dup ~
+                bipush(1) ~
+                isub ~
+                (_.l.store.e) ~
+                load(l1) ~
+                iadd ~
+                (_.l.l.store.e.e) ~
+                jmp(start)
+            ) ~
+            load(l1) ~
+            method(Integer.valueOf(_))
+      }).apply(5) must be_==(15)
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)
@@ -82,6 +109,40 @@ object BytecodeCompilerSpecs extends Specification{
   "Interpreter" should {
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.Interpreter)
   }
+  
+  {
+    import Bytecode._
+    import Operations._
+    import Implicits._
+      def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**Int,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
+      def call[ST1<:List,ST2<:List,LT1<:List,LT2<:List](f: () => (F[ST1,LT1]=>F[ST2,LT2])):F[ST1,LT1]=>F[ST2,LT2] = f()
+      
+      def simple[R<:List]:F[R,Nil]=>F[R,Nil] = f => f
+      
+      lazy val f:F[Nil**Int**Int,Nil]=>F[Nil**Int,Nil] =
+        simple[Nil**Int**Int] ~
+        dup ~
+        ifeq2(
+          pop,
+          simple[Nil**Int**Int] 
+          ~ dup_x1 
+            ~ swap 
+            ~ iadd ~ dup ~ method(System.out.println(_)) ~ pop_unit 
+            ~ swap 
+            ~ bipush(1) ~ isub ~ call(() => f)
+          
+        )
+      
+      val func = Interpreter.compile(classOf[java.lang.Integer])(simple[Nil**java.lang.Integer]
+                                                                 ~ method(_.intValue) 
+                                                                 ~ bipush(0) 
+                                                                 ~ swap 
+                                                                   ~ f 
+                                                                   ~ method(Integer.valueOf(_)))
+      
+      System.out.println(func(5))
+      System.out.println(func(10))
+      }
 }
 
 import org.specs.runner.JUnit4
