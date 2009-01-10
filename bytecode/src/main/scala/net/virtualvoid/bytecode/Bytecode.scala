@@ -75,6 +75,9 @@ object Bytecode{
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
     
+    def tailRecursive_int[ST2<:List,LT2<:List]
+        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2]
+    
     def pop_unit_int[R<:List](rest:R):F[R,LT]
 
     def newInstance[T](cl:Class[T]):F[ST**T,LT]
