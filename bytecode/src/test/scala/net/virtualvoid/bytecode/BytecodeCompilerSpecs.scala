@@ -144,9 +144,10 @@ object BytecodeCompilerSpecs extends Specification{
             ~ bipush(1) ~ isub ~ call(f))
         )
       
-      def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List](func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]): 
-        F[ST2,LT2] = 
-        func(tailRecursive(func)_)(fr)
+      def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
+        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
+          fr.tailRecursive_int(func)(fr)
+        //func(tailRecursive(func)_)(fr)
       
       def tailRecursive2[R<:List,X[_]<:List,Y[_]<:List,LT<:List](func: (F[X[R],LT] => F[Y[R],LT]) => (F[X[R],LT]=>F[Y[R],LT]))(fr:F[X[R],LT]): 
         F[Y[R],LT] = 
@@ -156,7 +157,7 @@ object BytecodeCompilerSpecs extends Specification{
         simple[Nil**Int**Int] ~ pop ~ dup ~ self
       } _
           
-      val func = Interpreter.compile(classOf[java.lang.Integer])(simple[Nil**java.lang.Integer]
+      val func = ASMCompiler.compile(classOf[java.lang.Integer])(simple[Nil**java.lang.Integer]
                                                                  ~ method(_.intValue) 
                                                                  ~ bipush(0) 
                                                                  ~ swap

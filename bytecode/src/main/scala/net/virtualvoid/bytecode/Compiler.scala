@@ -193,17 +193,26 @@ object ASMCompiler extends ByteletCompiler{
         
         mv.visitJumpInsn(IFEQ,thenLabel)
         
-        val afterFrame = elseB(frameAfterCheck)
+        elseB(frameAfterCheck)
         
         mv.visitJumpInsn(GOTO,endLabel)
         
         mv.visitLabel(thenLabel)
         
-        then(frameAfterCheck)
+        val afterFrame = then(frameAfterCheck)
         
         mv.visitLabel(endLabel)
         
         afterFrame
+      }
+      def tailRecursive_int[ST2<:List,LT2<:List]
+        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] = {
+          val start = new Label
+          mv.visitLabel(start)
+          func {f => 
+            mv.visitJumpInsn(GOTO,start)
+            null
+          }(this)
       }
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {

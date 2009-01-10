@@ -64,6 +64,11 @@ object Interpreter extends ByteletCompiler{
       
       def newInstance[T](cl:Class[T]):F[ST**T,LT] = 
         IF(stack**cl.newInstance,locals)
+      
+      def tailRecursive_int[ST2<:List,LT2<:List]
+        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
+          // classical y combinator in strict languages
+          func(tailRecursive_int(func)_)(fr)
     }
 
     def compile[T,U](cl:Class[T])(code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
