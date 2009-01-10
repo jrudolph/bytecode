@@ -175,6 +175,36 @@ object ASMCompiler extends ByteletCompiler{
         invokeMethod(methodFromTree(code.tree))
       
       def pop_unit_int[R<:List](rest:R):F[R,LT] = new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+      
+      def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R,top:JVMInt,then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2] = {
+        /*
+         * ifeq thenLabel
+         *   elseB
+         *   jmp endLabel
+         * thenLabel: 
+         *   elseB
+         * endLabel:
+         */        
+        
+        val thenLabel = new Label
+        val endLabel = new Label
+        
+        val frameAfterCheck = new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+        
+        mv.visitJumpInsn(IFEQ,thenLabel)
+        
+        val afterFrame = elseB(frameAfterCheck)
+        
+        mv.visitJumpInsn(GOTO,endLabel)
+        
+        mv.visitLabel(thenLabel)
+        
+        then(frameAfterCheck)
+        
+        mv.visitLabel(endLabel)
+        
+        afterFrame
+      }
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader{

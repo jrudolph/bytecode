@@ -26,7 +26,9 @@ object Bytecode{
   trait BackwardTarget[ST<:List,LT<:List] extends F[ST,LT] with Target[ST,LT] 
   trait ForwardTarget[ST<:List,LT<:List] extends Target[ST,LT]
   
-  case class JVMInt(v:Int)
+  case class JVMInt(v:Int){
+    override def equals(o:Any) = v.equals(o)
+  }
 
   trait Zippable[ST<:List,L<:List,Cur,R<:List]{
     def depth:Int
@@ -236,24 +238,5 @@ object Bytecode{
   ()
   }  
 }
-/*
- * 
- * Description	Resource	Path	Location	Type
-type mismatch;
- found   : (net.virtualvoid.bytecode.Bytecode.F[Nothing,Nothing]) => net.virtualvoid.bytecode.Bytecode.F[Nothing,Nothing]
- required: (net.virtualvoid.bytecode.Bytecode.F[ST1,LT1]) => net.virtualvoid.bytecode.Bytecode.F[ST2,LT2]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
-
- * Description	Resource	Path	Location	Type
-type mismatch;
- found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],Nothing]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],Nothing]
- required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],LT1]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],LT2]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
-
-                                                                                  * Description	Resource	Path	Location	Type
-type mismatch;
- found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],Nothing]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],Nothing]
- required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,String],LT1]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[Nothing,Int],LT2]	Bytecode.scala	bytecode/src/main/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
-
- * 
-*/
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]

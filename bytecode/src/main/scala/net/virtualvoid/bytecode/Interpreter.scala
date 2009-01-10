@@ -8,13 +8,15 @@ object Interpreter extends ByteletCompiler{
     case class IF[ST<:List,LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
       import CodeTools._
       
+      def notImplemented(what:String) = new java.lang.Error(what + " not implemented in Interpreter")
+      
       def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
       def ldc(str:jString):F[ST**jString,LT] = IF(stack ** str,locals)
-      def target:BackwardTarget[ST,LT] = null
-      def jmp(t:Target[ST,LT]):Nothing = null.asInstanceOf[Nothing]
+      def target:BackwardTarget[ST,LT] = throw notImplemented("target")
+      def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
       
-      def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = null
-      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = null
+      def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = throw notImplemented("forwardTarget")
+      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = throw notImplemented("targetHere")
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
       def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
@@ -30,7 +32,7 @@ object Interpreter extends ByteletCompiler{
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
         IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = IF(rest**top.asInstanceOf[U],locals)
-      def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = null
+      def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = throw notImplemented("ifeq_int")
       def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R,top:JVMInt,then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2] =
         if (top == 0) then(IF(rest,locals)) else elseB(IF(rest,locals))
       

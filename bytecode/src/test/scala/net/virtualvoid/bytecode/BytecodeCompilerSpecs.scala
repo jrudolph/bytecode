@@ -110,38 +110,85 @@ object BytecodeCompilerSpecs extends Specification{
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.Interpreter)
   }
   
+  def println(i:Int) = System.out.println(i)
+  
   {
     import Bytecode._
     import Operations._
     import Implicits._
       def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**Int,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
-      def call[ST1<:List,ST2<:List,LT1<:List,LT2<:List](f: () => (F[ST1,LT1]=>F[ST2,LT2])):F[ST1,LT1]=>F[ST2,LT2] = f()
+      def call[ST1<:List,ST2<:List,LT1<:List,LT2<:List](f: => (F[ST1,LT1]=>F[ST2,LT2])):F[ST1,LT1]=>F[ST2,LT2] =
+        x => f(x)
+      
+      //def state[ST<:List,LT<:List](prefix:String):F[ST,LT]=>F[ST,LT] = {x => System.out.println(prefix + x.stack);x}
       
       def simple[R<:List]:F[R,Nil]=>F[R,Nil] = f => f
+      def id[ST<:List,LT<:List](f:F[ST,LT]):F[ST,LT]=>F[ST,LT] = x=>x
+      def ider[ST<:List,LT<:List,ST2<:List,LT2<:List](fr:F[ST,LT],func:F[ST,LT]=>F[ST2,LT2]):F[ST2,LT2] = func(fr)
       
       lazy val f:F[Nil**Int**Int,Nil]=>F[Nil**Int,Nil] =
+        
         simple[Nil**Int**Int] ~
+        //state("before check: ") ~
         dup ~
         ifeq2(
           pop,
-          simple[Nil**Int**Int] 
-          ~ dup_x1 
-            ~ swap 
-            ~ iadd ~ dup ~ method(System.out.println(_)) ~ pop_unit 
-            ~ swap 
-            ~ bipush(1) ~ isub ~ call(() => f)
-          
+          //simple[Nil**Int**Int]
+          fr =>
+            ider(fr,
+            id(fr)
+            ~ dup_x1 //x,sum,x
+            ~ iadd ~ dup ~ method(println(_)) ~ pop_unit
+            //~ state("after println")
+            ~ swap
+            ~ bipush(1) ~ isub ~ call(f))
         )
       
+      def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List](func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]): 
+        F[ST2,LT2] = 
+        func(tailRecursive(func)_)(fr)
+      
+      def tailRecursive2[R<:List,X[_]<:List,Y[_]<:List,LT<:List](func: (F[X[R],LT] => F[Y[R],LT]) => (F[X[R],LT]=>F[Y[R],LT]))(fr:F[X[R],LT]): 
+        F[Y[R],LT] = 
+        func(tailRecursive2[R,X,Y,LT](func)_)(fr)
+      
+      val tr = tailRecursive[Nil**Int**Int,Nil,Nil**Int,Nil] {self =>
+        simple[Nil**Int**Int] ~ pop ~ dup ~ self
+      } _
+          
       val func = Interpreter.compile(classOf[java.lang.Integer])(simple[Nil**java.lang.Integer]
                                                                  ~ method(_.intValue) 
                                                                  ~ bipush(0) 
-                                                                 ~ swap 
-                                                                   ~ f 
-                                                                   ~ method(Integer.valueOf(_)))
-      
+                                                                 ~ swap
+                                                                 ~ tailRecursive[Nil**Int**Int,Nil,Nil**Int,Nil]{self =>
+                                                                   simple[Nil**Int**Int] ~
+                                                                     //state("before check: ") ~
+                                                                     dup ~
+                                                                     ifeq2(
+                                                                       pop,
+															          //simple[Nil**Int**Int]
+															          fr =>
+															            ider(fr,
+															            id(fr)
+															            ~ dup_x1 //x,sum,x
+															            ~ iadd ~ dup ~ method(println(_)) ~ pop_unit
+															            //~ state("after println")
+															            ~ swap
+															            ~ bipush(1) ~ isub ~ self)
+															        )
+                                                                 } _ 
+                                                                   //~ f // 0 , x
+                                                                 ~ method(Integer.valueOf(_)))
+      // sum,x -> x,sum,x -> x,sum+x -> sum+x,x -> sum+x,x,1 -> sum+x,x-1
       System.out.println(func(5))
-      System.out.println(func(10))
+      //System.out.println(func(10)) def f(sum,x) = if (x==0) sum else f(sum+x,x-1)
+      /*
+Description	Resource	Path	Location	Type
+polymorphic expression cannot be instantiated to expected type;
+ found   : [R <: net.virtualvoid.bytecode.Bytecode.List,LT <: net.virtualvoid.bytecode.Bytecode.List](net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],Int],LT]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,Int],LT]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[?,?],?],?],?]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+       */
       }
 }
 
