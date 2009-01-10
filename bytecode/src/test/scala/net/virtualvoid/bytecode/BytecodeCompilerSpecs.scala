@@ -182,9 +182,95 @@ object BytecodeCompilerSpecs extends Specification{
                                                                  ~ method(Integer.valueOf(_)))
       System.out.println(func(5))
       
+      trait StackFunc[From[_],To[_]]{
+        def apply[A,LT]:F[From[A],LT]=>F[To[A],LT]
+      }
       
+      trait Top[F[_,_],Y]{
+        type f[X<:List] = F[X,Y]
+      }
+      
+      trait Test[A[_]]{
+        def apply[X]:A[X]
+      }
+      
+      trait Top2[F[_,_],G[_],Y]{
+        type h[X] = F[G[X],Y]
+      }
+      trait Top3[F[_,_],G[_],Y]{
+        type g[X] = F[G[X],Y]
+      }
+
+      type ^^[B[_],A] = Top2[Cons,B,A]
+      type &&[A,B[_]] = Top2[Cons,B,A]
+      type T[A] = Top[Cons,A]
+      
+      val b:Test[T[Int]#f] = null
+      val a:Test[^^[T[Int]#f,String]#h] = null
+      val c:Test[Top3[Cons,^^[T[Int]#f,String]#h,Float]#g] = null
+      
+      val t1:Nil**Int = b.apply[Nil]
+      val t:Nil**Int**String = a.apply[Nil]
+      val tdf2: Nil**Int**String = c.apply[Nil]
+      
+      //implicit def eval[X,Y,LT<:List](t:F[Top[X]#f[Y],LT]):F[X**Y,LT] = null
+      
+      /* def foldArray(array,func,start)
+       * 	let f(i,u) = 
+       *         if (i<array.length)
+       * 			f(i+1,func(u,ar[i]))
+       *         else
+       *            u
+       *    f(0,start)
+      */
+      def foldArray[R<:List,LT<:List,T,U,X<:List](func:StackFunc[Top[Cons,U**T]#f,Top[Cons,U]#f]/*F[X**U**T,LT**Array[T]]=>F[X**U,LT**Array[T]]*/):F[R**Array[T]**U,LT**Nil] => F[R**U,LT**Array[T]] =
+        frame[R**Array[T]**U,LT**Nil] ~
+        swap ~ (_.l.store.e) ~ 
+        bipush(0) ~
+        tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
+          frame[R**U**Int,LT**Array[T]] ~
+          dup ~
+          load(l0) ~
+          arraylength ~
+          isub ~
+          ifeq2(pop,
+                frame[R**U**Int,LT**Array[T]] ~
+                dup_x1 ~
+                load(l0) ~
+                swap ~
+                aload ~
+                eval(func.apply[R**Int,LT**Array[T]]) ~
+                swap ~
+                self
+          )
+        }
+      
+      foldArray(null)
   }
 }
+
+/**
+Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,U],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+                                                                                  * Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[X,U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[X,U],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+                                                                                  * Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[Top[net.virtualvoid.bytecode.Bytecode.**[U,T]]#f[net.virtualvoid.bytecode.Bytecode.**[R,Int]],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[Top[U]#f[net.virtualvoid.bytecode.Bytecode.**[R,Int]],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+                                                                                  * Description	Resource	Path	Location	Type
+type mismatch;
+ found   : Top2[net.virtualvoid.bytecode.Bytecode.Cons,Top[net.virtualvoid.bytecode.Bytecode.Cons,Int]#f,String]#f[net.virtualvoid.bytecode.Bytecode.Nil]
+ required: net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,String],Int]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+ */
 
 import org.specs.runner.JUnit4
 
