@@ -122,6 +122,7 @@ object BytecodeCompilerSpecs extends Specification{
       
       //def state[ST<:List,LT<:List](prefix:String):F[ST,LT]=>F[ST,LT] = {x => System.out.println(prefix + x.stack);x}
       
+      def frame[ST<:List,LT<:List]:F[ST,LT] => F[ST,LT] = f=>f
       def simple[R<:List]:F[R,Nil]=>F[R,Nil] = f => f
       def id[ST<:List,LT<:List](f:F[ST,LT]):F[ST,LT]=>F[ST,LT] = x=>x
       def ider[ST<:List,LT<:List,ST2<:List,LT2<:List](fr:F[ST,LT],func:F[ST,LT]=>F[ST2,LT2]):F[ST2,LT2] = func(fr)
@@ -182,9 +183,47 @@ object BytecodeCompilerSpecs extends Specification{
                                                                  ~ method(Integer.valueOf(_)))
       System.out.println(func(5))
       
+      /* def foldArray(array,func,start)
+       * 	let f(i,u) = 
+       *         if (i<array.length)
+       * 			f(i+1,func(u,ar[i]))
+       *         else
+       *            u
+       *    f(0,start)
+      */
+      def foldArray[R<:List,LT<:List,T,U](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**Nil] => F[R**U,LT**Array[T]] =
+        frame[R**Array[T]**U,LT**Nil] ~
+        swap ~ (_.l.store.e) ~ 
+        bipush(0) ~
+        tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
+          frame[R**U**Int,LT**Array[T]] ~
+          dup ~
+          load(l0) ~
+          arraylength ~
+          isub ~
+          ifeq2(pop,
+                frame[R**U**Int,LT**Array[T]] ~
+                dup_x1 ~
+                load(l0) ~
+                swap ~
+                aload ~
+                func ~
+                swap ~
+                self
+          )
+        }
       
+      foldArray(null)
   }
 }
+
+/**
+Description	Resource	Path	Location	Type
+type mismatch;
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,U],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+
+ */
 
 import org.specs.runner.JUnit4
 
