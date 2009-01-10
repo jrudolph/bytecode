@@ -193,25 +193,32 @@ object ASMCompiler extends ByteletCompiler{
         
         mv.visitJumpInsn(IFEQ,thenLabel)
         
-        elseB(frameAfterCheck)
+        val afterElseFrame = elseB(frameAfterCheck)
         
         mv.visitJumpInsn(GOTO,endLabel)
         
         mv.visitLabel(thenLabel)
         
-        val afterFrame = then(frameAfterCheck)
+        val afterThenFrame = then(frameAfterCheck)
         
         mv.visitLabel(endLabel)
         
-        afterFrame
+        if (afterElseFrame.isInstanceOf[InvalidFrame])
+          afterThenFrame
+        else 
+          afterElseFrame
       }
+      class InvalidFrame extends ASMFrame[Nothing,Nothing](null,null,null){
+        override val toString = "invalid frame" 
+      }
+      def invalidFrame[ST<:List,LT<:List]:F[ST,LT] = (new InvalidFrame).asInstanceOf[F[ST,LT]]
       def tailRecursive_int[ST2<:List,LT2<:List]
         (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] = {
           val start = new Label
           mv.visitLabel(start)
           func {f => 
             mv.visitJumpInsn(GOTO,start)
-            null
+            invalidFrame
           }(this)
       }
     }
