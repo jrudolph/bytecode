@@ -18,6 +18,7 @@ object CodeTools{
     case PrefixedType(_,Class(name)) => name
     case AppliedType(tp2,_) => extractClass(tp2)
     case PrefixedType(_,TypeField(_,tp2:PrefixedType)) => extractClass(tp2)
+    case NamedType(name) => name
   }
   
   def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = code.tree match{
@@ -34,21 +35,33 @@ object CodeTools{
     }	
     case _ => throw new Error("Can't match this "+code.tree)
   }
+  def forName(clazz:String) = 
+    try {
+      Some(java.lang.Class.forName(clazz));
+    }catch{
+      case e:java.lang.ClassNotFoundException => None
+    }
+  def typeOfQualifier(qual:Tree):Type = qual match {
+    case This(symbol) => symbol.tpe
+    case Select(_,symbol) => symbol.tpe
+  }
   def methodFromTree(tree:Tree):jMethod = tree match{
     // method call with variable receiver like '_.toString'
     case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
       val clazz = extractClass(tpe)
-      val cl = java.lang.Class.forName(clazz)
+      val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
       val methodName = method.substring(clazz.length+1)
       val m = cl.getMethod(methodName)
       m
     }
     // static method call with variable first parameter 'Integer.valueOf(_)'
-    case Function(List(x),Apply(Select(_,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),PrefixedType(_,Class(clazz))))),List(Ident(x1)))) if x==x1 => {
-      val cl = java.lang.Class.forName(clazz)
+    case Function(List(x),Apply(Select(qual,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),_))),List(Ident(x1)))) if x==x1 => {
+      val clazz = extractClass(typeOfQualifier(qual))
+      val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString))//java.lang.Class.forName(clazz)
       val methodName = method.substring(clazz.length+1)
       val argCl = cleanClass(argClazz)
       val m = cl.getMethod(methodName,argCl)
+      assert ((m.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
       m
     }
     case _ => throw new Error("Can't match this "+tree)
