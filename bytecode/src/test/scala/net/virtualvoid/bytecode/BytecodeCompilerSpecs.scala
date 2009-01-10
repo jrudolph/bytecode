@@ -180,17 +180,10 @@ object BytecodeCompilerSpecs extends Specification{
                                                                  } _ 
                                                                    //~ f // 0 , x
                                                                  ~ method(Integer.valueOf(_)))
-      // sum,x -> x,sum,x -> x,sum+x -> sum+x,x -> sum+x,x,1 -> sum+x,x-1
       System.out.println(func(5))
-      //System.out.println(func(10)) def f(sum,x) = if (x==0) sum else f(sum+x,x-1)
-      /*
-Description	Resource	Path	Location	Type
-polymorphic expression cannot be instantiated to expected type;
- found   : [R <: net.virtualvoid.bytecode.Bytecode.List,LT <: net.virtualvoid.bytecode.Bytecode.List](net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],Int],LT]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,Int],LT]
- required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[?,?],?],?],?]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
-
-       */
-      }
+      
+      
+  }
 }
 
 import org.specs.runner.JUnit4
