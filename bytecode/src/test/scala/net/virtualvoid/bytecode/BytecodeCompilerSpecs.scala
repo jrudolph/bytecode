@@ -182,6 +182,7 @@ object BytecodeCompilerSpecs extends Specification{
                                                                  ~ method(Integer.valueOf(_)))
       System.out.println(func(5))
       
+          
       /* def foldArray(array,func,start)
        * 	let f(i,u) = 
        *         if (i<array.length)
@@ -251,7 +252,7 @@ object BytecodeCompilerSpecs extends Specification{
         bipush(0) ~
         dup ~
         (_.l.store.e) ~
-        foldArray[Nil,Nil,Int,Int,Int](iadd) ~
+        foldArray(iadd) ~
         method(Integer.valueOf(_))
       )
       
@@ -261,7 +262,7 @@ object BytecodeCompilerSpecs extends Specification{
         dup ~
         (_.l.store.e) ~
         swap ~
-        foldIterable[Nil,Nil,java.lang.Integer,Int,Int](classOf[java.lang.Integer],_ ~ method(_.intValue) ~ iadd) ~
+        foldIterable(classOf[java.lang.Integer],_ ~ method(_.intValue) ~ iadd) ~
         method(Integer.valueOf(_))
       )
       
