@@ -73,6 +73,7 @@ object BytecodeCompilerSpecs extends Specification{
       .apply("test") must be_==("test")
     }
     "ifeq and jmp" in {
+      if (compiler != Interpreter)
       compiler.compile(classOf[java.lang.Integer])(
         f => {
           val start = f ~
