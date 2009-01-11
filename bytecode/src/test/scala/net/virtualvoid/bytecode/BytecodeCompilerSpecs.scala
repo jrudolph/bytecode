@@ -116,7 +116,7 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode._
     import Operations._
     import Implicits._
-      def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**Int,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
+      def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
       def call[ST1<:List,ST2<:List,LT1<:List,LT2<:List](f: => (F[ST1,LT1]=>F[ST2,LT2])):F[ST1,LT1]=>F[ST2,LT2] =
         x => f(x)
       
@@ -128,21 +128,19 @@ object BytecodeCompilerSpecs extends Specification{
       def ider[ST<:List,LT<:List,ST2<:List,LT2<:List](fr:F[ST,LT],func:F[ST,LT]=>F[ST2,LT2]):F[ST2,LT2] = func(fr)
       
       lazy val f:F[Nil**Int**Int,Nil]=>F[Nil**Int,Nil] =
-        
-        simple[Nil**Int**Int] ~
+        _ ~
+        //simple[Nil**Int**Int] ~
         //state("before check: ") ~
         dup ~
         ifeq2(
           pop,
           //simple[Nil**Int**Int]
-          fr =>
-            ider(fr,
-            id(fr)
+          _ 
             ~ dup_x1 //x,sum,x
             ~ iadd ~ dup ~ method(println(_)) ~ pop_unit
             //~ state("after println")
             ~ swap
-            ~ bipush(1) ~ isub ~ call(f))
+            ~ bipush(1) ~ isub ~ call(f)
         )
       
       def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
@@ -158,9 +156,9 @@ object BytecodeCompilerSpecs extends Specification{
         simple[Nil**Int**Int] ~ pop ~ dup ~ self
       } _
           
-      val func = ASMCompiler.compile(classOf[java.lang.Integer])(simple[Nil**java.lang.Integer]
+      val func = ASMCompiler.compile(classOf[java.lang.Integer])(_ //simple[Nil**java.lang.Integer]
                                                                  ~ method(_.intValue) 
-                                                                 ~ bipush(0) 
+                                                                 ~ bipush(1) 
                                                                  ~ swap
                                                                  ~ tailRecursive[Nil**Int**Int,Nil,Nil**Int,Nil]{self =>
                                                                    simple[Nil**Int**Int] ~
@@ -191,39 +189,93 @@ object BytecodeCompilerSpecs extends Specification{
        *            u
        *    f(0,start)
       */
-      def foldArray[R<:List,LT<:List,T,U](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**Nil] => F[R**U,LT**Array[T]] =
-        frame[R**Array[T]**U,LT**Nil] ~
+      def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
+        _ ~ //frame[R**Array[T]**U,LT**Nil] ~
         swap ~ (_.l.store.e) ~ 
         bipush(0) ~
         tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
-          frame[R**U**Int,LT**Array[T]] ~
+          _ ~ //frame[R**U**Int,LT**Array[T]] ~
           dup ~
           load(l0) ~
           arraylength ~
           isub ~
           ifeq2(pop,
-                frame[R**U**Int,LT**Array[T]] ~
+                _ ~ //frame[R**U**Int,LT**Array[T]] ~
                 dup_x1 ~
                 load(l0) ~
                 swap ~
+                dup ~
+                method(println(_)) ~ pop_unit ~
                 aload ~
                 func ~
                 swap ~
+                bipush(1) ~ 
+                iadd ~
                 self
           )
         }
       
-      foldArray(null)
+      import java.lang.{Iterable => jIterable}
+      import java.util.{Iterator => jIterator}
+      
+      /**
+       def foldIterator(func,it,start) =
+         if (it.hasNext)
+            foldIterator(func,func(it.next,start))
+         else
+       *    start
+       */
+      def foldIterable[R<:List,LT<:List,T,U,X](eleType:Class[T],func:F[R**U**T,LT**jIterator[T]]=>F[R**U,LT**jIterator[T]])
+          :F[R**U**jIterable[T],LT**X] => F[R**U,LT**jIterator[T]] =
+        _ ~
+        method(_.iterator) ~
+        (_.l.store.e) ~
+        tailRecursive[R**U,LT**jIterator[T],R**U,LT**jIterator[T]]{ self =>
+          _ ~
+          load(l0) ~
+          method(_.hasNext) ~
+          ifeq2(
+                f=>f,
+                _ ~
+                load(l0) ~
+                method(_.next) ~
+                checkcast(eleType) ~
+                func ~
+                self)         
+        }
+        
+      
+      val func2 = ASMCompiler.compile(classOf[Array[Int]])(
+        _ ~
+        bipush(0) ~
+        dup ~
+        (_.l.store.e) ~
+        foldArray[Nil,Nil,Int,Int,Int](iadd) ~
+        method(Integer.valueOf(_))
+      )
+      
+      val func3 = ASMCompiler.compile(classOf[jIterable[java.lang.Integer]])(
+        _ ~
+        bipush(0) ~
+        dup ~
+        (_.l.store.e) ~
+        swap ~
+        foldIterable[Nil,Nil,java.lang.Integer,Int,Int](classOf[java.lang.Integer],_ ~ method(_.intValue) ~ iadd) ~
+        method(Integer.valueOf(_))
+      )
+      
+      System.out.println(func2(Array(5,10,3,5,2)))
+      System.out.println(func3(java.util.Arrays.asList(12,4,2,6,3,7,3)))
   }
 }
 
-/**
+/*
 Description	Resource	Path	Location	Type
 type mismatch;
- found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,U],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]
- required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Int],U],T],net.virtualvoid.bytecode.Bytecode.**[LT,Array[T]]]) => net.virtualvoid.bytecode.Bytecode.F[?,?]	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],java.lang.Iterable[Integer]],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,java.util.Iterator[Integer]]]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,java.lang.Iterable[Integer]],Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => ?	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
 
- */
+*/
 
 import org.specs.runner.JUnit4
 
