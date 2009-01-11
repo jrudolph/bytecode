@@ -117,6 +117,7 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode._
     import Operations._
     import Implicits._
+    import RichOperations._
       
       def call[ST1<:List,ST2<:List,LT1<:List,LT2<:List](f: => (F[ST1,LT1]=>F[ST2,LT2])):F[ST1,LT1]=>F[ST2,LT2] =
         x => f(x)
@@ -181,39 +182,7 @@ object BytecodeCompilerSpecs extends Specification{
       System.out.println(func(5))
       
           
-      /* def foldArray(array,func,start)
-       * 	let f(i,u) = 
-       *         if (i<array.length)
-       * 			f(i+1,func(u,ar[i]))
-       *         else
-       *            u
-       *    f(0,start)
-      */
-      def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
-        _ ~ //frame[R**Array[T]**U,LT**Nil] ~
-        swap ~ (_.l.store.e) ~ 
-        bipush(0) ~
-        tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
-          _ ~ //frame[R**U**Int,LT**Array[T]] ~
-          dup ~
-          load(l0) ~
-          arraylength ~
-          isub ~
-          ifeq2(pop,
-                _ ~ //frame[R**U**Int,LT**Array[T]] ~
-                dup_x1 ~
-                load(l0) ~
-                swap ~
-                dup ~
-                method(println(_)) ~ pop_unit ~
-                aload ~
-                func ~
-                swap ~
-                bipush(1) ~ 
-                iadd ~
-                self
-          )
-        }
+
       
       import java.lang.{Iterable => jIterable}
       import java.util.{Iterator => jIterator}

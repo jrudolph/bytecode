@@ -200,6 +200,43 @@ object Bytecode{
       def apply(f:F[ST1,LT1]):F[ST2,LT2] = func(f)
     }
   }
+  object RichOperations{
+    import Operations._
+    import Implicits._
+     /* def foldArray(array,func,start)
+       * 	let f(i,u) = 
+       *         if (i<array.length)
+       * 			f(i+1,func(u,ar[i]))
+       *         else
+       *            u
+       *    f(0,start)
+      */
+      import Bytecode.Implicits._
+	  def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
+	    _ ~
+	    swap ~ 
+        (_.l.store.e) ~ 
+	    bipush(0) ~
+	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
+	      _ ~
+	      dup ~
+	      load(l0) ~
+	      arraylength ~
+	      isub ~
+	      ifeq2(pop,
+	            _ ~
+	            dup_x1 ~
+	            load(l0) ~
+	            swap ~
+	            aload ~
+	            func ~
+	            swap ~
+	            bipush(1) ~ 
+	            iadd ~
+	            self
+	      )
+	    }
+  }
 
   type S[s] = F[Nil**s,Nil]
 
