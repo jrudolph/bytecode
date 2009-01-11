@@ -204,8 +204,11 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitLabel(endLabel)
         
         if (afterElseFrame.isInstanceOf[InvalidFrame])
-          afterThenFrame
-        else 
+          if (afterThenFrame.isInstanceOf[InvalidFrame])
+            throw new java.lang.Error("One execution path of ifeq2 must have inferable types as output")
+          else
+            afterThenFrame
+        else            
           afterElseFrame
       }
       class InvalidFrame extends ASMFrame[Nothing,Nothing](null,null,null){
