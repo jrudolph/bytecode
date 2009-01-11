@@ -117,7 +117,7 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode._
     import Operations._
     import Implicits._
-      def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
+      
       def call[ST1<:List,ST2<:List,LT1<:List,LT2<:List](f: => (F[ST1,LT1]=>F[ST2,LT2])):F[ST1,LT1]=>F[ST2,LT2] =
         x => f(x)
       
@@ -144,9 +144,7 @@ object BytecodeCompilerSpecs extends Specification{
             ~ bipush(1) ~ isub ~ call(f)
         )
       
-      def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
-        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
-          fr.tailRecursive_int(func)(fr)
+
         //func(tailRecursive(func)_)(fr)
       
       def tailRecursive2[R<:List,X[_]<:List,Y[_]<:List,LT<:List](func: (F[X[R],LT] => F[Y[R],LT]) => (F[X[R],LT]=>F[Y[R],LT]))(fr:F[X[R],LT]): 
