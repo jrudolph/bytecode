@@ -147,6 +147,11 @@ object Bytecode{
     def l0[R<:List,T]:R**T=>R**T = (f:R**T) => f
     def l1[R<:List,T2,T1]:R**T2**T1=>R**T2 = (f:R**T2**T1) => f.l
     def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.l.l
+    
+    def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
+    def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
+      (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
+        fr.tailRecursive_int(func)(fr)
   }
 
   object Implicits{
