@@ -19,7 +19,7 @@ object ASMCompiler extends ByteletCompiler{
     }
     case object EmptyClassStack extends UnsetClassStack(null)
     
-    class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack) extends F[ST,LT]{
+    class ASMFrame[+ST<:List,+LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack) extends F[ST,LT]{
       def self[T]:T = this.asInstanceOf[T]
 
       val loopingList = new Cons(null.asInstanceOf[List],null){
@@ -30,13 +30,13 @@ object ASMCompiler extends ByteletCompiler{
       def stack = loopingList.asInstanceOf[ST]
       def locals = loopingList.asInstanceOf[LT]
       
-      def newStacked[T](cl:Class[T]) = new ASMFrame[ST**T,LT](mv,stackClass**cl,localsClass)
+      def newStacked[T,S>:ST](cl:Class[T]) = new ASMFrame[S**T,LT](mv,stackClass**cl,localsClass)
       
-      def bipush(i1:Int):F[ST**Int,LT] = {
+      def bipush[S>:ST](i1:Int):F[S**Int,LT] = {
         mv.visitIntInsn(BIPUSH, i1)
         newStacked(classOf[Int])
       }
-      def ldc(str:jString):F[ST**jString,LT] = {
+      def ldc[S>:ST](str:jString):F[S**jString,LT] = {
         mv.visitLdcInsn(str)
         newStacked(classOf[jString])
       }
@@ -45,7 +45,7 @@ object ASMCompiler extends ByteletCompiler{
         def label:Label
       }
       
-      case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
+      /*case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
           extends ASMFrame[ST,LT](mv,stackClass,localsClass) with BackwardTarget[ST,LT] with ASMTarget
       def target:BackwardTarget[ST,LT] = {
         val label = new Label
@@ -66,7 +66,7 @@ object ASMCompiler extends ByteletCompiler{
       def jmp(t:Target[ST,LT]):Nothing = {
         mv.visitJumpInsn(GOTO,t.asInstanceOf[ASMTarget].label)
         null.asInstanceOf[Nothing]
-      }
+      }*/
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IADD)
@@ -132,7 +132,7 @@ object ASMCompiler extends ByteletCompiler{
       def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(cleanClass(cl.getName)).getOpcode(opcode)
 
-      def loadI[T](i:Int):F[ST**T,LT] = {
+      def loadI[T,S>:ST](i:Int):F[S**T,LT] = {
         val toLoad = localsClass.get(i)
         mv.visitVarInsn(opcode(toLoad,ILOAD), i);
         new ASMFrame[ST**T,LT](mv,stackClass**toLoad,localsClass)
@@ -142,7 +142,7 @@ object ASMCompiler extends ByteletCompiler{
         new ASMFrame[R,NewLT](mv,stackClass.rest,localsClass.set(i,stackClass.top))
       }
       
-      def newInstance[T](cl:Class[T]):F[ST**T,LT] = {
+      def newInstance[T,S>:ST](cl:Class[T]):F[S**T,LT] = {
         val cons = cl.getConstructor()
         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
         mv.visitInsn(DUP)
@@ -215,8 +215,8 @@ object ASMCompiler extends ByteletCompiler{
         override val toString = "invalid frame" 
       }
       def invalidFrame[ST<:List,LT<:List]:F[ST,LT] = (new InvalidFrame).asInstanceOf[F[ST,LT]]
-      def tailRecursive_int[ST2<:List,LT2<:List]
-        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] = {
+      def tailRecursive_int[ST2<:List,LT2<:List,S>:ST<:List,L>:LT<:List]
+        (func: (F[S,L] => F[ST2,LT2]) => (F[S,L]=>F[ST2,LT2]))(fr:F[S,L]):F[ST2,LT2] = {
           val start = new Label
           mv.visitLabel(start)
           func {f => 

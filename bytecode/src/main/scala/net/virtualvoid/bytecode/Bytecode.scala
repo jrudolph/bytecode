@@ -32,29 +32,29 @@ object Bytecode{
 
   trait Zippable[ST<:List,L<:List,Cur,R<:List]{
     def depth:Int
-    def frame:F[ST,_]
+    def frame:F[ST,_<:List]
   }
   
-  case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_],depth:Int) extends Zippable[ST,L,Cur,R]{
+  case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_<:List],depth:Int) extends Zippable[ST,L,Cur,R]{
     def ~[X](f:Zipper[ST,L,Cur,R]=>X) = f(this)
     def frame = f
   }
   
-  trait F[ST<:List,LT<:List]{
+  trait F[+ST<:List,+LT<:List]{
     def depth = -1
     def frame = this
     
     def stack:ST
     def locals:LT
 
-    def bipush(i1:Int):F[ST**Int,LT]
-    def ldc(str:jString):F[ST**jString,LT]
-    def target:BackwardTarget[ST,LT]
-    def jmp(t:Target[ST,LT]):Nothing
+    def bipush[S>:ST](i1:Int):F[S**Int,LT]
+    def ldc[S>:ST](str:jString):F[S**jString,LT]
+    def target[S>:ST<:List,L>:LT<:List]:BackwardTarget[S,L] = null
+    def jmp[S>:ST<:List,L>:LT<:List](t:Target[S,L]):Nothing = null.asInstanceOf[Nothing]
     
     // support for forward declaring targets
-    def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT]
-    def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT]
+    def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = null
+    def targetHere[S>:ST<:List,L>:LT<:List](t:ForwardTarget[S,L]):F[S,L] = null
 
     def ~[X](f:F[ST,LT]=>X):X = f(this)
     
@@ -75,14 +75,14 @@ object Bytecode{
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
     
-    def tailRecursive_int[ST2<:List,LT2<:List]
-        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2]
+    def tailRecursive_int[ST2<:List,LT2<:List,S>:ST<:List,L>:LT<:List]
+        (func: (F[S,L] => F[ST2,LT2]) => (F[S,L]=>F[ST2,LT2]))(fr:F[S,L]):F[ST2,LT2]
     
     def pop_unit_int[R<:List](rest:R):F[R,LT]
 
-    def newInstance[T](cl:Class[T]):F[ST**T,LT]
+    def newInstance[T,S>:ST](cl:Class[T]):F[S**T,LT]
     
-    def loadI[T](i:Int):F[ST**T,LT]
+    def loadI[T,S>:ST](i:Int):F[S**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
   object Operations{
@@ -278,6 +278,11 @@ object Bytecode{
     val ifop:F[Nil**Int,Nil]=>F[Nil**String,Nil] = stack[Int] ~ ifeq(ldc("wurst"),ldc("gustav"));
     
     compiler.compile(classOf[String])(x)
+    
+    val func:Iterable[Integer] => Seq[String] =null
+    val func2: Seq[Integer] => Iterable[String] = func
+    val fr:F[Nil**String,Nil] = null
+    val fr2:F[Nil**AnyRef,Nil] = fr
   ()
   }  
 }

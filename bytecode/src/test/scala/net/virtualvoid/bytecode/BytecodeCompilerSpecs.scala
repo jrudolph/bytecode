@@ -223,7 +223,7 @@ object BytecodeCompilerSpecs extends Specification{
         method(Integer.valueOf(_))
       )
       
-      val func3 = ASMCompiler.compile(classOf[jIterable[java.lang.Integer]])(
+      val func3 = ASMCompiler.compile(classOf[java.util.List[java.lang.Integer]])(
         _ ~
         bipush(0) ~
         dup ~
