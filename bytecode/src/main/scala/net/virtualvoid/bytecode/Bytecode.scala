@@ -12,15 +12,16 @@ object Bytecode{
   case class Cons[+R<:List,+T](rest:R,top:T) extends List{
     def l = rest
   }
+  // define an infix operator shortcut for the cons type
+  type ** [x<:List,y] = Cons[x,y]
+
+  // define the same for values
   trait Consable[T<:List]{
     def **[U](next:U): T**U
   }
   implicit def conser[T<:List](t:T) = new Consable[T]{
     def **[U](next:U): T**U = Cons(t,next)
   }
-
-  // define an infix operator shortcut for the cons type
-  type ** [x<:List,y] = Cons[x,y]
 
   trait Target[ST<:List,LT<:List]
   trait BackwardTarget[ST<:List,LT<:List] extends F[ST,LT] with Target[ST,LT] 
