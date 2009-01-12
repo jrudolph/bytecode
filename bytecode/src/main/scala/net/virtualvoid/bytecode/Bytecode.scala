@@ -283,7 +283,10 @@ object Bytecode{
     val func:Iterable[Integer] => Seq[String] =null
     val func2: Seq[Integer] => Iterable[String] = func
     val fr:F[Nil**String,Nil] = null
-    val fr2:F[Nil**AnyRef,Nil] = fr
+    val fr2:F[Nil**String,Nil] = fr
+    
+    val fr3:F[List**String,Nil] = fr
+    fr3 ~ method{(str:String) => str.length}
   ()
   }  
 }
