@@ -22,6 +22,8 @@ object Bytecode{
   implicit def conser[T<:List](t:T) = new Consable[T]{
     def **[U](next:U): T**U = Cons(t,next)
   }
+  
+  case class Loc[+L<:List,+R<:List](left:L,right:R)
 
   trait Target[ST<:List,LT<:List]
   trait BackwardTarget[ST<:List,LT<:List] extends F[ST,LT] with Target[ST,LT] 
@@ -41,7 +43,7 @@ object Bytecode{
     def frame = f
   }
   
-  trait F[+ST<:List,+LT<:List]{
+  trait F[+ST<:List,+LT<:Loc[_,_]]{
     def depth = -1
     def frame = this
     
@@ -50,12 +52,12 @@ object Bytecode{
 
     def bipush[S>:ST](i1:Int):F[S**Int,LT]
     def ldc[S>:ST](str:jString):F[S**jString,LT]
-    def target[S>:ST<:List,L>:LT<:List]:BackwardTarget[S,L] = null
-    def jmp[S>:ST<:List,L>:LT<:List](t:Target[S,L]):Nothing = null.asInstanceOf[Nothing]
+    //def target[S>:ST<:List,L>:LT<:List]:BackwardTarget[S,L] = null
+    //def jmp[S>:ST<:List,L>:LT<:List](t:Target[S,L]):Nothing = null.asInstanceOf[Nothing]
     
     // support for forward declaring targets
-    def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = null
-    def targetHere[S>:ST<:List,L>:LT<:List](t:ForwardTarget[S,L]):F[S,L] = null
+    //def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = null
+    //def targetHere[S>:ST<:List,L>:LT<:List](t:ForwardTarget[S,L]):F[S,L] = null
 
     def ~[X](f:F[ST,LT]=>X):X = f(this)
     
@@ -76,8 +78,8 @@ object Bytecode{
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
     
-    def tailRecursive_int[ST2<:List,LT2<:List,S>:ST<:List,L>:LT<:List]
-        (func: (F[S,L] => F[ST2,LT2]) => (F[S,L]=>F[ST2,LT2]))(fr:F[S,L]):F[ST2,LT2]
+    def tailRecursive_int[ST<:List,LL<:List,LR<:List,ST2<:List,LL2<:List,LR2<:List]
+      (func: (F[ST,Loc[LL,LR]] => F[ST2,Loc[LL2,LR2]]) => (F[ST,Loc[LL,LR]]=>F[ST2,Loc[LL2,LR2]]))(fr:F[ST,Loc[LL,LR]]):F[ST2,Loc[LL2,LR2]]
     
     def pop_unit_int[R<:List](rest:R):F[R,LT]
 
@@ -97,7 +99,7 @@ object Bytecode{
     def isub[R<:List,LT<:List] = 
       iop[R,LT](_.isub_int(_,_,_))
     
-    def method[T,U,R<:List,LT<:List](code:scala.reflect.Code[T=>U]):F[R**T,LT] => F[R**U,LT] = 
+    def method[T,U,R<:List,LL,LR](code:scala.reflect.Code[T=>U]):F[R**T,Loc[LL,LR]] => F[R**U,Loc[LL,LR]] = 
       f => f.method_int(f.stack.rest,f.stack.top,code)
     def method2[T1,T2,U,R<:List,LT<:List](code:scala.reflect.Code[(T1,T2)=>U]):
       F[R**T1**T2,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
@@ -107,17 +109,17 @@ object Bytecode{
     def pop_unit[R<:List,LT<:List]:F[R**Unit,LT] => F[R,LT] =
       f => f.pop_unit_int(f.stack.rest)
     
-    def pop[R<:List,LT<:List,T]:F[R**T,LT]=>F[R,LT] = f=>f.pop_int(f.stack.rest)
+    def pop[R<:List,LL<:List,LR<:List,T]:F[R**T,Loc[LL,LR]]=>F[R,Loc[LL,LR]] = f=>f.pop_int(f.stack.rest)
     def dup[R<:List,LT<:List,T]:F[R**T,LT]=>F[R**T**T,LT] = f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2**T1,LT] = f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     def swap[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2,LT] = f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
     def checkcast[T,U,R<:List,LT<:List](cl:Class[U]):F[R**T,LT]=>F[R**U,LT] = f => f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     
-    def bipush[R<:List,LT<:List](i:Int):F[R,LT]=>F[R**Int,LT] = _.bipush(i)
+    def bipush[R<:List,LL<:List,LR<:List](i:Int):F[R,Loc[LL,LR]]=>F[R**Int,Loc[LL,LR]] = _.bipush(i)
     def ldc[R<:List,LT<:List](str:String):F[R,LT]=>F[R**String,LT] = _.ldc(str)
     
-    def aload[R<:List,LT<:List,T]:F[R**Array[T]**Int,LT] => F[R**T,LT] = f=>f.aload_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
+    def aload[R<:List,LL<:List,LR<:List,T]:F[R**Array[T]**Int,Loc[LL,LR]] => F[R**T,Loc[LL,LR]] = f=>f.aload_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     def astore[R<:List,LT<:List,T]:F[R**Array[T]**Int**T,LT] => F[R,LT] = f=>f.astore_int(f.stack.rest.rest.rest,f.stack.rest.rest.top,f.stack.rest.top,f.stack.top)
     def arraylength[R<:List,LT<:List,T]:F[R**Array[T],LT] => F[R**Int,LT] = f=>f.arraylength_int(f.stack.rest,f.stack.top)
 
@@ -125,13 +127,23 @@ object Bytecode{
     implicit def bool2JVMInt(b:Boolean) = JVMInt(if (b) 1 else 0)
     
     def ifeq[R<:List,LT<:List,T<%JVMInt](inner:F[R,LT]=>Nothing):F[R**T,LT] => F[R,LT] = f=>f.ifeq_int(f.stack.rest,f.stack.top,inner)
-    def target[ST<:List,LT<:List] = (f:F[ST,LT]) => f.target
-    def targetHere[ST<:List,LT<:List](t:ForwardTarget[ST,LT]) = (f:F[ST,LT]) => f.targetHere(t)
-    def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
+    //def target[ST<:List,LT<:List] = (f:F[ST,LT]) => f.target
+    //def targetHere[ST<:List,LT<:List](t:ForwardTarget[ST,LT]) = (f:F[ST,LT]) => f.targetHere(t)
+    //def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
        
     def newInstance[ST<:List,LT<:List,T](cl:Class[T]) = (f:F[ST,LT]) => f.newInstance(cl)
     
     def after[ST<:List,LT<:List](f:F[_,_]=>F[ST,LT]):F[ST,LT]=>F[ST,LT] = f => f
+    
+    def ll[ST<:List,LL<:List,LR<:List,X]:F[ST,Loc[LL,LR**X]] => F[ST,Loc[LL**X,LR]] = null
+    def lr[ST<:List,LL<:List,LR<:List,X]:F[ST,Loc[LL**X,LR]] => F[ST,Loc[LL,LR**X]] = null
+    def lload[ST<:List,LL<:List,LR<:List,X]:F[ST,Loc[LL,LR**X]] => F[ST**X,Loc[LL,LR**X]] = null
+    def lloadX[ST<:List,LL<:List,LR<:List,X](func:LR=>X):F[ST,Loc[LL,LR]] => F[ST**X,Loc[LL,LR]] = null
+    def ll0[X]:_**X => X = null
+    def ll1[X]:_**X**_ => X = null
+    
+    def lstore[ST<:List,LL<:List,LR<:List,X]:F[ST**X,Loc[LL,LR**_]] => F[ST,Loc[LL,LR**X]] = null
+    def lstoreNew[ST<:List,LL<:List,LR<:List,X]:F[ST**X,Loc[LL,Nil]] => F[ST,Loc[LL,Nil**X]] = null
     
     def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = f=>{
       var i = 0;
@@ -150,8 +162,8 @@ object Bytecode{
     def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.l.l
     
     def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
-    def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
-      (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
+    def tailRecursive[ST<:List,LL<:List,LR<:List,ST2<:List,LL2<:List,LR2<:List]
+      (func: (F[ST,Loc[LL,LR]] => F[ST2,Loc[LL2,LR2]]) => (F[ST,Loc[LL,LR]]=>F[ST2,Loc[LL2,LR2]]))(fr:F[ST,Loc[LL,LR]]):F[ST2,Loc[LL2,LR2]] =
         fr.tailRecursive_int(func)(fr)
   }
 
@@ -213,27 +225,34 @@ object Bytecode{
        *    f(0,start)
       */
       import Bytecode.Implicits._
-	  def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
+	  def foldArray[R<:List,LL<:List,LR<:List,T,U,X](
+	    func:F[R**U**T,Loc[LL**Array[T],LR**Int]]=>F[R**U,Loc[LL**Array[T],LR**Int]]):
+                   F[R**U,Loc[LL,LR**X**Array[T]]] => F[R**U,Loc[LL,LR**_**Array[T]]] =
 	    _ ~
-	    swap ~ 
-        (_.l.store.e) ~ 
 	    bipush(0) ~
-	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
+        ll ~ lstore ~ lr ~
+	    tailRecursive[R**U,LL,LR**Int**Array[T],R**U,LL,LR**Int**Array[T]]{self =>
 	      _ ~
-	      dup ~
-	      load(l0) ~
-	      arraylength ~
-	      isub ~
-	      ifeq2(pop,
-	            _ ~
-	            dup_x1 ~
-	            load(l0) ~
-	            swap ~
-	            aload ~
-	            func ~
-	            swap ~
+          //dup ~ // start,i,i | ar,i
+	      //load(l0) ~
+          ll ~ lload ~ lr ~
+          lload ~ // start,i,i,ar
+	      arraylength ~ //start,i,i,ar.length
+	      isub ~ //start,i,i-ar.length
+	      ifeq2(f=>f, //start
+	            _ ~  // start,i
+	            //dup_x1 ~
+	            //load(l0) ~
+	            //swap ~
+                dup ~ // start,i,i
+                lload ~ // start,i,i,ar
+                swap ~ // start,i,ar,i
+	            aload ~ //start,i,ele
+                swap ~ //start,ele,i
+	            ll ~ lstore ~ func ~ lload ~
 	            bipush(1) ~ 
 	            iadd ~
+                dup ~ lstore ~ lr ~
 	            self
 	      )
 	    }
@@ -266,7 +285,7 @@ object Bytecode{
     //val u:Nothing = l
     def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
     
-    val x = stack[String] ~ method(_.length) ~ dup ~ iadd ~ method(Integer.valueOf(_))
+    //val x = stack[String] ~ method(_.length) ~ dup ~ iadd ~ method(Integer.valueOf(_))
     //val y = richFunc(method((_:String).length))
     
     
@@ -286,8 +305,28 @@ object Bytecode{
     val fr2:F[Nil**String,Nil] = fr
     
     val fr3:F[List**String,Nil] = fr
-    fr3 ~ method{(str:String) => str.length}
+    //fr3 ~ method{(str:String) => str.length}
+    
+    val fr4:F[Nil,Loc[Nil,Nil]] = null
+    val x2:F[Nil,Loc[Nil,Nil**Int]] =
+      fr4 ~ 
+      bipush(5) ~ 
+      lstoreNew
+    
+    val x3:F[Nil**String,Loc[Nil,Nil**String**Int]]= 
+      x2 ~
+      lload ~ 
+      method(Integer.toString(_)) ~
+      ll ~ lstoreNew ~ lr ~ lloadX(ll1)
   ()
+  /**
+type mismatch; 
+  found : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Array[T]],Int],net.virtualvoid.bytecode.Bytecode.Loc[LL,LR]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,T],net.virtualvoid.bytecode.Bytecode.Loc[LL,LR]]
+required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,U],Array[T]],U],net.virtualvoid.bytecode.Bytecode.Loc[LL,net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[LR,Int],Array[T]]]]) => net.virtualvoid.bytecode.Bytecode.F[?,?]
+
+polymorphic expression cannot be instantiated to expected type; 
+  found : [R <: net.virtualvoid.bytecode.Bytecode.List,LL <: net.virtualvoid.bytecode.Bytecode.List,LR <: net.virtualvoid.bytecode.Bytecode.List,T](net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,Array[T]],Int],net.virtualvoid.bytecode.Bytecode.Loc[LL,LR]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[R,T],net.virtualvoid.bytecode.Bytecode.Loc[LL,LR]] required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[R,U],Array[T]],U],net.virtualvoid.bytecode.Bytecode.Loc[LL,net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[LR,Int],Array[T]]]]) => ?     
+*/
   }  
 }
 

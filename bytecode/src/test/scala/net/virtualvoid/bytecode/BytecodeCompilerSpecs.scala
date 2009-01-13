@@ -243,6 +243,13 @@ object BytecodeCompilerSpecs extends Specification{
           def f[R<:List,L<:List]:SF[R**T,R**U,L] = func.asInstanceOf[SF[R**T,R**U,L]]
         }
       
+      trait StackFunc[A,B]{
+        
+      }
+      
+      trait Loc[L<:List,R<:List]
+      
+      
       val toString = sf[java.lang.Integer,String](method(_.toString))
       
       val empty:F[Nil,Nil] = null
@@ -252,7 +259,7 @@ object BytecodeCompilerSpecs extends Specification{
           method(java.lang.Integer.valueOf(_)) ~
             toString.f)
       
-      val test:String = x       
+      //val test:String = x       
       
       System.out.println(func2(Array(5,10,3,5,2)))
       System.out.println(func3(java.util.Arrays.asList(12,4,2,6,3,7,3)))
