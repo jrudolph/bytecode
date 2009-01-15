@@ -252,7 +252,7 @@ object BytecodeCompilerSpecs extends Specification{
           method(java.lang.Integer.valueOf(_)) ~
             toString.f)
       
-      val test:String = x       
+      //val test:String = x       
       
       System.out.println(func2(Array(5,10,3,5,2)))
       System.out.println(func3(java.util.Arrays.asList(12,4,2,6,3,7,3)))
