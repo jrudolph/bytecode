@@ -5,18 +5,18 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object Interpreter extends ByteletCompiler{
-    case class IF[ST<:List,LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
+    case class IF[+ST<:List,+LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
       import CodeTools._
       
       def notImplemented(what:String) = new java.lang.Error(what + " not implemented in Interpreter")
       
-      def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
-      def ldc(str:jString):F[ST**jString,LT] = IF(stack ** str,locals)
-      def target:BackwardTarget[ST,LT] = throw notImplemented("target")
-      def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
+      def bipush[S>:ST](i1:Int):F[S**Int,LT] = IF(stack ** i1,locals)
+      def ldc[S>:ST](str:jString):F[S**jString,LT] = IF(stack ** str,locals)
+      //def target:BackwardTarget[ST,LT] = throw notImplemented("target")
+      //def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
       
-      def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = throw notImplemented("forwardTarget")
-      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = throw notImplemented("targetHere")
+      //def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = throw notImplemented("forwardTarget")
+      //def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = throw notImplemented("targetHere")
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
       def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
@@ -58,15 +58,15 @@ object Interpreter extends ByteletCompiler{
         case Cons(r,old:T) => if (i == 0) Cons(r,t) else Cons(store(i-1,r,t),old)
       }
 
-      def loadI[T](i:Int):F[ST**T,LT] = IF(stack**get(i,locals),locals)
+      def loadI[T,S>:ST](i:Int):F[S**T,LT] = IF(stack**get(i,locals),locals)
       def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] =
         IF(rest,store(i,locals,top).asInstanceOf[NewLT])
       
-      def newInstance[T](cl:Class[T]):F[ST**T,LT] = 
+      def newInstance[T,S>:ST](cl:Class[T]):F[S**T,LT] = 
         IF(stack**cl.newInstance,locals)
       
-      def tailRecursive_int[ST2<:List,LT2<:List]
-        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
+      def tailRecursive_int[ST2<:List,LT2<:List,S>:ST<:List,L>:LT<:List]
+        (func: (F[S,L] => F[ST2,LT2]) => (F[S,L]=>F[ST2,LT2]))(fr:F[S,L]):F[ST2,LT2] =
           // classical y combinator in strict languages
           func(tailRecursive_int(func)_)(fr)
     }
