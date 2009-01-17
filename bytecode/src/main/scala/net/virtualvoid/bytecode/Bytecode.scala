@@ -30,6 +30,10 @@ object Bytecode{
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
   }
+  
+  case class SingleWordType{
+    
+  }
 
   trait Zippable[ST<:List,L<:List,Cur,R<:List]{
     def depth:Int
@@ -107,7 +111,7 @@ object Bytecode{
     def pop_unit[R<:List,LT<:List]:F[R**Unit,LT] => F[R,LT] =
       f => f.pop_unit_int(f.stack.rest)
     
-    def pop[R<:List,LT<:List,T]:F[R**T,LT]=>F[R,LT] = f=>f.pop_int(f.stack.rest)
+    def pop[R<:List,LT<:List,T]()(implicit f:T => SingleWordType):F[R**T,LT]=>F[R,LT] = f=>f.pop_int(f.stack.rest)
     def dup[R<:List,LT<:List,T]:F[R**T,LT]=>F[R**T**T,LT] = f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2**T1,LT] = f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     def swap[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2,LT] = f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
@@ -153,6 +157,13 @@ object Bytecode{
     def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
       (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
         fr.tailRecursive_int(func)(fr)
+      
+    implicit def int2SingleWordType(i:Int) : SingleWordType = null
+    implicit def asSingleWordType(i:Float) : SingleWordType = null
+    implicit def asSingleWordType(i:Char) : SingleWordType = null
+    implicit def asSingleWordType(i:Byte) : SingleWordType = null
+    implicit def asSingleWordType(i:Short) : SingleWordType = null
+    implicit def asSingleWordType(i:AnyRef) : SingleWordType = null
   }
 
   object Implicits{
@@ -224,7 +235,7 @@ object Bytecode{
 	      load(l0) ~
 	      arraylength ~
 	      isub ~
-	      ifeq2(pop,
+	      ifeq2(pop(),
 	            _ ~
 	            dup_x1 ~
 	            load(l0) ~
