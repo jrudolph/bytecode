@@ -164,6 +164,13 @@ object Bytecode{
     implicit def asSingleWordType(i:Byte) : SingleWordType = null
     implicit def asSingleWordType(i:Short) : SingleWordType = null
     implicit def asSingleWordType(i:AnyRef) : SingleWordType = null
+    
+    
+    def args[R<:List,LT<:List]:F[R,LT]=>F[R**Nil,LT] = null
+    def arg[R<:List,R2<:List,T,LT<:List]:F[R**T**R2,LT] => F[R**(R2**T),LT] = null
+    def pushMethod[A,B,R1<:List,R2<:List,LT<:List](f:A=>B):F[R1**(R2**A),LT] => F[R1**(R2**B),LT] = null
+    def consume[R1<:List,R2<:List,T,U,LT<:List]:F[R1**(R2**T**(T=>U)),LT] => F[R1 ** (R2 ** U),LT] = null
+    def call[R<:List,U,LT<:List]:F[R**(Nil**U),LT] => F[R ** U,LT] = null
   }
 
   object Implicits{
@@ -298,6 +305,10 @@ object Bytecode{
     
     val fr3:F[List**String,Nil] = fr
     fr3 ~ method{(str:String) => str.length}
+    
+    val met = stack[Int] ~ ldc("test") ~ args ~ arg ~ arg ~
+      pushMethod(((i:Int,str:String) => 5.f).curry) ~ 
+      consume ~ call ~ method(java.lang.Float.toString(_))
   ()
   }  
 }
