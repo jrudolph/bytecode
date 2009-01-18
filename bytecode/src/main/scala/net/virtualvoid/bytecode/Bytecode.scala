@@ -4,6 +4,21 @@ object Bytecode{
   import java.lang.{String => jString,
                     Boolean => jBoolean
   }
+  
+  /* Peano-like natural numbers types */  
+  trait Nat
+  final class _0 extends Nat
+  final class Succ[Pre<:Nat] extends Nat
+  
+  type _1 = Succ[_0]
+  type _2 = Succ[_1]
+  type _3 = Succ[_2]
+  type _4 = Succ[_3]
+  
+  val _0 = new _0
+  val _1 = new _1
+  val _2 = new _2
+  val _3 = new _3  
 
   trait List
   trait Nil extends List
@@ -86,7 +101,17 @@ object Bytecode{
     def loadI[T,S>:ST](i:Int):F[S**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
+  case class NThGetter[P<:Nat,T,L<:List]
+  implicit def nth_0[R<:List,T] = NThGetter[_0,T,R**T]
+  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit fn:NThGetter[P,T,R]) = NThGetter[Succ[P],T,R**U] 
+  
+  trait LoadFunc[P<:Nat,T]{
+    def l[ST<:List,LT<:List](f:F[ST,LT])(implicit fn:NThGetter[P,T,LT]):F[ST**T,LT]
+  }
+  
   object Operations{
+    def loadX[P<:Nat,T]:LoadFunc[P,T] = null
+    
     def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT]):
       F[R**Int**Int,LT] => F[R**Int,LT] = f => func(f,f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
