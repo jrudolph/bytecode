@@ -5,10 +5,22 @@ object Bytecode{
                     Boolean => jBoolean
   }
   
+  trait NatVisitor{
+    type ResultType
+    type Visit0 <: ResultType
+    type VisitSucc[P<:Nat] <: ResultType
+  }
+  
   /* Peano-like natural numbers types */  
-  trait Nat
-  final class _0 extends Nat
-  final class Succ[Pre<:Nat] extends Nat
+  trait Nat{
+    type Accept[V<:NatVisitor] <: V#ResultType
+  }
+  final class _0 extends Nat{
+    type Accept[V<:NatVisitor] = V#Visit0
+  }  
+  final class Succ[Pre<:Nat] extends Nat{
+    type Accept[V<:NatVisitor] = V#VisitSucc[Pre]
+  }
   
   type _1 = Succ[_0]
   type _2 = Succ[_1]
@@ -20,12 +32,22 @@ object Bytecode{
   val _2 = new _2
   val _3 = new _3  
 
-  trait List
-  trait Nil extends List
+  trait List{
+    type Rest <: List
+    type Top
+  }
+  trait Nil extends List{
+    type Rest = Nil
+    type Top = Nothing
+  }
   object N extends Nil
   
-  case class Cons[+R<:List,+T](rest:R,top:T) extends List{
+  case class Cons[R<:List,T](rest:R,top:T) extends List{
+    type Rest = R
+    type Top = T
     def l = rest
+    /*def rest2:Rest = rest
+    def top2:Top = top*/
   }
   // define an infix operator shortcut for the cons type
   type ** [x<:List,y] = Cons[x,y]
@@ -109,8 +131,26 @@ object Bytecode{
     def l[ST<:List,LT<:List](f:F[ST,LT])(implicit fn:NThGetter[P,T,LT]):F[ST**T,LT]
   }
   
+  case class NThReplacer[P<:Nat,L<:List,T](fn:L => ReplaceNTh[L,P,T])
+  implicit def replace_0[R<:List,T,U] = 
+    NThReplacer[_0,R,T](null)
+  implicit def replaceSucc[P<:Nat,R<:List,T,U](implicit fn : NThReplacer[P,R,T]) =
+    NThReplacer[Succ[P],R**U,T](null)
+     
+  trait StoreFunc[P<:Nat,T]{
+    def s[ST<:List,LT<:List](f:F[ST**T,LT])(implicit fn:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]]
+  }
+  
+  final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
+    type ResultType = List
+    type Visit0 = Cons[R#Rest,T]
+    type VisitSucc[P<:Nat] = Cons[P#Accept[ReplaceNThVisitor[R#Rest,T]],R#Top]
+  }
+  type ReplaceNTh[R<:List,N<:Nat,T] = N#Accept[ReplaceNThVisitor[R,T]]
+  
   object Operations{
     def loadX[P<:Nat,T]:LoadFunc[P,T] = null
+    def storeX[P<:Nat,T]:StoreFunc[P,T] = null
     
     def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT]):
       F[R**Int**Int,LT] => F[R**Int,LT] = f => func(f,f.stack.rest.rest,f.stack.rest.top,f.stack.top)
@@ -241,18 +281,18 @@ object Bytecode{
 	  def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        (_.l.store.e) ~ 
+        (storeX[_0,Array[T]].s(_)) ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
 	      dup ~
-	      load(l0) ~
+	      (loadX[_0,Array[T]].l(_)) ~
 	      arraylength ~
 	      isub ~
 	      ifeq2(pop,
 	            _ ~
 	            dup_x1 ~
-	            load(l0) ~
+	            (loadX[_0,Array[T]].l(_)) ~
 	            swap ~
 	            aload ~
 	            func ~
@@ -310,8 +350,43 @@ object Bytecode{
     val fr:F[Nil**String,Nil] = null
     val fr2:F[Nil**String,Nil] = fr
     
-    val fr3:F[List**String,Nil] = fr
-    fr3 ~ method{(str:String) => str.length}
+    def fun(i:Number):String = i.toString
+    
+    /*val fr3:F[Nil**Int,Nil] = null
+    fr3 ~ method(fun(_))*/
+    
+//    val fr3:F[List**String,Nil] = fr
+//    fr3 ~ method{(str:String) => str.length}
+    
+    val f:F[Nil,Nil**String**Int] = null
+    f ~ (loadX[_1,String].l(_))
+    
+    {
+      // test replace type
+      
+      
+      val x:ReplaceNTh[Nil**String**Int**Float,_0,Double] = null
+      val x2:_0#Accept[ReplaceNThVisitor[Nil**String**Int**Float,Double]] = x
+      val x3:ReplaceNThVisitor[Nil**String**Int**Float,Double]#Visit0 = x2
+      val x4:(Nil**String**Int**Float)#Rest**Double = x3
+      val x5:Nil**String**Int**Double = x
+      
+      val y:ReplaceNTh[Cons[Cons[Cons[Nil,String],Int],Float],_1,Double] = null
+      val y2:_1#Accept[ReplaceNThVisitor[Nil**String**Int**Float,Double]] = y
+      val y3:ReplaceNThVisitor[Nil**String**Int**Float,Double]#VisitSucc[_0] = y2
+      val y4:Cons[_0#Accept[ReplaceNThVisitor[Nil**String**Int,Double]],Float] = y3
+      val y5:Cons[ReplaceNThVisitor[Nil**String**Int,Double]#Visit0,Float] = y
+      val y5a:ReplaceNThVisitor[Nil**String**Int,Double]#Visit0 = null
+      val y6:Cons[Cons[(Nil**String**Int)#Rest,Double],Float] = y
+      val y6a:Nil**String**Double= y5a
+      val y7:Nil**String**Double**Float = y
+      
+      val z:ReplaceNTh[Nil**String**Int**Float,_2,Double] = null
+      //val z2:Nil**Double**Int**Float = z
+      
+      ()
+    }
+    
   ()
   }  
 }
