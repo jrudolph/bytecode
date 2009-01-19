@@ -75,28 +75,29 @@ object BytecodeCompilerSpecs extends Specification{
     "ifeq and jmp" in {
       if (compiler != Interpreter)
       compiler.compile(classOf[java.lang.Integer])(
+        // sums all integers from 0 to i
         f => {
           val start = f ~
             method(_.intValue) ~
-            (_.l.store.e) ~
+            (storeX[_0,Int].s(_)) ~ //  store current i in local 0
             bipush(0) ~
-            (_.l.l.store.e.e) ~
+            (storeX[_1,Int].s(_)) ~ //  store sum in local 1
             target
           
           start ~
-            load(l0) ~
+            (loadX[_0,Int].l(_)) ~ // load i to check if we are 0 already 
             ifeq(f => 
               f ~ load(l0) ~
                 dup ~
                 bipush(1) ~
                 isub ~
-                (_.l.store.e) ~
+                (storeX[_0,Int].s(_)) ~
                 load(l1) ~
                 iadd ~
-                (_.l.l.store.e.e) ~
+                (storeX[_1,Int].s(_)) ~
                 jmp(start)
             ) ~
-            load(l1) ~
+            (loadX[_1,Int].l(_)) ~
             method(Integer.valueOf(_))
       }).apply(5) must be_==(15)
     }

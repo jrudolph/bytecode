@@ -19,6 +19,8 @@ object ASMCompiler extends ByteletCompiler{
     }
     case object EmptyClassStack extends UnsetClassStack(null)
     
+    object JmpException extends RuntimeException 
+    
     class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack) extends F[ST,LT]{
       def self[T]:T = this.asInstanceOf[T]
 
@@ -45,7 +47,7 @@ object ASMCompiler extends ByteletCompiler{
         def label:Label
       }
       
-      /*case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
+      case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
           extends ASMFrame[ST,LT](mv,stackClass,localsClass) with BackwardTarget[ST,LT] with ASMTarget
       def target:BackwardTarget[ST,LT] = {
         val label = new Label
@@ -65,8 +67,8 @@ object ASMCompiler extends ByteletCompiler{
 
       def jmp(t:Target[ST,LT]):Nothing = {
         mv.visitJumpInsn(GOTO,t.asInstanceOf[ASMTarget].label)
-        null.asInstanceOf[Nothing]
-      }*/
+        throw JmpException
+      }
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
         mv.visitInsn(IADD)
@@ -103,8 +105,13 @@ object ASMCompiler extends ByteletCompiler{
       def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
         mv.visitJumpInsn(IFEQ,l)
-
-        inner(self)
+        
+        try{
+          inner(self)
+        }
+        catch{
+          case JmpException =>
+        }
 
         mv.visitLabel(l)
         new ASMFrame[R,LT](mv,stackClass.rest,localsClass)

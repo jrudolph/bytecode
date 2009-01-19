@@ -87,12 +87,12 @@ object Bytecode{
 
     def bipush(i1:Int):F[ST**Int,LT]
     def ldc(str:jString):F[ST**jString,LT]
-    def target[S>:ST<:List,L>:LT<:List]:BackwardTarget[S,L] = null
-    def jmp[S>:ST<:List,L>:LT<:List](t:Target[S,L]):Nothing = null.asInstanceOf[Nothing]
+    def target:BackwardTarget[ST,LT]
+    def jmp(t:Target[ST,LT]):Nothing
     
     // support for forward declaring targets
-    def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = null
-    def targetHere[S>:ST<:List,L>:LT<:List](t:ForwardTarget[S,L]):F[S,L] = null
+    def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT]
+    def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT]
 
     def ~[X](f:F[ST,LT]=>X):X = f(this)
     
