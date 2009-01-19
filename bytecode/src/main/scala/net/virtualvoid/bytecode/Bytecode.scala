@@ -78,15 +78,15 @@ object Bytecode{
     def frame = f
   }
   
-  trait F[+ST<:List,+LT<:List]{
+  trait F[ST<:List,LT<:List]{
     def depth = -1
     def frame = this
     
     def stack:ST
     def locals:LT
 
-    def bipush[S>:ST](i1:Int):F[S**Int,LT]
-    def ldc[S>:ST](str:jString):F[S**jString,LT]
+    def bipush(i1:Int):F[ST**Int,LT]
+    def ldc(str:jString):F[ST**jString,LT]
     def target[S>:ST<:List,L>:LT<:List]:BackwardTarget[S,L] = null
     def jmp[S>:ST<:List,L>:LT<:List](t:Target[S,L]):Nothing = null.asInstanceOf[Nothing]
     
@@ -113,14 +113,14 @@ object Bytecode{
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT]
     
-    def tailRecursive_int[ST2<:List,LT2<:List,S>:ST<:List,L>:LT<:List]
-        (func: (F[S,L] => F[ST2,LT2]) => (F[S,L]=>F[ST2,LT2]))(fr:F[S,L]):F[ST2,LT2]
+    def tailRecursive_int[ST2<:List,LT2<:List]
+        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2]
     
     def pop_unit_int[R<:List](rest:R):F[R,LT]
 
-    def newInstance[T,S>:ST](cl:Class[T]):F[S**T,LT]
+    def newInstance[T](cl:Class[T]):F[ST**T,LT]
     
-    def loadI[T,S>:ST](i:Int):F[S**T,LT]
+    def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
   case class NThGetter[P<:Nat,T,L<:List]

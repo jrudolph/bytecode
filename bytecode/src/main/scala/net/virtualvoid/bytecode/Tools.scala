@@ -45,27 +45,44 @@ object CodeTools{
     case This(symbol) => symbol.tpe
     case Select(_,symbol) => symbol.tpe
   }
-  def methodFromTree(tree:Tree):jMethod = tree match{
-    // method call with variable receiver like '_.toString'
-    case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
-      val clazz = extractClass(tpe)
-      val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
-      val methodName = method.substring(clazz.length+1)
-      val m = cl.getMethod(methodName)
-      m
-    }
-    // static method call with variable first parameter 'Integer.valueOf(_)'
-    case Function(List(x),Apply(Select(qual,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),_))),List(Ident(x1)))) if x==x1 => {
-      val clazz = extractClass(typeOfQualifier(qual))
-      val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString))//java.lang.Class.forName(clazz)
-      val methodName = method.substring(clazz.length+1)
-      val argCl = cleanClass(argClazz)
-      val m = cl.getMethod(methodName,argCl)
-      assert ((m.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
-      m
-    }
-    case _ => throw new Error("Can't match this "+tree)
+  def methodFromTree(tree:Tree):jMethod = try {
+	    tree match{
+	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
+	      // like [T,It<:Iterable[T]] (it:It) => it.iterator
+	      case Function(
+	        List(LocalValue(NoSymbol,x,PrefixedType(NoType,NoSymbol))),
+                 Apply(Select(Ident(LocalValue(NoSymbol,x1,PrefixedType(NoType,NoSymbol))),
+                         Method(method,_)),List())) if x == x1 => {
+	        val index = method.lastIndexOf(".")
+            val clazz = method.substring(0,index)
+            val methodName = method.substring(index+1)
+            val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz not found: "+clazz+" in "+tree.toString))
+            cl.getMethod(methodName)
+          }
+          // method call with variable receiver like '_.toString'
+          case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
+            val clazz = extractClass(tpe)
+            val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
+            val methodName = method.substring(clazz.length+1)
+            val m = cl.getMethod(methodName)
+            m
+          }
+	      // static method call with variable first parameter 'Integer.valueOf(_)'
+          case Function(List(x),Apply(Select(qual,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),_))),List(Ident(x1)))) if x==x1 => {
+            val clazz = extractClass(typeOfQualifier(qual))
+            val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString))//java.lang.Class.forName(clazz)
+            val methodName = method.substring(clazz.length+1)
+            val argCl = cleanClass(argClazz)
+            val m = cl.getMethod(methodName,argCl)
+            assert ((m.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
+            m
+          }
+          case _ => throw new Error("Can't match this "+tree)
+	    }
   }
+  catch{
+    case e:Exception => throw new Error("Error while calling method: "+tree,e);
+  }    
   
   def box(a:Any):AnyRef = a match{
     case i:Int => Integer.valueOf(i)

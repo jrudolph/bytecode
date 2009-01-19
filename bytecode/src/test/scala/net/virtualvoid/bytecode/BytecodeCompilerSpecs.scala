@@ -194,8 +194,8 @@ object BytecodeCompilerSpecs extends Specification{
          else
        *    start
        */
-      def foldIterable[R<:List,LT<:List,T,U,X](eleType:Class[T],func:F[R**U**T,LT**jIterator[T]]=>F[R**U,LT**jIterator[T]])
-          :F[R**U**jIterable[T],LT**X] => F[R**U,LT**jIterator[T]] =
+      def foldIterable[R<:List,LT<:List,T,U,X,It<:jIterable[T]](func:F[R**U**T,LT**jIterator[T]]=>F[R**U,LT**jIterator[T]],eleType:Class[T])
+          :F[R**U**It,LT**X] => F[R**U,LT**jIterator[T]] =
         _ ~
         method(_.iterator) ~
         (_.l.store.e) ~
@@ -229,7 +229,9 @@ object BytecodeCompilerSpecs extends Specification{
         dup ~
         (_.l.store.e) ~
         swap ~
-        foldIterable(classOf[java.lang.Integer],_ ~ method(_.intValue) ~ iadd) ~
+        foldIterable[Nil,Nil,java.lang.Integer,Int,Int,java.util.List[java.lang.Integer]](
+          (f:F[Nil**Int**java.lang.Integer,Nil**jIterator[java.lang.Integer]]) 
+              => f ~ method((_:java.lang.Integer).intValue) ~ iadd,classOf[java.lang.Integer]) ~
         method(Integer.valueOf(_))
       )
       
@@ -255,7 +257,7 @@ object BytecodeCompilerSpecs extends Specification{
       //val test:String = x       
       
       System.out.println(func2(Array(5,10,3,5,2)))
-      System.out.println(func3(java.util.Arrays.asList(12,4,2,6,3,7,3)))
+      System.out.println(func3(java.util.Arrays.asList(12,4,2,6,3,7,3)):java.lang.Integer)
       
   }
 }
@@ -263,8 +265,8 @@ object BytecodeCompilerSpecs extends Specification{
 /*
 Description	Resource	Path	Location	Type
 type mismatch;
- found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],java.lang.Iterable[Integer]],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,java.util.Iterator[Integer]]]
- required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,java.lang.Iterable[Integer]],Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => ?	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
+ found   : (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],java.lang.Iterable[java.lang.Integer]],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,java.util.Iterator[java.lang.Integer]]]
+ required: (net.virtualvoid.bytecode.Bytecode.F[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int],java.util.List[java.lang.Integer]],net.virtualvoid.bytecode.Bytecode.**[net.virtualvoid.bytecode.Bytecode.Nil,Int]]) => ?	BytecodeCompilerSpecs.scala	bytecode/src/test/scala/net/virtualvoid/bytecode	Unknown	Scala Problem
 
 */
 
