@@ -123,19 +123,19 @@ object Bytecode{
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
-  case class NThGetter[P<:Nat,T,L<:List]
-  implicit def nth_0[R<:List,T] = NThGetter[_0,T,R**T]
-  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit fn:NThGetter[P,T,R]) = NThGetter[Succ[P],T,R**U] 
+  case class NThGetter[P<:Nat,T,L<:List](depth:Int)
+  implicit def nth_0[R<:List,T] = NThGetter[_0,T,R**T](0)
+  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:NThGetter[P,T,R]) = NThGetter[Succ[P],T,R**U](next.depth+1) 
   
   trait LoadFunc[P<:Nat,T]{
     def l[ST<:List,LT<:List](f:F[ST,LT])(implicit fn:NThGetter[P,T,LT]):F[ST**T,LT]
   }
   
-  case class NThReplacer[P<:Nat,L<:List,T](fn:L => ReplaceNTh[L,P,T])
+  case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
   implicit def replace_0[R<:List,T,U] = 
-    NThReplacer[_0,R,T](null)
-  implicit def replaceSucc[P<:Nat,R<:List,T,U](implicit fn : NThReplacer[P,R,T]) =
-    NThReplacer[Succ[P],R**U,T](null)
+    NThReplacer[_0,R,T](0)
+  implicit def replaceSucc[P<:Nat,R<:List,T,U](implicit next : NThReplacer[P,R,T]) =
+    NThReplacer[Succ[P],R**U,T](next.depth + 1)
      
   trait StoreFunc[P<:Nat,T]{
     def s[ST<:List,LT<:List](f:F[ST**T,LT])(implicit fn:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]]
@@ -149,8 +149,13 @@ object Bytecode{
   type ReplaceNTh[R<:List,N<:Nat,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Operations{
-    def loadX[P<:Nat,T]:LoadFunc[P,T] = null
-    def storeX[P<:Nat,T]:StoreFunc[P,T] = null
+    def loadX[P<:Nat,T]:LoadFunc[P,T] = new LoadFunc[P,T]{
+      def l[ST<:List,LT<:List](f:F[ST,LT])(implicit getter:NThGetter[P,T,LT]):F[ST**T,LT] = f.loadI(getter.depth)
+    }
+    def storeX[P<:Nat,T]:StoreFunc[P,T] = new StoreFunc[P,T]{
+      def s[ST<:List,LT<:List](f:F[ST**T,LT])(implicit replacer:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]] = 
+        f.storeI(f.stack.rest,f.stack.top,replacer.depth)
+    }
     
     def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT]):
       F[R**Int**Int,LT] => F[R**Int,LT] = f => func(f,f.stack.rest.rest,f.stack.rest.top,f.stack.top)
