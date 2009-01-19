@@ -127,8 +127,9 @@ object Bytecode{
   implicit def nth_0[R<:List,T] = NThGetter[_0,T,R**T](0)
   implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:NThGetter[P,T,R]) = NThGetter[Succ[P],T,R**U](next.depth+1) 
   
-  trait LoadFunc[P<:Nat,T]{
-    def l[ST<:List,LT<:List](f:F[ST,LT])(implicit fn:NThGetter[P,T,LT]):F[ST**T,LT]
+  trait LocalAccess[P<:Nat,T]{
+    def load[ST<:List,LT<:List](f:F[ST,LT])(implicit fn:NThGetter[P,T,LT]):F[ST**T,LT]
+    def store[ST<:List,LT<:List](f:F[ST**T,LT])(implicit fn:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]]
   }
   
   case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
@@ -137,10 +138,6 @@ object Bytecode{
   implicit def replaceSucc[P<:Nat,R<:List,T](implicit next : NThReplacer[P,R#Rest,T]) =
     NThReplacer[Succ[P],R,T](next.depth + 1)
      
-  trait StoreFunc[P<:Nat,T]{
-    def s[ST<:List,LT<:List](f:F[ST**T,LT])(implicit fn:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]]
-  }
-  
   final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
     type ResultType = List
     type Visit0 = Cons[R#Rest,T]
@@ -149,11 +146,10 @@ object Bytecode{
   type ReplaceNTh[R<:List,N<:Nat,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Operations{
-    def loadX[P<:Nat,T]:LoadFunc[P,T] = new LoadFunc[P,T]{
-      def l[ST<:List,LT<:List](f:F[ST,LT])(implicit getter:NThGetter[P,T,LT]):F[ST**T,LT] = f.loadI(getter.depth)
-    }
-    def storeX[P<:Nat,T]:StoreFunc[P,T] = new StoreFunc[P,T]{
-      def s[ST<:List,LT<:List](f:F[ST**T,LT])(implicit replacer:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]] = 
+    def local[P<:Nat,T]:LocalAccess[P,T] = new LocalAccess[P,T]{
+      def load[ST<:List,LT<:List](f:F[ST,LT])(implicit getter:NThGetter[P,T,LT]):F[ST**T,LT] = 
+        f.loadI(getter.depth)
+      def store[ST<:List,LT<:List](f:F[ST**T,LT])(implicit replacer:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]] = 
         f.storeI(f.stack.rest,f.stack.top,replacer.depth)
     }
     
@@ -203,22 +199,6 @@ object Bytecode{
     
     def after[ST<:List,LT<:List](f:F[_,_]=>F[ST,LT]):F[ST,LT]=>F[ST,LT] = f => f
     
-    def load[ST<:List,LT<:List,T,R](l:LT=>R**T):F[ST,LT]=>F[ST**T,LT] = f=>{
-      var i = 0;
-      val c:LT = new Cons(null.asInstanceOf[Cons[Nothing,Nothing]],null){
-        override def l = {
-          i+=1
-          this.asInstanceOf[Cons[Nothing,Nothing]]
-        }
-      }.asInstanceOf[LT]
-      l(c)
-      f.loadI(i).asInstanceOf[F[ST**T,LT]]
-    }
-    
-    def l0[R<:List,T]:R**T=>R**T = (f:R**T) => f
-    def l1[R<:List,T2,T1]:R**T2**T1=>R**T2 = (f:R**T2**T1) => f.l
-    def l2[R<:List,T3,T2,T1] = (f:R**T3**T2**T1) => f.l.l
-    
     def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
     def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
       (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
@@ -226,47 +206,6 @@ object Bytecode{
   }
 
   object Implicits{
-    trait Zippable[ST<:List,L<:List,Cur,R<:List]{
-      def l():Zipper[ST,L,Cur,R]
-    }
-    trait DeZippable[ST<:List,L<:List,Cur,R<:List]{
-      def e():Zipper[ST,L,Cur,R]
-    }
-    trait EndZipped[ST<:List,LT<:List]{
-      def e():F[ST,LT]
-    }
-    trait Loadable[ST<:List,L<:List,Cur,R<:List]{
-      def load():Zipper[ST,L,Cur,R]
-    }
-    trait Storeable[ST<:List,L<:List,Cur,R<:List]{
-      def store():Zipper[ST,L,Cur,R]
-    }
-
-    implicit def moreZipping[ST<:List,LR<:List,LT,Cur,R<:List](z:Zipper[ST,LR**LT,Cur,R]) = new Zippable[ST,LR,LT,R**Cur]{
-      def l():Zipper[ST,LR,LT,R**Cur] = Zipper(z.f,z.depth + 1)
-    }
-    implicit def notEmptyZipper[ST<:List,L<:List,Cur,RR<:List,RT](z:Zipper[ST,L,Cur,RR**RT]) = new DeZippable[ST,L**Cur,RT,RR]{
-      def e():Zipper[ST,L**Cur,RT,RR] = Zipper(z.f,z.depth - 1)
-    }
-    implicit def emptyZipper[ST<:List,L<:List,Cur](z:Zipper[ST,L,Cur,Nil]) = new EndZipped[ST,L**Cur]{
-      def e():F[ST,L**Cur] = z.f.asInstanceOf[F[ST,L**Cur]]
-    }
-    implicit def zippable[ST<:List,R<:List,T](f:F[ST,R**T]) = new Zippable[ST,R,T,Nil]{
-      def l():Zipper[ST,R,T,Nil] = Zipper(f,0)
-    }
-    implicit def zipLoad[ST<:List,L<:List,Cur,R<:List](z:Zipper[ST,L,Cur,R]) = new Loadable[ST**Cur,L,Cur,R]{
-      def load():Zipper[ST**Cur,L,Cur,R] = Zipper(z.f.loadI(z.depth),z.depth)
-    }
-    implicit def zipStore[ST,SR<:List,L<:List,R<:List](z:Zipper[SR**ST,L,_,R]) = new Storeable[SR,L,ST,R]{
-      def store():Zipper[SR,L,ST,R] = Zipper(z.f.storeI(z.f.stack.rest,z.f.stack.top,z.depth),z.depth)
-    }
-    implicit def genNewLocal[ST<:List](f:F[ST,Nil]) = new Zippable[ST,Nil,Nil,Nil]{
-      def l():Zipper[ST,Nil,Nil,Nil] = Zipper(f,0)
-    }
-    implicit def genNewLocalInZipper[ST<:List,Cur,R<:List](z:Zipper[ST,Nil,Cur,R]) = new Zippable[ST,Nil,Nil,R**Cur]{
-      def l():Zipper[ST,Nil,Nil,R**Cur] = Zipper(z.f,z.depth + 1)
-    }
-    
     implicit def richFunc[ST1<:List,ST2<:List,LT1<:List,LT2<:List](func:F[ST1,LT1] => F[ST2,LT2]):RichFunc[ST1,LT1,ST2,LT2] = new RichFunc[ST1,LT1,ST2,LT2]{
       def apply(f:F[ST1,LT1]):F[ST2,LT2] = func(f)
     }
@@ -286,18 +225,18 @@ object Bytecode{
 	  def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        (storeX[_0,Array[T]].s(_)) ~ 
+        (local[_0,Array[T]].store(_)) ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
 	      dup ~
-	      (loadX[_0,Array[T]].l(_)) ~
+	      (local[_0,Array[T]].load(_)) ~
 	      arraylength ~
 	      isub ~
 	      ifeq2(pop,
 	            _ ~
 	            dup_x1 ~
-	            (loadX[_0,Array[T]].l(_)) ~
+	            (local[_0,Array[T]].load(_)) ~
 	            swap ~
 	            aload ~
 	            func ~
@@ -364,7 +303,7 @@ object Bytecode{
 //    fr3 ~ method{(str:String) => str.length}
     
     val f:F[Nil,Nil**String**Int] = null
-    f ~ (loadX[_1,String].l(_))
+    f ~ (local[_1,String].load(_))
     
     {
       // test replace type
