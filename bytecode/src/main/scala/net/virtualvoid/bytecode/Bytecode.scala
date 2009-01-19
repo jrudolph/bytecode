@@ -127,9 +127,13 @@ object Bytecode{
   implicit def nth_0[R<:List,T] = NThGetter[_0,T,R**T](0)
   implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:NThGetter[P,T,R]) = NThGetter[Succ[P],T,R**U](next.depth+1) 
   
+  /* it would be nice if we could abandon the () in declaration and application of 
+   * load/store altogether but that doesn't seems to work since then
+   * type and implicit infering won't work any more
+   */
   trait LocalAccess[P<:Nat,T]{
-    def load[ST<:List,LT<:List](f:F[ST,LT])(implicit fn:NThGetter[P,T,LT]):F[ST**T,LT]
-    def store[ST<:List,LT<:List](f:F[ST**T,LT])(implicit fn:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]]
+    def load[ST<:List,LT<:List]()(implicit fn:NThGetter[P,T,LT]):F[ST,LT] => F[ST**T,LT]
+    def store[ST<:List,LT<:List]()(implicit fn:NThReplacer[P,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,P,T]]
   }
   
   case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
@@ -147,10 +151,10 @@ object Bytecode{
   
   object Operations{
     def local[P<:Nat,T]:LocalAccess[P,T] = new LocalAccess[P,T]{
-      def load[ST<:List,LT<:List](f:F[ST,LT])(implicit getter:NThGetter[P,T,LT]):F[ST**T,LT] = 
-        f.loadI(getter.depth)
-      def store[ST<:List,LT<:List](f:F[ST**T,LT])(implicit replacer:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]] = 
-        f.storeI(f.stack.rest,f.stack.top,replacer.depth)
+      def load[ST<:List,LT<:List]()(implicit getter:NThGetter[P,T,LT]):F[ST,LT] => F[ST**T,LT] = 
+        f => f.loadI(getter.depth)
+      def store[ST<:List,LT<:List]()(implicit replacer:NThReplacer[P,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,P,T]] = 
+        f => f.storeI(f.stack.rest,f.stack.top,replacer.depth)
     }
     
     def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT]):
@@ -225,18 +229,18 @@ object Bytecode{
 	  def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        (local[_0,Array[T]].store(_)) ~ 
+        local[_0,Array[T]].store() ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
 	      dup ~
-	      (local[_0,Array[T]].load(_)) ~
+	      local[_0,Array[T]].load() ~
 	      arraylength ~
 	      isub ~
 	      ifeq2(pop,
 	            _ ~
 	            dup_x1 ~
-	            (local[_0,Array[T]].load(_)) ~
+	            local[_0,Array[T]].load() ~
 	            swap ~
 	            aload ~
 	            func ~
@@ -303,7 +307,7 @@ object Bytecode{
 //    fr3 ~ method{(str:String) => str.length}
     
     val f:F[Nil,Nil**String**Int] = null
-    f ~ (local[_1,String].load(_))
+    f ~ local[_1,String].load()
     
     {
       // test replace type
