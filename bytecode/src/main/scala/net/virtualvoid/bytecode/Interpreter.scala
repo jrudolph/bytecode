@@ -12,11 +12,11 @@ object Interpreter extends ByteletCompiler{
       
       def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
       def ldc(str:jString):F[ST**jString,LT] = IF(stack ** str,locals)
-      //def target:BackwardTarget[ST,LT] = throw notImplemented("target")
-      //def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
+      def target:BackwardTarget[ST,LT] = throw notImplemented("target")
+      def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
       
-      //def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = throw notImplemented("forwardTarget")
-      //def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = throw notImplemented("targetHere")
+      def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = throw notImplemented("forwardTarget")
+      def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = throw notImplemented("targetHere")
 
       def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
       def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
