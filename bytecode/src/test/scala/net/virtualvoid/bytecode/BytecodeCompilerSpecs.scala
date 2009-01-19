@@ -15,7 +15,7 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[String])(_~method(_.length)~method(Integer.valueOf(_)))
         .apply("Test") must be_==(4)}
     "locals + method2" in {
-      compiler.compile(classOf[java.lang.String])(_~(_.l.store.e)~load(l0)~load(l0)~method2(_.concat(_)))
+      compiler.compile(classOf[java.lang.String])(_ ~ (local[_0,String].store(_)) ~ (local[_0,String].load(_))~ (local[_0,String].load(_)) ~ method2(_.concat(_)))
       .apply("Test") must be_==("TestTest")}
     "iadd with operations" in {
       compiler.compile(classOf[java.lang.Integer])(
@@ -27,17 +27,17 @@ object BytecodeCompilerSpecs extends Specification{
     "iadd" in {
       compiler.compile(classOf[java.lang.Integer])(_~method(_.intValue)~dup~iadd~bipush(3)~iadd~method(Integer.valueOf(_)))
       .apply(12) must be_==(27)}
-    "store int in locals" in {
-      compiler.compile(classOf[java.lang.Integer])(_~method(_.intValue)~dup~(_.l.store.e)~load(l0)~iadd~method(Integer.valueOf(_)))
+    "store(_) int in locals" in {
+      compiler.compile(classOf[java.lang.Integer])(_~method(_.intValue)~dup~(local[_0,Int].store(_))~(local[_0,Int].load(_))~iadd~method(Integer.valueOf(_)))
       .apply(12) must be_==(24)}
-    "store double in locals" in {
-      compiler.compile(classOf[java.lang.Double])(_~method(_.doubleValue)~(_.l.store.e)~load(l0)~method(java.lang.Double.valueOf(_)))
+    "store(_) double in locals" in {
+      compiler.compile(classOf[java.lang.Double])(_~method(_.doubleValue)~(local[_0,Double].store(_))~(local[_0,Double].load(_))~method(java.lang.Double.valueOf(_)))
       .apply(12.453) must be_==(12.453)}
-    "store double after method2" in {
-      compiler.compile(classOf[java.lang.Double])(_~method(_.doubleValue)~ldc("test")~dup~method2(_.concat(_))~pop~(_.l.store.e)~load(l0)~method(java.lang.Double.valueOf(_:Double)))
+    "store(_) double after method2" in {
+      compiler.compile(classOf[java.lang.Double])(_~method(_.doubleValue)~ldc("test")~dup~method2(_.concat(_))~pop~(local[_0,Double].store(_)) ~ (local[_0,Double].load(_))~method(java.lang.Double.valueOf(_:Double)))
       .apply(12.453) must be_==(12.453)}
-    "store something more than 1 level deep" in {
-      compiler.compile(classOf[String])(_.l.l.store.e.e ~ load(l1))
+    "store(_) something more than 1 level deep" in {
+      compiler.compile(classOf[String])(_~(local[_1,String].store(_)(replaceSucc[_0,Nil,String])) ~ (local[_1,String].load(_)))
       .apply("test") must be_==("test")
     }
     "load element with index 1 from a string array" in {
@@ -68,8 +68,8 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.String])(_~dup~newInstance(classOf[java.lang.StringBuilder])~swap~method2(_.append(_))~swap~method2(_.append(_))~method(_.toString))
       .apply("test") must be_==("testtest") 
     }
-    "store string after void method" in {
-      compiler.compile(classOf[java.lang.String])(_ ~ newInstance(classOf[java.text.SimpleDateFormat]) ~ ldc("yyyy") ~ method2(_.applyPattern(_)) ~ pop_unit ~ (_.l.store.e) ~ load(l0))
+    "store(_) string after void method" in {
+      compiler.compile(classOf[java.lang.String])(_ ~ newInstance(classOf[java.text.SimpleDateFormat]) ~ ldc("yyyy") ~ method2(_.applyPattern(_)) ~ pop_unit ~ (local[_0,String].store(_)) ~ (local[_0,String].load(_)))
       .apply("test") must be_==("test")
     }
     "ifeq and jmp" in {
@@ -79,25 +79,26 @@ object BytecodeCompilerSpecs extends Specification{
         f => {
           val start = f ~
             method(_.intValue) ~
-            (storeX[_0,Int].s(_)) ~ //  store current i in local 0
+            (local[_0,Int].store(_)) ~ //  store(_) current i in local 0
             bipush(0) ~
-            (storeX[_1,Int].s(_)) ~ //  store sum in local 1
+            (local[_1,Int].store(_)) ~ //  store(_) sum in local 1
             target
           
           start ~
-            (loadX[_0,Int].l(_)) ~ // load i to check if we are 0 already 
+            (local[_0,Int].load(_)) ~ // load i to check if we are 0 already 
             ifeq(f => 
-              f ~ load(l0) ~
+              f ~ 
+                (local[_0,Int].load(_)) ~
                 dup ~
                 bipush(1) ~
                 isub ~
-                (storeX[_0,Int].s(_)) ~
-                load(l1) ~
+                (local[_0,Int].store(_)) ~
+                (local[_1,Int].load(_)) ~
                 iadd ~
-                (storeX[_1,Int].s(_)) ~
+                (local[_1,Int].store(_)) ~
                 jmp(start)
             ) ~
-            (loadX[_1,Int].l(_)) ~
+            (local[_1,Int].load(_)) ~
             method(Integer.valueOf(_))
       }).apply(5) must be_==(15)
     }
@@ -199,15 +200,15 @@ object BytecodeCompilerSpecs extends Specification{
           :F[R**U**It,LT**X] => F[R**U,LT**jIterator[T]] =
         _ ~
         method(_.iterator) ~
-        (_.l.store.e) ~
+        (local[_0,jIterator[T]].store(_)) ~
         tailRecursive[R**U,LT**jIterator[T],R**U,LT**jIterator[T]]{ self =>
           _ ~
-          load(l0) ~
+          (local[_0,jIterator[T]].load(_)) ~
           method(_.hasNext) ~
           ifeq2(
                 f=>f,
                 _ ~
-                load(l0) ~
+                (local[_0,jIterator[T]].load(_)) ~
                 method(_.next) ~
                 checkcast(eleType) ~
                 func ~
@@ -219,7 +220,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
         bipush(0) ~
         dup ~
-        (_.l.store.e) ~
+        (local[_0,Int].store(_)) ~
         foldArray(iadd) ~
         method(Integer.valueOf(_))
       )
@@ -228,7 +229,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
         bipush(0) ~
         dup ~
-        (_.l.store.e) ~
+        (local[_0,Int].store(_)) ~
         swap ~
         foldIterable[Nil,Nil,java.lang.Integer,Int,Int,java.util.List[java.lang.Integer]](
           (f:F[Nil**Int**java.lang.Integer,Nil**jIterator[java.lang.Integer]]) 
