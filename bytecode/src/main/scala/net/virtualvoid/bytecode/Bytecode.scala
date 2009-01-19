@@ -134,8 +134,8 @@ object Bytecode{
   case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
   implicit def replace_0[R<:List,T,U] = 
     NThReplacer[_0,R,T](0)
-  implicit def replaceSucc[P<:Nat,R<:List,T,U](implicit next : NThReplacer[P,R,T]) =
-    NThReplacer[Succ[P],R**U,T](next.depth + 1)
+  implicit def replaceSucc[P<:Nat,R<:List,T](implicit next : NThReplacer[P,R#Rest,T]) =
+    NThReplacer[Succ[P],R,T](next.depth + 1)
      
   trait StoreFunc[P<:Nat,T]{
     def s[ST<:List,LT<:List](f:F[ST**T,LT])(implicit fn:NThReplacer[P,LT,T]):F[ST,ReplaceNTh[LT,P,T]]
