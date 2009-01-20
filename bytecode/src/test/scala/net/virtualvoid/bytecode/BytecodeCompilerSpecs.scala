@@ -85,7 +85,7 @@ object BytecodeCompilerSpecs extends Specification{
             target
           
           start ~
-            local[_0,Int].load() ~ // load i to check if we are 0 already 
+            local[_0,Int].load() ~ // load i to check if it is already 0 
             ifeq(f => 
               f ~ 
                 local[_0,Int].load() ~
