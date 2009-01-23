@@ -72,6 +72,14 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.String])(_ ~ newInstance(classOf[java.text.SimpleDateFormat]) ~ ldc("yyyy") ~ method2(_.applyPattern(_)) ~ pop_unit ~ local[_0,String].store() ~ local[_0,String].load())
       .apply("test") must be_==("test")
     }
+    "scala parameterless method call" in {
+      compiler.compile(classOf[Option[java.lang.String]])(
+        _ ~
+          method(_.isDefined) ~
+          method(java.lang.Boolean.valueOf(_))
+      )
+      .apply(Some("x")) must be_==(true)
+    }
     "ifeq and jmp" in {
       if (compiler != Interpreter)
       compiler.compile(classOf[java.lang.Integer])(

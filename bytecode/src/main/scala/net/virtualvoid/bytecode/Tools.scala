@@ -59,6 +59,14 @@ object CodeTools{
             val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz not found: "+clazz+" in "+tree.toString))
             cl.getMethod(methodName)
           }
+          // scala method call to method defined without parameter list
+          case Function(List(x@LocalValue(_,_,tpe)),Select(Ident(x1),Method(method,_))) if x==x1 => {
+            val clazz = extractClass(tpe)
+            val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
+            val methodName = method.substring(clazz.length+1)
+            val m = cl.getMethod(methodName)
+            m
+          }
           // method call with variable receiver like '_.toString'
           case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
             val clazz = extractClass(tpe)
