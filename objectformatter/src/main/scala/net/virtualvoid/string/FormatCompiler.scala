@@ -32,32 +32,72 @@ object Compiler{
     }
   }
   
-  def loop[ST<:List,LT<:List,T](
-    cond:F[ST,LT]=>F[ST**Boolean,LT]
-    ,next:F[ST,LT]=>F[ST**T,LT])(body:F[ST**T,LT]=>F[ST,LT]):F[ST,LT]=>F[ST,LT] = null
-
-  def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
-    = tok match {
-      case StrTokens(toks) => 
-        toks.foldLeft(f){(frame,token) => compileTok(token,cl)(frame)}
-      case Literal(str) => 
-        f ~ ldc(str) ~ method2(_.append(_))
-      case e:Exp =>
-        f ~ local[_0,T].load() ~
-          compileGetExp(e,cl,classOf[AnyRef]) ~ 
-          method(_.toString) ~ 
-          method2(_.append(_))
-      case Expand(exp,sep,inner) => {
-        val retType = exp.returnType(cl)
-
-        if (classOf[java.lang.Iterable[_]].isAssignableFrom(retType)){
-          val eleType:Class[AnyRef] = elementType(exp.genericReturnType(cl),classOf[java.lang.Iterable[_]]).asInstanceOf[Class[AnyRef]]
+  def check[R<:List,LT<:List,T,U](clazz:Class[U]):F[R**T,LT] => F[R**U,LT] = f => f.asInstanceOf[F[R**U,LT]]
+  def anyfy[ST<:List,LT<:List,T]:F[ST,LT**T] => F[ST,LT**_] = f => f.asInstanceOf[F[ST,LT**_]]
+  
+  def compileConversion[R<:List,LT<:List,ParentT<:java.lang.Object,T](exp:Exp,conversion:Conversion,tpe:Class[_],outerType:Class[ParentT])(f:F[R**StringBuilder**T,LT**ParentT]):F[R**StringBuilder,LT**_] = conversion match{
+    case ToStringConversion => f ~ method(_.toString) ~ method2(_.append(_)) ~ anyfy
+    case DateConversion(format) => {
+        f ~ newInstance(classOf[java.text.SimpleDateFormat]) ~
+          dup ~
+          ldc(format) ~ 
+          method2(_.applyPattern(_)) ~ pop_unit ~
+          swap ~
+          (f => 
+            if (classOf[java.util.Date].isAssignableFrom(tpe))
+              f ~ check(classOf[java.util.Date])
+            else if (classOf[java.util.Calendar].isAssignableFrom(tpe))
+              f ~ check(classOf[java.util.Calendar]) ~ method(_.getTime)
+            else
+                throw new java.lang.Error("only date or time can be converted")
+          ) ~
+          method2(_.format(_)) ~
+          method2(_.append(_)) ~ anyfy
+    }
+    case Conditional(thens,elses) => {
+        if (tpe == java.lang.Boolean.TYPE || classOf[java.lang.Boolean].isAssignableFrom(tpe)){
+          f ~ 
+            (if (tpe == java.lang.Boolean.TYPE)
+               check(classOf[Boolean])
+             else 
+               check(classOf[java.lang.Boolean]) ~ method(_.booleanValue)
+            ) ~
+            ifeq2(
+              compileTok[R,LT,ParentT](elses,outerType) _ ~ anyfy,
+              compileTok(thens,outerType) _ ~ anyfy)
+        }
+        else if (classOf[Option[AnyRef]].isAssignableFrom(tpe)){
+          val eleType = elementType(exp.genericReturnType(tpe),classOf[Option[_]]).asInstanceOf[Class[AnyRef]]
+          f ~
+            check(classOf[Option[AnyRef]]) ~
+            dup ~
+            method(_.isDefined) ~
+            ifeq2(
+              _ ~ pop ~ compileTok(elses,outerType) ~ anyfy,
+              _ ~ 
+                checkcast(classOf[Some[AnyRef]]) ~
+                method(_.get) ~
+                //local[_0,ParentT].load() ~
+                //swap ~
+                local[_0,AnyRef].store() ~
+                //swap ~
+                compileTok(thens,eleType))
+                //swap ~
+                //local[_0,ParentT].store[R**StringBuilder,LT**AnyRef]())
+        }
+        else
+          throw new Error("can't use "+tpe+" in a conditional")
+    }
+    case Expand(sep,inner) => {
+        if (classOf[java.lang.Iterable[_]].isAssignableFrom(tpe)){
+          val eleType:Class[AnyRef] = elementType(exp.genericReturnType(outerType),classOf[java.lang.Iterable[_]]).asInstanceOf[Class[AnyRef]]
           val jmpTarget =
-            f ~ 
-             local[_0,T].load() ~
-             swap ~ // save one instance of T for later
-             local[_0,T].load() ~
-             compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
+            f ~
+             //dup_x1 ~
+             //local[_0,ParentT].load() ~
+             //swap ~ // save one instance of T for later
+             //local[_0,ParentT].load() ~
+             check(classOf[java.lang.Iterable[AnyRef]]) ~
              method(_.iterator) ~
              local[_0,java.util.Iterator[AnyRef]].store() ~
              target
@@ -82,12 +122,12 @@ object Compiler{
                    f~ldc(sep:jString) ~
                     method2(_.append(_)) ~
                     jmp(jmpTarget)) ~ //todo: introduce ifeq(thenCode,elseTarget)
-                jmp(jmpTarget)) ~
-             swap ~
-             local[_0,T].store[R**StringBuilder,LR**java.util.Iterator[AnyRef]]()
+                jmp(jmpTarget))
+             //swap ~
+             //local[_0,ParentT].store[R**StringBuilder,LT**java.util.Iterator[AnyRef]]()
         }
-        else if (retType.isArray){
-          val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
+        else if (tpe.isArray){
+          val eleType:Class[AnyRef] = tpe.getComponentType.asInstanceOf[Class[AnyRef]]
 
           if (eleType.isPrimitive)
             throw new java.lang.Error("can't handle primitive arrays right now");
@@ -101,10 +141,10 @@ object Compiler{
             local[_0,ST].store[S**LT,L**LT]()
           
           f ~
-             local[_0,T].load() ~
-             swap ~
-             local[_0,T].load() ~
-             compileGetExp(exp,cl,retType.asInstanceOf[Class[Array[AnyRef]]]) ~
+             //dup_x1 ~
+             //swap ~
+             //local[_0,ParentT].load() ~
+             check(classOf[Array[AnyRef]]) ~
              swap ~
              foldArray(// index,sb,ele | array
                _ ~ 
@@ -125,70 +165,28 @@ object Compiler{
                  f=>f, //FIXME: use id func here
                  ldc(sep) ~ method2(_.append(_)) // append separator if we are not at the end of the array
                )
-             ) ~
-             swap ~
-             local[_0,T].store[R**StringBuilder,LR**Array[AnyRef]]()
+             ) //~
+             //swap ~
+             //local[_0,ParentT].store[R**StringBuilder,LT**Array[AnyRef]]()
         }
         else
           throw new java.lang.Error("can only iterate over iterables and arrays right now")
       }
-      case Conditional(inner,thens,elses) => {
-        val retType = inner.returnType(cl)
+  }
 
-        if (retType == java.lang.Boolean.TYPE || classOf[java.lang.Boolean].isAssignableFrom(retType)){
-          f ~ 
-            local[_0,T].load() ~
-            (if (retType == java.lang.Boolean.TYPE)
-               compileGetExp(inner,cl,classOf[Boolean])
-             else 
-               compileGetExp(inner,cl,classOf[java.lang.Boolean]) _ ~ method(_.booleanValue)
-            ) ~
-            ifeq2(
-              compileTok(elses,cl),
-              compileTok(thens,cl))
-        }
-        else if (classOf[Option[AnyRef]].isAssignableFrom(retType)){
-          val eleType = elementType(inner.genericReturnType(cl),classOf[Option[_]]).asInstanceOf[Class[AnyRef]]
-          f ~
-            local[_0,T].load() ~
-            compileGetExp(inner,cl,classOf[Option[AnyRef]]) ~
-            dup ~
-            method(_.isDefined) ~
-            ifeq2(
-              _ ~ pop ~ compileTok(elses,cl),
-              _ ~ 
-                checkcast(classOf[Some[AnyRef]]) ~
-                method(_.get) ~
-                local[_0,T].load() ~
-                swap ~
-                local[_0,AnyRef].store() ~
-                swap ~
-                compileTok(thens,eleType) ~
-                swap ~
-                local[_0,T].store[R**StringBuilder,LR**AnyRef]()(replace_0))
-        }
-        else
-          throw new Error("can't use "+retType+" in a conditional")
-      }
-      case DateConversion(exp,format) => {
-        val retType = exp.returnType(cl)
-        
-        f ~ newInstance(classOf[java.text.SimpleDateFormat]) ~
-          dup ~
-          ldc(format) ~ 
-          method2(_.applyPattern(_)) ~ pop_unit ~
-          local[_0,T].load() ~
-          (f => 
-            if (classOf[java.util.Date].isAssignableFrom(retType))
-              f ~ compileGetExp(exp,cl,classOf[java.util.Date])
-            else if (classOf[java.util.Calendar].isAssignableFrom(retType))
-              f ~ compileGetExp(exp,cl,classOf[java.util.Calendar]) ~ method(_.getTime)
-            else
-                throw new java.lang.Error("only date or time can be converted")
-          ) ~
-          method2(_.format(_)) ~
-          method2(_.append(_))
-      }
+  def compileTok[R<:List,LR<:List,T<:java.lang.Object](tok:StrToken,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T]
+    = tok match {
+      case StrTokens(toks) => 
+        toks.foldLeft(f){(frame,token) => compileTok(token,cl)(frame)}
+      case Literal(str) => 
+        f ~ ldc(str) ~ method2(_.append(_))
+      case ConvertedExpression(exp,converter) =>
+        f ~ local[_0,T].load() ~
+          dup_x1 ~ // save one for later
+          compileGetExp(exp,cl,classOf[AnyRef]) ~
+          compileConversion(exp,converter,exp.returnType(cl),cl) ~
+          swap ~
+          local[_0,T].store[R**StringBuilder,LT**_]()
     }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
     val toks = parser.parse(format)

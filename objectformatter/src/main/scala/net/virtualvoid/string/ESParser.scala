@@ -17,6 +17,7 @@ object Java{
 }
 
 object AST{
+  //tokens
   trait StrToken {
     def eval(o:AnyRef):AnyRef
   }
@@ -28,7 +29,12 @@ object AST{
     def chars = str
     def eval(o:AnyRef):String = str
   }
-  case class Exp(identifier:String) extends StrToken{
+  case class ConvertedExpression(exp:Exp,conv:Conversion) extends StrToken{
+    def eval(o:AnyRef):AnyRef = conv.eval(exp.eval(o))
+  }
+  
+  // expressions
+  case class Exp(identifier:String){
     def chars = identifier
 
     import java.lang.reflect.{Method}
@@ -50,23 +56,7 @@ object AST{
     def capitalize(s:String):String = s.substring(0,1).toUpperCase + s.substring(1)
     def eval(o:AnyRef) = method(o.getClass).invoke(o,null)
   }
-  case class Conditional(condition:Exp,thenToks:StrTokens,elseToks:StrTokens) extends StrToken{
-    def chars =""
-    def eval(o:AnyRef) = condition.eval(o) match {
-      case java.lang.Boolean.TRUE => thenToks.eval(o)
-      case java.lang.Boolean.FALSE => elseToks.eval(o)
-      case x:Option[AnyRef] => x.map(thenToks.eval).getOrElse(elseToks.eval(o))
-    }
-  }
-  case class DateConversion(exp:Exp,format:String) extends StrToken{
-    val df = new java.text.SimpleDateFormat(format)
-    def eval(o:AnyRef) = df.format(exp.eval(o) match {
-      case cal:java.util.Calendar => cal.getTime
-      case date:java.util.Date => date
-    })
-    def chars = ""
-  }
-  case object ThisExp extends Exp(""){
+    case object ThisExp extends Exp(""){
     override def eval(o:AnyRef) = o
     override def returnType(callingCl:Class[_]):Class[_] = callingCl
     override def genericReturnType(callingCl:Class[_]):java.lang.reflect.Type =
@@ -76,11 +66,33 @@ object AST{
   case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
     override def eval(o:AnyRef) = inner.eval(super.eval(o))
   }
-  case class Expand(exp:Exp,sep:String,inner:StrTokens) extends StrToken{
-    def chars = exp.chars + ":" + sep
+  
+  // conversions
+  trait Conversion{
+    def eval(o:AnyRef):String
+  }
+  case object ToStringConversion extends Conversion{
+    def eval(o:AnyRef):String = o.toString
+  }
+  case class Conditional(thenToks:StrTokens,elseToks:StrTokens) extends Conversion{
+    def eval(o:AnyRef) = o match {
+      case java.lang.Boolean.TRUE => thenToks.eval(o)
+      case java.lang.Boolean.FALSE => elseToks.eval(o)
+      case x:Option[AnyRef] => x.map(thenToks.eval).getOrElse(elseToks.eval(o))
+    }
+  }
+  case class DateConversion(format:String) extends Conversion{
+    val df = new java.text.SimpleDateFormat(format)
+    def eval(o:AnyRef) = df.format(o match {
+      case cal:java.util.Calendar => cal.getTime
+      case date:java.util.Date => date
+    })
+    def chars = ""
+  }
+  case class Expand(sep:String,inner:StrTokens) extends Conversion{
     def realEval(l:Iterable[AnyRef]):String = l.map(inner.eval(_)) mkString sep
     import Java.it2it
-    def eval(o:AnyRef) = exp.eval(o) match{
+    def eval(o:AnyRef) = o match{
       // array or collection or similar
     case l : java.lang.Iterable[AnyRef] => realEval(l)
     case l : Seq[AnyRef] => realEval(l)
@@ -114,19 +126,22 @@ object EnhancedStringFormatParser extends RegexParsers{
     (id | extendParser("{") ~!> id <~! "}")
 
   def sepChars = "[^}]*".r
-  def expand = exp ~ opt(inners) ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case exp ~ x ~ separator => Expand(exp,separator.getOrElse(""),x.getOrElse(StrTokens(List(ThisExp))))}
+  def expansion = opt('[' ~> tokens <~ ']') ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case x ~ separator => Expand(separator.getOrElse(""),x.getOrElse(StrTokens(List(ConvertedExpression(ThisExp,ToStringConversion)))))}
   
-  def dateConversion:Parser[String] = extendParser("->date[") ~!> "[^\\]]*".r <~ "]" 
-  def conversion = exp ~ dateConversion ^^ {case exp ~ format => DateConversion(exp,format)}
+  def dateConverter:Parser[String] = extendParser("->date[") ~!> "[^\\]]*".r <~ "]" 
+  def dateConversion = dateConverter ^^ {case format => DateConversion(format)}
   
   def clauses = extendParser("?[") ~!> 
     (tokens ~ "|" ~ tokens <~ "]")
-  def conditional = exp ~ clauses ^^ {case exp ~ (ifs ~ sep ~ thens) => Conditional(exp,ifs,thens)}
-
-  def innerExp:Parser[StrToken] = expand | conversion | conditional | exp | lit 
-  def inners = '[' ~> tokens <~ ']'
+  def conditional = clauses ^^ {case (ifs ~ sep ~ thens) => Conditional(ifs,thens)}
   
-  def tokens:Parser[StrTokens] = rep(innerExp) ^^ {case toks => StrTokens(toks)}
+  def conversion = conditional | dateConversion | expansion
+
+  def convertedExpression = exp ~ opt(conversion) ^^ {case exp ~ conv => ConvertedExpression(exp,conv.getOrElse(ToStringConversion))}
+  
+  def formatPart:Parser[StrToken] = convertedExpression | lit 
+  
+  def tokens:Parser[StrTokens] = rep(formatPart) ^^ {case toks => StrTokens(toks)}
   
   override val skipWhitespace = false
 
