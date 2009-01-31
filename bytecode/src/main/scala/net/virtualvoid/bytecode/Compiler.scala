@@ -19,9 +19,17 @@ object ASMCompiler extends ByteletCompiler{
     }
     case object EmptyClassStack extends UnsetClassStack(null)
     
-    object JmpException extends RuntimeException 
+    object JmpException extends RuntimeException
     
-    class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack) extends F[ST,LT]{
+    final case class CompilationData(className:String,cw:ClassWriter,constructor:MethodVisitor){
+      var lazyValNum = 0
+      def nextLazyVal = {
+        lazyValNum += 1
+        "lazyVal" + lazyValNum
+      }
+    }
+    
+    class ASMFrame[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,data:CompilationData) extends F[ST,LT]{
       def self[T]:T = this.asInstanceOf[T]
 
       val loopingList = new Cons(null.asInstanceOf[List],null){
@@ -32,27 +40,34 @@ object ASMCompiler extends ByteletCompiler{
       def stack = loopingList.asInstanceOf[ST]
       def locals = loopingList.asInstanceOf[LT]
       
-      def newStacked[T](cl:Class[T]) = new ASMFrame[ST**T,LT](mv,stackClass**cl,localsClass)
+      def newFrame[S<:List,L<:List](stackClasses:ClassStack,localsClasses:ClassStack) = 
+        new ASMFrame[S,L](mv,stackClasses,localsClasses,data)
+      
+      def newStack[NST<:List](stackClasses:ClassStack):F[NST,LT] = 
+        newFrame(stackClasses,localsClass)
+      
+      def newOnStack[T](cl:Class[T]):F[ST**T,LT] = 
+        newStack(stackClass**cl)
       
       def bipush(i1:Int):F[ST**Int,LT] = {
         mv.visitIntInsn(BIPUSH, i1)
-        newStacked(classOf[Int])
+        newOnStack(classOf[Int])
       }
       def ldc(str:jString):F[ST**jString,LT] = {
         mv.visitLdcInsn(str)
-        newStacked(classOf[jString])
+        newOnStack(classOf[jString])
       }
       
       trait ASMTarget{
         def label:Label
       }
       
-      case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label)
-          extends ASMFrame[ST,LT](mv,stackClass,localsClass) with BackwardTarget[ST,LT] with ASMTarget
+      case class ASMBackwardTarget[ST<:List,LT<:List](mv:MethodVisitor,stackClass:ClassStack,localsClass:ClassStack,label:Label,data:CompilationData)
+          extends ASMFrame[ST,LT](mv,stackClass,localsClass,data) with BackwardTarget[ST,LT] with ASMTarget
       def target:BackwardTarget[ST,LT] = {
         val label = new Label
         mv.visitLabel(label)
-        ASMBackwardTarget(mv,stackClass,localsClass,label)
+        ASMBackwardTarget(mv,stackClass,localsClass,label,data)
       }
       
       case class ASMForwardTarget[ST<:List,LT<:List](label:Label) extends ForwardTarget[ST,LT] with ASMTarget
@@ -69,38 +84,40 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitJumpInsn(GOTO,t.asInstanceOf[ASMTarget].label)
         throw JmpException
       }
+      
+      def integerBinOp[R<:List](ins:Int):F[R**Int,LT] = {
+        mv.visitInsn(ins)
+        newStack(stackClass.rest)
+      }
 
-      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
-        mv.visitInsn(IADD)
-        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
-      }
-      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
-        mv.visitInsn(ISUB)
-        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
-      }
-      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = {
-        mv.visitInsn(IMUL)
-        new ASMFrame[R**Int,LT](mv,stackClass.rest,localsClass)
-      }
+      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] =
+        integerBinOp(IADD)
+      
+      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] =
+        integerBinOp(ISUB)
+      
+      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] =
+        integerBinOp(IMUL)
+        
       def pop_int[R<:List](rest:R):F[R,LT] = {
         mv.visitInsn(POP)
-        new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+        newStack(stackClass.rest)
       }
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = {
         mv.visitInsn(DUP)
-        new ASMFrame[R**T**T,LT](mv,stackClass**stackClass.top,localsClass)
+        newStack(stackClass**stackClass.top)
       }
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = {
         mv.visitInsn(SWAP)
-        new ASMFrame[R**T1**T2,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top,localsClass)
+        newStack(stackClass.rest.rest**stackClass.top**stackClass.rest.top)
       }
       def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = {
         mv.visitInsn(DUP_X1)
-        new ASMFrame[R**T1**T2**T1,LT](mv,stackClass.rest.rest**stackClass.top**stackClass.rest.top**stackClass.top,localsClass)
+        newStack(stackClass.rest.rest**stackClass.top**stackClass.rest.top**stackClass.top)
       }
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
-        new ASMFrame[R**U,LT](mv,stackClass.rest**cl,localsClass)
+        newStack(stackClass.rest**cl)
       }
       def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = {
         val l = new Label
@@ -114,7 +131,7 @@ object ASMCompiler extends ByteletCompiler{
         }
 
         mv.visitLabel(l)
-        new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+        newStack(stackClass.rest)
       }
       import CodeTools._
       def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {
@@ -122,19 +139,19 @@ object ASMCompiler extends ByteletCompiler{
         
         mv.visitInsn(opcode(elType,IALOAD))
         
-        new ASMFrame[R**T,LT](mv,stackClass.rest.rest ** elType,localsClass)
+        newStack(stackClass.rest.rest ** elType)
       }
       def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT] = {
         val elType = stackClass.rest.rest.top.getComponentType
         
         mv.visitInsn(opcode(elType,IASTORE))
         
-        new ASMFrame[R,LT](mv,stackClass.rest.rest.rest,localsClass)
+        newStack(stackClass.rest.rest.rest)
       }
       def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = {
         mv.visitInsn(ARRAYLENGTH)
         
-        new ASMFrame[R**Int,LT](mv,stackClass.rest ** classOf[Int],localsClass)
+        newStack(stackClass.rest ** classOf[Int])
       }      
       def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(cleanClass(cl.getName)).getOpcode(opcode)
@@ -142,11 +159,11 @@ object ASMCompiler extends ByteletCompiler{
       def loadI[T](i:Int):F[ST**T,LT] = {
         val toLoad = localsClass.get(i)
         mv.visitVarInsn(opcode(toLoad,ILOAD), i);
-        new ASMFrame[ST**T,LT](mv,stackClass**toLoad,localsClass)
+        newStack(stackClass**toLoad)
       }
       def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] = {
         mv.visitVarInsn(opcode(stackClass.top,ISTORE), i);
-        new ASMFrame[R,NewLT](mv,stackClass.rest,localsClass.set(i,stackClass.top))
+        newFrame(stackClass.rest,localsClass.set(i,stackClass.top))
       }
       
       def newInstance[T](cl:Class[T]):F[ST**T,LT] = {
@@ -154,7 +171,7 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
         mv.visitInsn(DUP)
         mv.visitMethodInsn(INVOKESPECIAL,Type.getInternalName(cl),"<init>",Type.getConstructorDescriptor(cons))
-        new ASMFrame[ST**T,LT](mv,stackClass**cl,localsClass)
+        newStack(stackClass**cl)
       }
       
       def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
@@ -170,10 +187,10 @@ object ASMCompiler extends ByteletCompiler{
         invokeMethod(method)
       }
 
-      def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method) = {
+      def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method):F[R**U,LT] = {
         val cl = m.getDeclaringClass
         mv.visitMethodInsn(getInvokeMethod2(m),Type.getInternalName(cl),m.getName,Type.getMethodDescriptor(m))
-        new ASMFrame[R**U,LT](mv,rest ** m.getReturnType,localsClass)
+        newStack(rest ** m.getReturnType)
       }
       def invokeMethod[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest,m)
       def invokeMethod2[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest.rest,m)
@@ -181,7 +198,7 @@ object ASMCompiler extends ByteletCompiler{
       def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
         invokeMethod(methodFromTree(code.tree))
       
-      def pop_unit_int[R<:List](rest:R):F[R,LT] = new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+      def pop_unit_int[R<:List](rest:R):F[R,LT] = newStack(stackClass.rest)
       
       def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R,top:JVMInt,then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2] = {
         /*
@@ -196,7 +213,7 @@ object ASMCompiler extends ByteletCompiler{
         val thenLabel = new Label
         val endLabel = new Label
         
-        val frameAfterCheck = new ASMFrame[R,LT](mv,stackClass.rest,localsClass)
+        val frameAfterCheck = newStack[R](stackClass.rest)
         
         mv.visitJumpInsn(IFEQ,thenLabel)
         
@@ -218,7 +235,7 @@ object ASMCompiler extends ByteletCompiler{
         else            
           afterElseFrame
       }
-      class InvalidFrame extends ASMFrame[Nothing,Nothing](null,null,null){
+      class InvalidFrame extends ASMFrame[Nothing,Nothing](null,null,null,null){
         override val toString = "invalid frame" 
       }
       def invalidFrame[ST<:List,LT<:List]:F[ST,LT] = (new InvalidFrame).asInstanceOf[F[ST,LT]]
@@ -230,6 +247,41 @@ object ASMCompiler extends ByteletCompiler{
             mv.visitJumpInsn(GOTO,start)
             invalidFrame
           }(this)
+      }
+      def lazyVal_int[T<:AnyRef](tpe:Class[T],init:F[Nil,Nil] => F[Nil**T,Nil]):F[ST**T,LT] = {
+        /* 1. getField
+         * 2. null     => init, storeField, return
+         * 3. not-null => return
+         */
+        
+        //create new private field and initialization
+        val name = data.nextLazyVal
+        
+        def fieldInsn(mv:MethodVisitor,insn:Int)(func: MethodVisitor=>Unit){
+          mv.visitVarInsn(ALOAD,0)
+          func(mv)
+          mv.visitFieldInsn(insn,data.className,name,Type.getDescriptor(tpe))
+        }
+        
+        data.cw.visitField(ACC_PRIVATE,name,Type.getDescriptor(tpe),null,null).visitEnd
+        fieldInsn(data.constructor,PUTFIELD)(_.visitInsn(ACONST_NULL))
+
+
+        val afterInit = new Label
+        
+        fieldInsn(mv,GETFIELD){mv=>}
+        mv.visitInsn(DUP)
+        mv.visitJumpInsn(IFNONNULL,afterInit)
+        
+        // initialize field
+        mv.visitInsn(POP) // throw away dupped null
+        init(newFrame(EmptyClassStack,EmptyClassStack))
+        mv.visitInsn(DUP)
+        fieldInsn(mv,PUTFIELD){_.visitInsn(SWAP)}
+        
+        mv.visitLabel(afterInit)
+        
+        newOnStack[T](tpe)
       }
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
@@ -249,16 +301,12 @@ object ASMCompiler extends ByteletCompiler{
 
       val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
       cw.visit(V1_5,ACC_PUBLIC + ACC_SUPER,className,null,"net/virtualvoid/bytecode/AbstractFunction1", null)
-
-      { // constructor
-        val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
-        mv.visitCode();
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, "net/virtualvoid/bytecode/AbstractFunction1", "<init>", "()V");
-        mv.visitInsn(RETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-      }
+      
+      //create constructor and let it open for further initialization
+      val cons_mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+      cons_mv.visitCode();
+      cons_mv.visitVarInsn(ALOAD, 0);
+      cons_mv.visitMethodInsn(INVOKESPECIAL, "net/virtualvoid/bytecode/AbstractFunction1", "<init>", "()V");
 
       { // apply
         val mv = cw.visitMethod(ACC_PUBLIC, "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", null, null);
@@ -267,12 +315,18 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitVarInsn(ALOAD, 1);
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
 
-        code(new ASMFrame[Nil**T,Nil](mv,EmptyClassStack ** cl,EmptyClassStack))
+        code(new ASMFrame[Nil**T,Nil](mv,EmptyClassStack ** cl,EmptyClassStack,CompilationData(className,cw,cons_mv)))
 
         mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)
         mv.visitEnd
       }
+      
+      // close constructor
+      cons_mv.visitInsn(RETURN);
+      cons_mv.visitMaxs(1, 1);      
+      cons_mv.visitEnd();
+      
       cw.visitEnd
       classFromBytes(className,cw.toByteArray).newInstance.asInstanceOf[T=>U]
     }
