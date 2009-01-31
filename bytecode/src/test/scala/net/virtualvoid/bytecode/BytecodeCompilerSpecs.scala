@@ -2,6 +2,12 @@ package net.virtualvoid.bytecode
 
 import _root_.org.specs._
 
+class Counter{
+  var i = 0
+  def get = {
+    i+=1;System.out.println("Counter now: "+i); i}
+}
+
 object BytecodeCompilerSpecs extends Specification{
   def compiledTests(compiler:net.virtualvoid.bytecode.Bytecode.ByteletCompiler){
     import Bytecode._
@@ -109,6 +115,17 @@ object BytecodeCompilerSpecs extends Specification{
             local[_1,Int].load() ~
             method(Integer.valueOf(_))
       }).apply(5) must be_==(15)
+    }
+    "lazy variable" in {
+      val f = compiler.compile(classOf[java.lang.Integer])(
+        _ ~
+          pop ~
+          lazyVal(classOf[Counter],_ ~ newInstance(classOf[Counter])) ~
+          method(_.get) ~
+          method(Integer.valueOf(_))
+      )
+      f.apply(0) must be_==(1)
+      f.apply(0) must be_==(2)
     }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
