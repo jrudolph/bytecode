@@ -31,6 +31,16 @@ object Compiler{
       f ~ dynMethod(e.method(cl),retType)
     }
   }
+
+  def withLocal0Saved[R<:List,LR<:List,L0,T](f:F[R**L0**StringBuilder,LR**T] => F[R**L0**StringBuilder,LR**T]):F[R**StringBuilder**T,LR**L0] => F[R**StringBuilder,LR**L0] =
+    _ ~
+      local[_0,L0].load() ~
+      swap ~
+      local[_0,T].store() ~
+      swap ~
+      f ~
+      swap ~
+      local[_0,L0].store[R**StringBuilder,LR**T]()
     
   def compileFormatElementList[R<:List,LR<:List,T<:java.lang.Object](elements:FormatElementList,cl:Class[T])(f:F[R**StringBuilder,LR**T]):F[R**StringBuilder,LR**T] =
     elements.elements.foldLeft(f){(frame,element) => compileElement(element,cl)(frame)}
@@ -49,39 +59,40 @@ object Compiler{
 
         if (classOf[java.lang.Iterable[_]].isAssignableFrom(retType)){
           val eleType:Class[AnyRef] = elementType(exp.genericReturnType(cl),classOf[java.lang.Iterable[_]]).asInstanceOf[Class[AnyRef]]
-          val jmpTarget =
-            f ~ 
-             local[_0,T].load() ~
-             swap ~ // save one instance of T for later
-             local[_0,T].load() ~
-             compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
-             method(_.iterator) ~
-             local[_0,java.util.Iterator[AnyRef]].store() ~
-             target
           
-          jmpTarget ~
-             local[_0,java.util.Iterator[AnyRef]].load() ~
-             method(_.hasNext) ~
-             ifeq(f =>
-               f ~
-                local[_0,java.util.Iterator[AnyRef]].load() ~
-                swap ~
-                local[_0,java.util.Iterator[AnyRef]].load() ~
-                method(_.next) ~
-                checkcast(eleType) ~
-                local[_0,AnyRef].store() ~
-                compileFormatElementList(inner,eleType) ~
-                swap ~
-                dup ~
-                local[_0,java.util.Iterator[AnyRef]].store() ~
-                method(_.hasNext) ~
-                ifeq(f =>
-                   f~ldc(sep:jString) ~
-                    method2(_.append(_)) ~
-                    jmp(jmpTarget)) ~ //todo: introduce ifeq(thenCode,elseTarget)
-                jmp(jmpTarget)) ~
-             swap ~
-             local[_0,T].store[R**StringBuilder,LR**java.util.Iterator[AnyRef]]()
+          f ~ local[_0,T].load() ~
+            withLocal0Saved { f =>
+	          val jmpTarget =
+	            f ~ 
+                 swap ~
+                 dup_x1 ~
+	             compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
+	             method(_.iterator) ~
+	             local[_0,java.util.Iterator[AnyRef]].store() ~
+	             target
+	          
+	          jmpTarget ~
+	             local[_0,java.util.Iterator[AnyRef]].load() ~
+	             method(_.hasNext) ~
+	             ifeq(f =>
+	               f ~
+	                local[_0,java.util.Iterator[AnyRef]].load() ~
+	                swap ~
+	                local[_0,java.util.Iterator[AnyRef]].load() ~
+	                method(_.next) ~
+	                checkcast(eleType) ~
+	                local[_0,AnyRef].store() ~
+	                compileFormatElementList(inner,eleType) ~
+	                swap ~
+	                dup ~
+	                local[_0,java.util.Iterator[AnyRef]].store() ~
+	                method(_.hasNext) ~
+	                ifeq(f =>
+	                   f~ldc(sep:jString) ~
+	                    method2(_.append(_)) ~
+	                    jmp(jmpTarget)) ~ //todo: introduce ifeq(thenCode,elseTarget)
+	                jmp(jmpTarget))
+          }
         }
         else if (retType.isArray){
           val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
@@ -156,13 +167,7 @@ object Compiler{
               _ ~ 
                 checkcast(classOf[Some[AnyRef]]) ~
                 method(_.get) ~
-                local[_0,T].load() ~
-                swap ~
-                local[_0,AnyRef].store() ~
-                swap ~
-                compileFormatElementList(thens,eleType) ~
-                swap ~
-                local[_0,T].store[R**StringBuilder,LR**AnyRef]()(replace_0))
+                withLocal0Save(compileFormatElementList(thens,eleType)))
         }
         else
           throw new Error("can't use "+retType+" in a conditional")
