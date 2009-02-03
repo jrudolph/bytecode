@@ -45,6 +45,12 @@ object CodeTools{
     case This(symbol) => symbol.tpe
     case Select(_,symbol) => symbol.tpe
   }
+
+  def splitFullMethodName(method:String):(String,String) = {
+    val index = method.lastIndexOf(".")
+    (method.substring(0,index),method.substring(index+1))
+  }
+  
   def methodFromTree(tree:Tree):jMethod = try {
 	    tree match{
 	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
@@ -53,9 +59,7 @@ object CodeTools{
 	        List(LocalValue(NoSymbol,x,PrefixedType(NoType,NoSymbol))),
                  Apply(Select(Ident(LocalValue(NoSymbol,x1,PrefixedType(NoType,NoSymbol))),
                          Method(method,_)),List())) if x == x1 => {
-	        val index = method.lastIndexOf(".")
-            val clazz = method.substring(0,index)
-            val methodName = method.substring(index+1)
+            val (clazz,methodName) = splitFullMethodName(method)
             val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz not found: "+clazz+" in "+tree.toString))
             cl.getMethod(methodName)
           }
