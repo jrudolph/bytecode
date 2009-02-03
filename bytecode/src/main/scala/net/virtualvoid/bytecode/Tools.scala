@@ -67,7 +67,7 @@ object CodeTools{
           case Function(List(x@LocalValue(_,_,tpe)),Select(Ident(x1),Method(method,_))) if x==x1 => {
             val clazz = extractClass(tpe)
             val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
-            val methodName = method.substring(clazz.length+1)
+            val methodName = method.substring(method.lastIndexOf(".")+1)
             val m = cl.getMethod(methodName)
             m
           }
@@ -75,7 +75,7 @@ object CodeTools{
           case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
             val clazz = extractClass(tpe)
             val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
-            val methodName = method.substring(clazz.length+1)
+            val methodName = method.substring(method.lastIndexOf(".")+1)
             val m = cl.getMethod(methodName)
             m
           }
@@ -83,7 +83,7 @@ object CodeTools{
           case Function(List(x),Apply(Select(qual,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),_))),List(Ident(x1)))) if x==x1 => {
             val clazz = extractClass(typeOfQualifier(qual))
             val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString))//java.lang.Class.forName(clazz)
-            val methodName = method.substring(clazz.length+1)
+            val methodName = method.substring(method.lastIndexOf(".")+1)
             val argCl = cleanClass(argClazz)
             val m = cl.getMethod(methodName,argCl)
             assert ((m.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
