@@ -21,20 +21,25 @@ object CodeTools{
     case NamedType(name) => name
   }
   
-  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = code.tree match{
-    case Function(List(p1,p2@LocalValue(_,_,tpe:PrefixedType)),Apply(Select(Ident(th),Method(method,_)),List(Ident(x)))) if th == p1 && x == p2 =>{
-      val paramClass = extractClass(tpe)
+  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = try { 
+    code.tree match{
+      case Function(List(p1,p2),Apply(Select(Ident(th),Method(method,MethodType(List(param),_))),List(Ident(x)))) if th == p1 && x == p2 =>{
+        val paramClass = extractClass(param)
       
-      val i = method.lastIndexOf(".")
-      val clName = method.substring(0,i)
-      val methodName = method.substring(i+1)
-      val cl = java.lang.Class.forName(clName)
-      val cl2 = java.lang.Class.forName(paramClass)
-      val m = cl.getMethod(methodName,cl2)
-      m
-    }	
-    case _ => throw new Error("Can't match this "+code.tree)
+        val i = method.lastIndexOf(".")
+        val clName = method.substring(0,i)
+        val methodName = method.substring(i+1)
+        val cl = java.lang.Class.forName(clName)
+        val cl2 = java.lang.Class.forName(paramClass)
+        val m = cl.getMethod(methodName,cl2)
+        m
+      }	
+      case _ => throw new Error("Can't match this "+code.tree)
+    }
+  }catch{
+    case e:Exception => throw new Error("Error while calling method: "+code.tree,e);
   }
+  
   def forName(clazz:String) = 
     try {
       Some(java.lang.Class.forName(clazz));

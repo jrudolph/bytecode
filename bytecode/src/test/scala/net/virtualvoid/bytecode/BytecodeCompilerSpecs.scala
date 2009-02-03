@@ -94,6 +94,14 @@ object BytecodeCompilerSpecs extends Specification{
       )
       .apply(new java.lang.StringBuilder) must be_==(0)
     }
+    "method2 call to method which accepts superclass" in {
+      compiler.compile(classOf[java.lang.StringBuilder])(
+        _ ~
+          dup ~
+          method2(_.append(_)) // accepts CharSequence
+      )
+      .apply(new java.lang.StringBuilder)
+    }
     "ifeq and jmp" in {
       if (compiler != Interpreter)
       compiler.compile(classOf[java.lang.Integer])(
