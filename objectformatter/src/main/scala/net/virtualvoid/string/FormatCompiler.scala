@@ -111,7 +111,7 @@ object Compiler{
                 dup ~
                 method(_.length) ~
                 ifeq2(
-                  f=>f,
+                  id,
                   _ ~ ldc(sep) ~ method2(_.append(_))
                 ) ~
                 swap ~ // sb,o,index,sb,ele | array

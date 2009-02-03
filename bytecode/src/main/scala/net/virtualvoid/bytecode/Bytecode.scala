@@ -94,7 +94,7 @@ object Bytecode{
     def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT]
     def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT]
 
-    def ~[X](f:F[ST,LT]=>X):X = f(this)
+    def ~[ST2<:List,LT2<:List](f:F[ST,LT]=>F[ST2,LT2]):F[ST,LT] => F[ST2,LT2] = x => f(x)
     
     def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
     def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT]
@@ -202,6 +202,12 @@ object Bytecode{
     def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
        
     def newInstance[ST<:List,LT<:List,T](cl:Class[T]) = (f:F[ST,LT]) => f.newInstance(cl)
+    def newInstance1[ST<:List,LT<:List,T,U](code:scala.reflect.Code[U=>T])
+                                           (f:F[ST**U,LT]):F[ST**T,LT] = null
+    
+    case class Uninitialized[T<:AnyRef] 
+    def allocate[ST<:List,LT<:List,T](cl:Class[T]):F[ST,LT]=>F[ST**Uninitialized[T],LT] = null
+    def initialize1[ST<:List,LT<:List,T,U](code:scala.reflect.Code[U=>T]):F[ST**Uninitialized[T]**U,LT]=>F[ST**T,LT] = null
     
     def after[ST<:List,LT<:List](f:F[_,_]=>F[ST,LT]):F[ST,LT]=>F[ST,LT] = f => f
     
@@ -232,7 +238,7 @@ object Bytecode{
       */
       import Bytecode.Implicits._
 	  def foldArray[R<:List,LT<:List,T,U,X](func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]]):F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
-	    _ ~
+	    f=>f ~
 	    swap ~ 
         local[_0,Array[T]].store() ~ 
 	    bipush(0) ~
@@ -253,8 +259,8 @@ object Bytecode{
 	            bipush(1) ~ 
 	            iadd ~
 	            self
-	      )
-	    }
+	      )(f)
+	    }(f)
   }
 
   type S[s] = F[Nil**s,Nil]
