@@ -52,6 +52,7 @@ object CodeTools{
   }
   
   def methodFromTree(tree:Tree):jMethod = try {
+        def classNotFound(clazz:String) = new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString) 
 	    tree match{
 	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
 	      // like [T,It<:Iterable[T]] (it:It) => it.iterator
@@ -60,13 +61,13 @@ object CodeTools{
                  Apply(Select(Ident(LocalValue(NoSymbol,x1,PrefixedType(NoType,NoSymbol))),
                          Method(method,_)),List())) if x == x1 => {
             val (clazz,methodName) = splitFullMethodName(method)
-            val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz not found: "+clazz+" in "+tree.toString))
+            val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             cl.getMethod(methodName)
           }
           // scala method call to method defined without parameter list
           case Function(List(x@LocalValue(_,_,tpe)),Select(Ident(x1),Method(method,_))) if x==x1 => {
             val clazz = extractClass(tpe)
-            val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
+            val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             val methodName = method.substring(method.lastIndexOf(".")+1)
             val m = cl.getMethod(methodName)
             m
@@ -74,7 +75,7 @@ object CodeTools{
           // method call with variable receiver like '_.toString'
           case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(Ident(x1),Method(method,_)),List())) if x==x1 => {
             val clazz = extractClass(tpe)
-            val cl = forName(clazz).getOrElse(throw new java.lang.Error(tree.toString))//java.lang.Class.forName(clazz)
+            val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             val methodName = method.substring(method.lastIndexOf(".")+1)
             val m = cl.getMethod(methodName)
             m
@@ -82,7 +83,7 @@ object CodeTools{
 	      // static method call with variable first parameter 'Integer.valueOf(_)'
           case Function(List(x),Apply(Select(qual,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),_))),List(Ident(x1)))) if x==x1 => {
             val clazz = extractClass(typeOfQualifier(qual))
-            val cl = forName(clazz).getOrElse(throw new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString))//java.lang.Class.forName(clazz)
+            val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             val methodName = method.substring(method.lastIndexOf(".")+1)
             val argCl = cleanClass(argClazz)
             val m = cl.getMethod(methodName,argCl)
