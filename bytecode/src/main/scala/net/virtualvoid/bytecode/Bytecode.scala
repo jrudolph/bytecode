@@ -133,9 +133,9 @@ object Bytecode{
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
-  trait LocalAccess[P<:Nat,T]{
-    def load[ST<:List,LT<:List]()(implicit fn:NThGetter[P,T,LT]):F[ST,LT] => F[ST**T,LT]
-    def store[ST<:List,LT<:List]()(implicit fn:NThReplacer[P,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,P,T]]
+  trait LocalAccess[N<:Nat,T]{
+    def load[ST<:List,LT<:List]()(implicit fn:NThGetter[N,T,LT]):F[ST,LT] => F[ST**T,LT]
+    def store[ST<:List,LT<:List]()(implicit fn:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,N,T]]
   }
   
   case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
@@ -152,10 +152,10 @@ object Bytecode{
   type ReplaceNTh[R<:List,N<:Nat,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Operations{
-    def local[P<:Nat,T]:LocalAccess[P,T] = new LocalAccess[P,T]{
-      def load[ST<:List,LT<:List]()(implicit getter:NThGetter[P,T,LT]):F[ST,LT] => F[ST**T,LT] = 
+    def local[N<:Nat,T]:LocalAccess[N,T] = new LocalAccess[N,T]{
+      def load[ST<:List,LT<:List]()(implicit getter:NThGetter[N,T,LT]):F[ST,LT] => F[ST**T,LT] = 
         f => f.loadI(getter.depth)
-      def store[ST<:List,LT<:List]()(implicit replacer:NThReplacer[P,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,P,T]] = 
+      def store[ST<:List,LT<:List]()(implicit replacer:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,N,T]] = 
         f => f.storeI(f.stack.rest,f.stack.top,replacer.depth)
     }
     
