@@ -125,17 +125,17 @@ object Bytecode{
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
-  case class NThGetter[P<:Nat,T,L<:List](depth:Int)
-  implicit def nth_0[R<:List,T] = NThGetter[_0,T,R**T](0)
-  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:NThGetter[P,T,R]) = NThGetter[Succ[P],T,R**U](next.depth+1) 
+  case class NThGetter[P<:Nat,L<:List,T](depth:Int)
+  implicit def nth_0[R<:List,T] = NThGetter[_0,R**T,T](0)
+  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:NThGetter[P,R,T]) = NThGetter[Succ[P],R**U,T](next.depth+1) 
   
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
   trait LocalAccess[N<:Nat,T]{
-    def load[ST<:List,LT<:List]()(implicit fn:NThGetter[N,T,LT]):F[ST,LT] => F[ST**T,LT]
-    def store[ST<:List,LT<:List]()(implicit fn:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,N,T]]
+    def load[ST<:List,LT<:List]()(implicit fn:NThGetter[N,LT,T]):F[ST,LT] => F[ST**T,LT]
+    def store[ST<:List,LT<:List]()(implicit fn:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
   
   case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
@@ -149,13 +149,13 @@ object Bytecode{
     type Visit0 = Cons[R#Rest,T]
     type VisitSucc[P<:Nat] = Cons[P#Accept[ReplaceNThVisitor[R#Rest,T]],R#Top]
   }
-  type ReplaceNTh[R<:List,N<:Nat,T] = N#Accept[ReplaceNThVisitor[R,T]]
+  type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Operations{
     def local[N<:Nat,T]:LocalAccess[N,T] = new LocalAccess[N,T]{
-      def load[ST<:List,LT<:List]()(implicit getter:NThGetter[N,T,LT]):F[ST,LT] => F[ST**T,LT] = 
+      def load[ST<:List,LT<:List]()(implicit getter:NThGetter[N,LT,T]):F[ST,LT] => F[ST**T,LT] = 
         f => f.loadI(getter.depth)
-      def store[ST<:List,LT<:List]()(implicit replacer:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[LT,N,T]] = 
+      def store[ST<:List,LT<:List]()(implicit replacer:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
         f => f.storeI(f.stack.rest,f.stack.top,replacer.depth)
     }
     
@@ -318,13 +318,13 @@ object Bytecode{
       // test replace type
       
       
-      val x:ReplaceNTh[Nil**String**Int**Float,_0,Double] = null
+      val x:ReplaceNTh[_0,Nil**String**Int**Float,Double] = null
       val x2:_0#Accept[ReplaceNThVisitor[Nil**String**Int**Float,Double]] = x
       val x3:ReplaceNThVisitor[Nil**String**Int**Float,Double]#Visit0 = x2
       val x4:(Nil**String**Int**Float)#Rest**Double = x3
       val x5:Nil**String**Int**Double = x
       
-      val y:ReplaceNTh[Cons[Cons[Cons[Nil,String],Int],Float],_1,Double] = null
+      val y:ReplaceNTh[_1,Cons[Cons[Cons[Nil,String],Int],Float],Double] = null
       val y2:_1#Accept[ReplaceNThVisitor[Nil**String**Int**Float,Double]] = y
       val y3:ReplaceNThVisitor[Nil**String**Int**Float,Double]#VisitSucc[_0] = y2
       val y4:Cons[_0#Accept[ReplaceNThVisitor[Nil**String**Int,Double]],Float] = y3
@@ -334,7 +334,7 @@ object Bytecode{
       val y6a:Nil**String**Double= y5a
       val y7:Nil**String**Double**Float = y
       
-      val z:ReplaceNTh[Nil**String**Int**Float,_2,Double] = null
+      val z:ReplaceNTh[_2,Nil**String**Int**Float,Double] = null
       //val z2:Nil**Double**Int**Float = z
       
       ()
