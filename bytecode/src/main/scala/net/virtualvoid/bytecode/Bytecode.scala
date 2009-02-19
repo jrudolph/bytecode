@@ -125,24 +125,23 @@ object Bytecode{
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
-  case class NThGetter[P<:Nat,L<:List,T](depth:Int)
-  implicit def nth_0[R<:List,T] = NThGetter[_0,R**T,T](0)
-  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:NThGetter[P,R,T]) = NThGetter[Succ[P],R**U,T](next.depth+1) 
+  
+  case class CheckNTh[P<:Nat,L<:List,T]
+  implicit def nth_0[R<:List,T]:CheckNTh[_0,R**T,T] = null
+  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:CheckNTh[P,R,T]):CheckNTh[Succ[P],R**U,T] = null
+  
+  case class Depth[P<:Nat](depth:Int)
+  implicit def depth_0:Depth[_0] = Depth[_0](0)
+  implicit def depthSucc[P<:Nat](implicit next:Depth[P]):Depth[Succ[P]] = Depth[Succ[P]](next.depth + 1)
   
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
   trait LocalAccess[N<:Nat,T]{
-    def load[ST<:List,LT<:List]()(implicit fn:NThGetter[N,LT,T]):F[ST,LT] => F[ST**T,LT]
-    def store[ST<:List,LT<:List]()(implicit fn:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
+    def load[ST<:List,LT<:List]()(implicit fn:CheckNTh[N,LT,T],depth:Depth[N]):F[ST,LT] => F[ST**T,LT]
+    def store[ST<:List,LT<:List]()(implicit fn:Depth[N]):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
-  
-  case class NThReplacer[P<:Nat,L<:List,T](depth:Int)
-  implicit def replace_0[R<:List,T,U] = 
-    NThReplacer[_0,R,T](0)
-  implicit def replaceSucc[P<:Nat,R<:List,T](implicit next : NThReplacer[P,R#Rest,T]) =
-    NThReplacer[Succ[P],R,T](next.depth + 1)
      
   final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
     type ResultType = List
@@ -153,10 +152,10 @@ object Bytecode{
   
   object Operations{
     def local[N<:Nat,T]:LocalAccess[N,T] = new LocalAccess[N,T]{
-      def load[ST<:List,LT<:List]()(implicit getter:NThGetter[N,LT,T]):F[ST,LT] => F[ST**T,LT] = 
-        f => f.loadI(getter.depth)
-      def store[ST<:List,LT<:List]()(implicit replacer:NThReplacer[N,LT,T]):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
-        f => f.storeI(f.stack.rest,f.stack.top,replacer.depth)
+      def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T],depth:Depth[N]):F[ST,LT] => F[ST**T,LT] = 
+        f => f.loadI(depth.depth)
+      def store[ST<:List,LT<:List]()(implicit depth:Depth[N]):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
+        f => f.storeI(f.stack.rest,f.stack.top,depth.depth)
     }
     
     def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT]):
