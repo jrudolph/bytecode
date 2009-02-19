@@ -126,8 +126,8 @@ object Bytecode{
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
   
-  case class CheckNTh[P<:Nat,L<:List,T]
-  implicit def nth_0[R<:List,T]:CheckNTh[_0,R**T,T] = null
+  case class CheckNTh[N<:Nat,L<:List,T]
+  implicit def nth_0[R<:List,T,U<:T]:CheckNTh[_0,R**U,T] = null
   implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:CheckNTh[P,R,T]):CheckNTh[Succ[P],R**U,T] = null
   
   case class Depth[P<:Nat](depth:Int)
