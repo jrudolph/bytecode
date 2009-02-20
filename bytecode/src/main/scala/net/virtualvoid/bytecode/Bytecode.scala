@@ -168,11 +168,11 @@ object Bytecode{
     def isub[R<:List,LT<:List] = 
       iop[R,LT](_.isub_int(_,_,_))
     
-    def method[T,U,R<:List,LT<:List](code:scala.reflect.Code[T=>U]):F[R**T,LT] => F[R**U,LT] = 
+    def invokemethod1[T,U,R<:List,LT<:List](code:scala.reflect.Code[T=>U]):F[R**T,LT] => F[R**U,LT] = 
       f => f.method_int(f.stack.rest,f.stack.top,code)
-    def method2[T1,T2,U,R<:List,LT<:List](code:scala.reflect.Code[(T1,T2)=>U]):
+    def invokemethod2[T1,T2,U,R<:List,LT<:List](code:scala.reflect.Code[(T1,T2)=>U]):
       F[R**T1**T2,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
-    def dynMethod[T,U,R<:List,LT<:List](method:java.lang.reflect.Method,resT:Class[U]):
+    def invokemethod1Dyn[T,U,R<:List,LT<:List](method:java.lang.reflect.Method,resT:Class[U]):
       F[R**T,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest,f.stack.top,method,resT)
     
     def pop_unit[R<:List,LT<:List]:F[R**Unit,LT] => F[R,LT] =
@@ -283,7 +283,7 @@ object Bytecode{
     //val u:Nothing = l
     def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
     
-    val x = stack[String] ~ method(_.length) ~ dup ~ iadd ~ method(Integer.valueOf(_))
+    val x = stack[String] ~ invokemethod1(_.length) ~ dup ~ iadd ~ invokemethod1(Integer.valueOf(_))
     //val y = richFunc(method((_:String).length))
     
     
