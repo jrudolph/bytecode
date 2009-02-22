@@ -39,7 +39,7 @@ object BytecodeStaticSpecs extends Specification {
         interpreter.compileString(
           """object Test {
 import net.virtualvoid.bytecode.Bytecode._
-import net.virtualvoid.bytecode.Bytecode.Operations._
+import net.virtualvoid.bytecode.Bytecode.Instructions._
 import net.virtualvoid.bytecode.Bytecode.Implicits._
 """+prefix+str+suffix+"}")
         (!interpreter.myReporter.hasErrors,"compiled","did not compile with error: "+interpreter.lastError)

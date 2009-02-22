@@ -12,7 +12,7 @@ object BytecodeCompilerSpecs extends Specification{
   def compiledTests(compiler:net.virtualvoid.bytecode.Bytecode.ByteletCompiler){
     import Bytecode._
     import Bytecode.Implicits._
-    import Bytecode.Operations._
+    import Bytecode.Instructions._
     
     "bipush(20)" in {
       compiler.compile(classOf[String])(_~pop~bipush(20)~invokemethod1(Integer.valueOf(_)))
@@ -160,7 +160,7 @@ object BytecodeCompilerSpecs extends Specification{
   
   {
     import Bytecode._
-    import Operations._
+    import Instructions._
     import Implicits._
     import RichOperations._
       

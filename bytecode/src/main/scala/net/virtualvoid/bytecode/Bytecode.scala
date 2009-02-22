@@ -150,7 +150,7 @@ object Bytecode{
   }
   type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
-  object Operations{
+  object Instructions {
     def local[N<:Nat,T]:LocalAccess[N,T] = new LocalAccess[N,T]{
       def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T],depth:Depth[N]):F[ST,LT] => F[ST**T,LT] = 
         f => f.loadI(depth.depth)
@@ -219,7 +219,7 @@ object Bytecode{
     }
   }
   object RichOperations{
-    import Operations._
+    import Instructions._
     import Implicits._
      /* def foldArray(array,func,start)
        * 	let f(i,u) = 
@@ -275,7 +275,7 @@ object Bytecode{
   def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
   
   def test{
-    import Operations._
+    import Instructions._
     implicit def richFunc[ST1<:List,ST2<:List,LT1<:List,LT2<:List](func:F[ST1,LT1] => F[ST2,LT2]):RichFunc[ST1,LT1,ST2,LT2] = null
     val compiler:ByteletCompiler = null
     
