@@ -165,11 +165,10 @@ object ASMCompiler extends ByteletCompiler{
         else
           INVOKEVIRTUAL
 
-      def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
+      def method2_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
         invokeMethod2(methodFromCode(code))
-      def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] = {
+      def method1Dyn_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT] = 
         invokeMethod(method)
-      }
 
       def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method) = {
         val cl = m.getDeclaringClass
@@ -179,7 +178,7 @@ object ASMCompiler extends ByteletCompiler{
       def invokeMethod[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest,m)
       def invokeMethod2[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest.rest,m)
       
-      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
+      def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
         invokeMethod(methodFromTree(code.tree))
       
       def pop_unit_int[R<:List](rest:R):F[R,LT] = new ASMFrame[R,LT](mv,stackClass.rest,localsClass)

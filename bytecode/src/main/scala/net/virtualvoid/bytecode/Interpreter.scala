@@ -29,11 +29,11 @@ object Interpreter extends ByteletCompiler{
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
       def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = 
         IF(rest**t1**t2**t1,locals)
-      def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
+      def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
         IF(rest ** invokeMethod(methodFromTree(code.tree),top).asInstanceOf[U],locals)
-      def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U])
+      def method1Dyn_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U])
       	:F[R**U,LT] = IF(rest ** method.invoke(top).asInstanceOf[U],locals)
-      def method_int[R<:List,T2,T1,U](rest:R
+      def method2_int[R<:List,T2,T1,U](rest:R
                                       ,top2:T2
                                       ,top1:T1
                                       ,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 

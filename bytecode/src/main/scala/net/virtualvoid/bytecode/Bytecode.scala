@@ -103,9 +103,9 @@ object Bytecode{
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT]
     def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT]
     def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT]
-    def method_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
-    def method_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
-    def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
+    def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT]
+    def method1Dyn_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
+    def method2_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
     def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT]
     def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R,top:JVMInt,then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2]
@@ -167,11 +167,11 @@ object Bytecode{
       iop[R,LT](_.isub_int(_,_,_))
     
     def invokemethod1[T,U,R<:List,LT<:List](code:scala.reflect.Code[T=>U]):F[R**T,LT] => F[R**U,LT] = 
-      f => f.method_int(f.stack.rest,f.stack.top,code)
+      f => f.method1_int(f.stack.rest,f.stack.top,code)
     def invokemethod2[T1,T2,U,R<:List,LT<:List](code:scala.reflect.Code[(T1,T2)=>U]):
-      F[R**T1**T2,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
+      F[R**T1**T2,LT] => F[R**U,LT] = f => f.method2_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
     def invokemethod1Dyn[T,U,R<:List,LT<:List](method:java.lang.reflect.Method,resT:Class[U]):
-      F[R**T,LT] => F[R**U,LT] = f => f.method_int(f.stack.rest,f.stack.top,method,resT)
+      F[R**T,LT] => F[R**U,LT] = f => f.method1Dyn_int(f.stack.rest,f.stack.top,method,resT)
     
     def pop_unit[R<:List,LT<:List]:F[R**Unit,LT] => F[R,LT] =
       f => f.pop_unit_int(f.stack.rest)
