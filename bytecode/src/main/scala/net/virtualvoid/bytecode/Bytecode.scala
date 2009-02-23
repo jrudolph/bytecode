@@ -117,8 +117,6 @@ object Bytecode{
         (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2]
     
     def pop_unit_int[R<:List](rest:R):F[R,LT]
-    
-    def lazyVal_int[T<:AnyRef](tpe:Class[T],init:F[Nil,Nil] => F[Nil**T,Nil]):F[ST**T,LT]
 
     def newInstance[T](cl:Class[T]):F[ST**T,LT]
     
@@ -208,9 +206,6 @@ object Bytecode{
     def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
       (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
         fr.tailRecursive_int(func)(fr)
-      
-    def lazyVal[R<:List,LT<:List,T<:AnyRef](tpe:Class[T],init:F[Nil,Nil] => F[Nil**T,Nil]):F[R,LT] => F[R**T,LT] =
-      _.lazyVal_int(tpe,init)
   }
 
   object Implicits{
