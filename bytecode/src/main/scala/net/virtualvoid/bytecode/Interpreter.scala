@@ -42,11 +42,11 @@ object Interpreter extends ByteletCompiler{
         IF(rest**top.asInstanceOf[U],locals)
       def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = 
         throw notImplemented("ifeq_int")
-      def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R
+      def ifne2_int[R<:List,ST2<:List,LT2<:List](rest:R
                                                  ,top:JVMInt
                                                  ,then:F[R,LT]=>F[ST2,LT2]
                                                  ,elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2] =
-        if (top == 0) then(IF(rest,locals)) else elseB(IF(rest,locals))
+        if (top != 0) then(IF(rest,locals)) else elseB(IF(rest,locals))
       
       import java.lang.reflect.{Array => jArray}
       def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {
