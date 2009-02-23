@@ -107,7 +107,7 @@ object Bytecode{
     def method1Dyn_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U]):F[R**U,LT]
     def method2_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT]
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT]
-    def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT]
+    def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT]
     def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R,top:JVMInt,then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2]
     def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T,LT]
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT]
@@ -193,7 +193,7 @@ object Bytecode{
     implicit def int2JVMInt(i:Int) = JVMInt(i)
     implicit def bool2JVMInt(b:Boolean) = JVMInt(if (b) 1 else 0)
     
-    def ifeq[R<:List,LT<:List,T<%JVMInt](inner:F[R,LT]=>Nothing):F[R**T,LT] => F[R,LT] = f=>f.ifeq_int(f.stack.rest,f.stack.top,inner)
+    def ifne[R<:List,LT<:List,T<%JVMInt](inner:F[R,LT]=>Nothing):F[R**T,LT] => F[R,LT] = f=>f.ifne_int(f.stack.rest,f.stack.top,inner)
     def target[ST<:List,LT<:List] = (f:F[ST,LT]) => f.target
     def targetHere[ST<:List,LT<:List](t:ForwardTarget[ST,LT]) = (f:F[ST,LT]) => f.targetHere(t)
     def jmp[ST<:List,LT<:List](t:Target[ST,LT]) = (f:F[ST,LT]) => f.jmp(t)
@@ -202,7 +202,11 @@ object Bytecode{
     
     def after[ST<:List,LT<:List](f:F[_,_]=>F[ST,LT]):F[ST,LT]=>F[ST,LT] = f => f
     
-    def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = f=>f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
+    def ifeq2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = 
+      f => f.ifeq2_int[R,ST2,LT2](f.stack.rest,f.stack.top,then,elseB)
+    def ifne2[R<:List,LT<:List,ST2<:List,LT2<:List,T<%JVMInt](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**T,LT]=>F[ST2,LT2] = 
+      ifeq2(elseB,then)
+    
     def tailRecursive[ST<:List,LT<:List,ST2<:List,LT2<:List]
       (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
         fr.tailRecursive_int(func)(fr)

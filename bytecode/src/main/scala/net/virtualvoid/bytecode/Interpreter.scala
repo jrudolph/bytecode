@@ -40,7 +40,7 @@ object Interpreter extends ByteletCompiler{
         IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = 
         IF(rest**top.asInstanceOf[U],locals)
-      def ifeq_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = 
+      def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = 
         throw notImplemented("ifeq_int")
       def ifeq2_int[R<:List,ST2<:List,LT2<:List](rest:R
                                                  ,top:JVMInt

@@ -110,7 +110,7 @@ object BytecodeCompilerSpecs extends Specification{
           
           start ~
             local[_0,Int].load() ~ // load i to check if it is already 0 
-            ifeq(f => 
+            ifne(f => 
               f ~ 
                 local[_0,Int].load() ~
                 dup ~
@@ -125,6 +125,38 @@ object BytecodeCompilerSpecs extends Specification{
             local[_1,Int].load() ~
             invokemethod1(Integer.valueOf(_))
       }).apply(5) must be_==(15)
+    }
+    "ifeq2" in {
+      val f = compiler.compile(classOf[java.lang.Integer])(
+        _ ~ 
+          invokemethod1(_.intValue) ~
+          bipush(5) ~
+          isub ~
+          ifeq2(
+            _ ~
+              ldc("equals 5")
+            ,_ ~
+              ldc("does not equal 5")
+          )
+      )
+      f(10) must be_==("does not equal 5")
+      f(5) must be_==("equals 5")
+    }
+    "ifne2" in {
+      val f = compiler.compile(classOf[java.lang.Integer])(
+        _ ~ 
+          invokemethod1(_.intValue) ~
+          bipush(5) ~
+          isub ~
+          ifne2(
+            _ ~
+              ldc("does not equal 5")
+            ,_ ~
+              ldc("equals 5")
+          )
+      )
+      f(10) must be_==("does not equal 5")
+      f(5) must be_==("equals 5")
     }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
