@@ -157,12 +157,13 @@ object ASMCompiler extends ByteletCompiler{
         new ASMFrame[ST**T,LT](mv,stackClass**cl,localsClass)
       }
       
-      def getInvokeMethod(cl:Class[_]) = if (cl.isInterface) INVOKEINTERFACE else INVOKEVIRTUAL
-      def getInvokeMethod2(m:java.lang.reflect.Method) = 
+      def getInvokeInsn(m:java.lang.reflect.Method) = 
         if ((m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0)
           INVOKESTATIC
+        else if (m.getDeclaringClass.isInterface)
+          INVOKEINTERFACE
         else
-          getInvokeMethod(m.getDeclaringClass)
+          INVOKEVIRTUAL
 
       def method_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
         invokeMethod2(methodFromCode(code))
@@ -172,7 +173,7 @@ object ASMCompiler extends ByteletCompiler{
 
       def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method) = {
         val cl = m.getDeclaringClass
-        mv.visitMethodInsn(getInvokeMethod2(m),Type.getInternalName(cl),m.getName,Type.getMethodDescriptor(m))
+        mv.visitMethodInsn(getInvokeInsn(m),Type.getInternalName(cl),m.getName,Type.getMethodDescriptor(m))
         new ASMFrame[R**U,LT](mv,rest ** m.getReturnType,localsClass)
       }
       def invokeMethod[R<:List,U](m:java.lang.reflect.Method) = invokeMethodX[R,U](stackClass.rest,m)
