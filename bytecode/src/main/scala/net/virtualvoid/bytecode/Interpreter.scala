@@ -25,13 +25,18 @@ object Interpreter extends ByteletCompiler{
       def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
       def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
       def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
-      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = IF(rest**top**top,locals)
-      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = IF(rest**t1**t2,locals)
+      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = 
+    	  IF(rest**top**top,locals)
+      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = 
+    	  IF(rest**t1**t2,locals)
       def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = 
         IF(rest**t1**t2**t1,locals)
       def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
         IF(rest ** invokeMethod(methodFromTree(code.tree),top).asInstanceOf[U],locals)
-      def method1Dyn_int[R<:List,T,U](rest:R,top:T,method:java.lang.reflect.Method,resCl:Class[U])
+      def method1Dyn_int[R<:List,T,U](rest:R
+                                      ,top:T
+                                      ,method:java.lang.reflect.Method
+                                      ,resCl:Class[U])
       	:F[R**U,LT] = IF(rest ** method.invoke(top).asInstanceOf[U],locals)
       def method2_int[R<:List,T2,T1,U](rest:R
                                       ,top2:T2
@@ -78,7 +83,8 @@ object Interpreter extends ByteletCompiler{
         IF(stack**cl.newInstance,locals)
       
       def tailRecursive_int[ST2<:List,LT2<:List]
-        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))(fr:F[ST,LT]):F[ST2,LT2] =
+        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))
+        	(fr:F[ST,LT]):F[ST2,LT2] =
           // classical y combinator in strict languages
           func(tailRecursive_int(func)_)(fr)
     }
