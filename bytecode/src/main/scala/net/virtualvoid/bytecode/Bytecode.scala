@@ -67,16 +67,6 @@ object Bytecode{
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
   }
-
-  trait Zippable[ST<:List,L<:List,Cur,R<:List]{
-    def depth:Int
-    def frame:F[ST,_<:List]
-  }
-  
-  case class Zipper[ST<:List,L<:List,Cur,R<:List](f:F[ST,_<:List],depth:Int) extends Zippable[ST,L,Cur,R]{
-    def ~[X](f:Zipper[ST,L,Cur,R]=>X) = f(this)
-    def frame = f
-  }
   
   trait F[ST<:List,LT<:List]{
     def depth = -1
@@ -255,8 +245,6 @@ object Bytecode{
 	    }
   }
 
-  type S[s] = F[Nil**s,Nil]
-
   trait ByteletCompiler{
 	  // compile a piece of code which
 	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
@@ -270,76 +258,6 @@ object Bytecode{
       def apply(f:F[ST1,LT1]):F[ST3,LT3] = second(first(f))
     }
   }
-  
-  def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
-  
-  def test{
-    import Instructions._
-    implicit def richFunc[ST1<:List,ST2<:List,LT1<:List,LT2<:List](func:F[ST1,LT1] => F[ST2,LT2]):RichFunc[ST1,LT1,ST2,LT2] = null
-    val compiler:ByteletCompiler = null
-    
-    val l:List = null
-    //val u:Nothing = l
-    def stack[X]:F[Nil**X,Nil]=>F[Nil**X,Nil] = null
-    
-    val x = stack[String] ~ invokemethod1(_.length) ~ dup ~ iadd ~ invokemethod1(Integer.valueOf(_))
-    //val y = richFunc(method((_:String).length))
-    
-    
-    //val f:F[Nil**String,Nil]=>F[Nil**Integer,Nil] = richFunc(method((_:String).length)) ~ dup ~ iadd ~ method(Integer.valueOf(_))
-    def test[T](a:T,b:T):T = null.asInstanceOf[T]
-    val x5:Number = test(3.2,5)
-    
-    def ifeq[R<:List,LT<:List,ST2<:List,LT2<:List](then:F[R,LT]=>F[ST2,LT2],elseB:F[R,LT]=>F[ST2,LT2]):F[R**Int,LT]=>F[ST2,LT2] = null
-    
-    val ifop:F[Nil**Int,Nil]=>F[Nil**String,Nil] = stack[Int] ~ ifeq(ldc("wurst"),ldc("gustav"));
-    
-    compiler.compile(classOf[String])(x)
-    
-    val func:Iterable[Integer] => Seq[String] =null
-    val func2: Seq[Integer] => Iterable[String] = func
-    val fr:F[Nil**String,Nil] = null
-    val fr2:F[Nil**String,Nil] = fr
-    
-    def fun(i:Number):String = i.toString
-    
-    /*val fr3:F[Nil**Int,Nil] = null
-    fr3 ~ method(fun(_))*/
-    
-//    val fr3:F[List**String,Nil] = fr
-//    fr3 ~ method{(str:String) => str.length}
-    
-    val f:F[Nil,Nil**String**Int] = null
-    f ~ local[_1,String].load()
-    
-    {
-      // test replace type
-      
-      
-      val x:ReplaceNTh[_0,Nil**String**Int**Float,Double] = null
-      val x2:_0#Accept[ReplaceNThVisitor[Nil**String**Int**Float,Double]] = x
-      val x3:ReplaceNThVisitor[Nil**String**Int**Float,Double]#Visit0 = x2
-      val x4:(Nil**String**Int**Float)#Rest**Double = x3
-      val x5:Nil**String**Int**Double = x
-      
-      val y:ReplaceNTh[_1,Cons[Cons[Cons[Nil,String],Int],Float],Double] = null
-      val y2:_1#Accept[ReplaceNThVisitor[Nil**String**Int**Float,Double]] = y
-      val y3:ReplaceNThVisitor[Nil**String**Int**Float,Double]#VisitSucc[_0] = y2
-      val y4:Cons[_0#Accept[ReplaceNThVisitor[Nil**String**Int,Double]],Float] = y3
-      val y5:Cons[ReplaceNThVisitor[Nil**String**Int,Double]#Visit0,Float] = y
-      val y5a:ReplaceNThVisitor[Nil**String**Int,Double]#Visit0 = null
-      val y6:Cons[Cons[(Nil**String**Int)#Rest,Double],Float] = y
-      val y6a:Nil**String**Double= y5a
-      val y7:Nil**String**Double**Float = y
-      
-      val z:ReplaceNTh[_2,Nil**String**Int**Float,Double] = null
-      //val z2:Nil**Double**Int**Float = z
-      
-      ()
-    }
-    
-  ()
-  }  
 }
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]
