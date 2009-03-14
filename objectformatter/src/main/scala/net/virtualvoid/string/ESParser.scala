@@ -17,18 +17,44 @@ object Java{
 }
 
 object AST{
-  trait StrToken {
-    def eval(o:AnyRef):AnyRef
-  }
-  case class StrTokens(toks:Seq[StrToken]) extends StrToken{
-    def chars = ""
-    def eval(o:AnyRef):String = toks.map(_.eval(o)) mkString "" 
-  }
-  case class Literal(str:String) extends StrToken{
+  trait FormatElement {
+    def format(o:AnyRef):String
+  }  
+  case class Literal(str:String) extends FormatElement{
     def chars = str
-    def eval(o:AnyRef):String = str
+    def format(o:AnyRef):String = str
   }
-  case class Exp(identifier:String) extends StrToken{
+  case class ToStringConversion(exp:Exp) extends FormatElement{
+    def format(o:AnyRef):String = exp.eval(o).toString
+  }
+  case class Conditional(condition:Exp,thenToks:FormatElementList,elseToks:FormatElementList) extends FormatElement{
+    def chars =""
+    def format(o:AnyRef) = condition.eval(o) match {
+      case java.lang.Boolean.TRUE => thenToks.format(o)
+      case java.lang.Boolean.FALSE => elseToks.format(o)
+      case x:Option[AnyRef] => x.map(thenToks.format).getOrElse(elseToks.format(o))
+    }
+  }
+  case class DateConversion(exp:Exp,format:String) extends FormatElement{
+    val df = new java.text.SimpleDateFormat(format)
+    def format(o:AnyRef) = df.format(exp.eval(o) match {
+      case cal:java.util.Calendar => cal.getTime
+      case date:java.util.Date => date
+    })
+    def chars = ""
+  }
+  case class Expand(exp:Exp,sep:String,inner:FormatElementList) extends FormatElement{
+    def chars = exp.chars + ":" + sep
+    def realEval(l:Iterable[AnyRef]):String = l.map(inner.format(_)) mkString sep
+    import Java.it2it
+    def format(o:AnyRef) = exp.eval(o) match{
+      // array or collection or similar
+    case l : java.lang.Iterable[AnyRef] => realEval(l)
+    case l : Seq[AnyRef] => realEval(l)
+    }
+  }
+  
+  case class Exp(identifier:String){
     def chars = identifier
 
     import java.lang.reflect.{Method}
@@ -41,43 +67,36 @@ object AST{
      }catch{
      case _:NoSuchMethodException => None
      }
-    def method(cl:Class[_]):Method = Array("get"+capitalize(identifier),identifier).flatMap(findMethod(cl,_).toList).firstOption.getOrElse(throw new java.lang.Error("couldn't find method" + identifier + "in class "+cl.getName))
+    def realmethod(cl:Class[_]):Method = 
+      Array("get"+capitalize(identifier),identifier)
+        .flatMap(findMethod(cl,_).toList).firstOption
+        .getOrElse(throw new java.lang.Error("couldn't find method " + identifier + " in class "+cl.getName))
+    var m:Method = null
+    def method(cl:Class[_]) = {
+      if (m == null){
+    	  m = realmethod(cl)
+      }
+      m
+    }
     def returnType(callingCl:Class[_]):Class[_] = method(callingCl).getReturnType
     def genericReturnType(callingCl:Class[_]):java.lang.reflect.Type = method(callingCl).getGenericReturnType
     def capitalize(s:String):String = s.substring(0,1).toUpperCase + s.substring(1)
     def eval(o:AnyRef) = method(o.getClass).invoke(o,null)
   }
-  case class Conditional(condition:Exp,ifToks:StrTokens,thenToks:StrTokens) extends StrToken{
-    def chars =""
-    def eval(o:AnyRef) =  
-      (if (condition.eval(o)==java.lang.Boolean.TRUE) ifToks else thenToks).eval(o)
-  }
-  case class DateConversion(exp:Exp,format:String) extends StrToken{
-    val df = new java.text.SimpleDateFormat(format)
-    def eval(o:AnyRef) = df.format(exp.eval(o) match {
-      case cal:java.util.Calendar => cal.getTime
-      case date:java.util.Date => date
-    })
-    def chars = ""
-  }
   case object ThisExp extends Exp(""){
     override def eval(o:AnyRef) = o
     override def returnType(callingCl:Class[_]):Class[_] = callingCl
     override def genericReturnType(callingCl:Class[_]):java.lang.reflect.Type =
-      throw new java.lang.Error("no generic type information available for "+callingCl.getName+" since it is erased")
+      throw new java.lang.Error("No generic type information available for "+callingCl.getName+
+                                  " since it is erased. #this can't be used in conditional or expand expressions")
   }
   case class ParentExp(inner:Exp,parent:String) extends Exp(parent){
     override def eval(o:AnyRef) = inner.eval(super.eval(o))
   }
-  case class SpliceExp(exp:Exp,sep:String,inner:StrTokens) extends StrToken{
-    def chars = exp.chars + ":" + sep
-    def realEval(l:Iterable[AnyRef]):String = l.map(inner.eval(_)) mkString sep
-    import Java.it2it
-    def eval(o:AnyRef) = exp.eval(o) match{
-      // array or collection or similar
-    case l : java.lang.Iterable[AnyRef] => realEval(l)
-    case l : Seq[AnyRef] => realEval(l)
-    }
+  
+  case class FormatElementList(elements:Seq[FormatElement]){
+    def chars = ""
+    def format(o:AnyRef):String = elements.map(_.format(o)) mkString "" 
   }
 }
 
@@ -85,7 +104,7 @@ object EnhancedStringFormatParser extends RegexParsers{
   import AST._
   
   override type Elem = Char
-  type Tokens = StrToken
+  type Tokens = FormatElement
 
   implicit def extendParser[T](x:Parser[T]):EParser[T] = EParser[T](x)
 
@@ -95,7 +114,7 @@ object EnhancedStringFormatParser extends RegexParsers{
 
   def char = "[^#\\]|\\[]".r | escapedByDoubling("[") | escapedByDoubling("]") | escapedByDoubling("#") | escapedByDoubling("|")
   def idChar = "\\w".r
-  def lit:Parser[StrToken] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
+  def lit:Parser[FormatElement] = char ~ rep(char) ^^ {case first ~ rest => Literal(first :: rest reduceLeft (_+_))}
 
   def idPart:Parser[String] = idChar ~ rep(idChar) ^^ {case first ~ rest => first :: rest mkString ""}
   def id:Parser[Exp] =
@@ -105,9 +124,11 @@ object EnhancedStringFormatParser extends RegexParsers{
 
   def exp:Parser[Exp] = expStartChar ~>
     (id | extendParser("{") ~!> id <~! "}")
+  
+  def expAsString:Parser[FormatElement] = exp ^^ {case exp => ToStringConversion(exp)}
 
   def sepChars = "[^}]*".r
-  def spliceExp = exp ~ opt(inners) ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case exp ~ x ~ separator => SpliceExp(exp,separator.getOrElse(""),x.getOrElse(StrTokens(List(ThisExp))))}
+  def expand = exp ~ opt(inners) ~ opt(extendParser('{') ~!> sepChars <~! '}') <~ "*" ^^ {case exp ~ x ~ separator => Expand(exp,separator.getOrElse(""),x.getOrElse(FormatElementList(List(ToStringConversion(ThisExp)))))}
   
   def dateConversion:Parser[String] = extendParser("->date[") ~!> "[^\\]]*".r <~ "]" 
   def conversion = exp ~ dateConversion ^^ {case exp ~ format => DateConversion(exp,format)}
@@ -116,10 +137,14 @@ object EnhancedStringFormatParser extends RegexParsers{
     (tokens ~ "|" ~ tokens <~ "]")
   def conditional = exp ~ clauses ^^ {case exp ~ (ifs ~ sep ~ thens) => Conditional(exp,ifs,thens)}
 
-  def innerExp:Parser[StrToken] = spliceExp | conversion | conditional | exp | lit 
+  def innerExp:Parser[FormatElement] = (expand
+                                     |  conversion 
+                                     |  conditional
+                                     |  expAsString
+                                     |  lit)
   def inners = '[' ~> tokens <~ ']'
   
-  def tokens:Parser[StrTokens] = rep(innerExp) ^^ {case toks => StrTokens(toks)}
+  def tokens:Parser[FormatElementList] = rep(innerExp) ^^ {case toks => FormatElementList(toks)}
   
   override val skipWhitespace = false
 
@@ -131,7 +156,7 @@ object EnhancedStringFormatParser extends RegexParsers{
       = OnceParser{ (for(a <- oldThis; b <- commit(p)) yield a).named("<~!") }
   }
   
-  def parse(input:String):StrTokens = 
+  def parse(input:String):FormatElementList = 
     phrase(tokens)(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
       case Success(res,_) => res
       case x:NoSuccess => error(x.msg)
