@@ -154,6 +154,16 @@ object BytecodeCompilerSpecs extends Specification{
       f(10) must be_==("does not equal 5")
       f(5) must be_==("equals 5")
     }
+    "foldArray" in {
+      val f = compiler.compile(classOf[Array[Int]])(
+        _ ~
+          bipush(0) ~
+          RichOperations.foldArray(index => iadd) ~
+          invokemethod1(Integer.valueOf(_))
+      )
+      f(Array(1,2,3,4)) must be_==(10)
+      f(Array(5,17,12,3,28)) must be_==(65)
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)

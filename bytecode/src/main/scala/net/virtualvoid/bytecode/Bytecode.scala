@@ -182,33 +182,35 @@ object Bytecode{
        *            u
        *    f(0,start)
       */
-      import Bytecode.Implicits._
-	  /*def foldArray[R<:List,T,U,X]
-	                (func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]])
-	                :F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
+    def foldArray[R<:List,T,U]
+	                (func:Local[Int]=>F[R**U**T]=>F[R**U])
+	                :F[R**Array[T]**U] => F[R**U] =
 	    _ ~
 	    swap ~ 
-        local[_0,Array[T]].store() ~ 
-	    bipush(0) ~
-	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
-	      _ ~
-	      dup ~
-	      local[_0,Array[T]].load() ~
-	      arraylength ~
-	      isub ~
-	      ifeq2(pop,
-	            _ ~
-	            dup_x1 ~
-	            local[_0,Array[T]].load() ~
-	            swap ~
-	            aload ~
-	            func ~
-	            swap ~
-	            bipush(1) ~ 
-	            iadd ~
-	            self
-	      )
-	    }*/
+        withLocal{ array =>
+		  bipush(0) ~
+		  withLocal{ index =>
+		    tailRecursive[R**U,R**U]{self =>
+		      _ ~
+		      index.load ~
+		      array.load ~
+		      arraylength ~
+		      isub ~
+		      ifeq2(f=>f,
+				_ ~
+				array.load ~
+				index.load ~
+				aload ~
+				func(index) ~
+				index.load ~
+				bipush(1) ~ 
+				iadd ~
+				index.store ~
+				self
+		      )
+		    }
+		  }
+	    }
   }
 
   trait ByteletCompiler{
