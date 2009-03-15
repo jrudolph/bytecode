@@ -5,66 +5,66 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object Interpreter extends ByteletCompiler{
-    case class IF[ST<:List,LT<:List](stack:ST,locals:LT) extends F[ST,LT]{
+    case class IF[+ST<:List](stack:ST) extends F[ST]{
       import CodeTools._
       
       def notImplemented(what:String) = 
         new java.lang.Error(what + " not implemented in Interpreter")
       
-      def bipush(i1:Int):F[ST**Int,LT] = IF(stack ** i1,locals)
-      def ldc(str:jString):F[ST**jString,LT] = IF(stack ** str,locals)
-      def target:BackwardTarget[ST,LT] = throw notImplemented("target")
+      def bipush[ST2>:ST](i1:Int):F[ST2**Int] = IF(stack ** i1)
+      def ldc[ST2>:ST](str:jString):F[ST2**jString] = IF(stack ** str)
+      /*def target:BackwardTarget[ST,LT] = throw notImplemented("target")
       def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
       
       def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT] = 
         throw notImplemented("forwardTarget")
       def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT] = 
-        throw notImplemented("targetHere")
+        throw notImplemented("targetHere")*/
 
-      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1+i2),locals)
-      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1-i2),locals)
-      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int,LT] = IF(rest ** (i1*i2),locals)
-      def pop_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)
-      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T,LT] = 
-    	  IF(rest**top**top,locals)
-      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2,LT] = 
-    	  IF(rest**t1**t2,locals)
-      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1,LT] = 
-        IF(rest**t1**t2**t1,locals)
-      def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U,LT] = 
-        IF(rest ** invokeMethod(methodFromTree(code.tree),top).asInstanceOf[U],locals)
+      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1+i2))
+      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1-i2))
+      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1*i2))
+      def pop_int[R<:List](rest:R):F[R] = IF(rest)
+      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T] = 
+    	  IF(rest**top**top)
+      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2] = 
+    	  IF(rest**t1**t2)
+      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1] = 
+        IF(rest**t1**t2**t1)
+      def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U] = 
+        IF(rest ** invokeMethod(methodFromTree(code.tree),top).asInstanceOf[U])
       def method1Dyn_int[R<:List,T,U](rest:R
                                       ,top:T
                                       ,method:java.lang.reflect.Method
                                       ,resCl:Class[U])
-      	:F[R**U,LT] = IF(rest ** method.invoke(top).asInstanceOf[U],locals)
+      	:F[R**U] = IF(rest ** method.invoke(top).asInstanceOf[U])
       def method2_int[R<:List,T2,T1,U](rest:R
                                       ,top2:T2
                                       ,top1:T1
-                                      ,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U,LT] = 
-        IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U],locals)
-      def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U,LT] = 
-        IF(rest**top.asInstanceOf[U],locals)
-      def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R,LT] => Nothing):F[R,LT] = 
+                                      ,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U] = 
+        IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U])
+      def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U] = 
+        IF(rest**top.asInstanceOf[U])
+      def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R] => Nothing):F[R] = 
         throw notImplemented("ifeq_int")
-      def ifne2_int[R<:List,ST2<:List,LT2<:List](rest:R
+      def ifne2_int[R<:List,ST2<:List](rest:R
                                                  ,top:JVMInt
-                                                 ,then:F[R,LT]=>F[ST2,LT2]
-                                                 ,elseB:F[R,LT]=>F[ST2,LT2]):F[ST2,LT2] =
-        if (top != 0) then(IF(rest,locals)) else elseB(IF(rest,locals))
+                                                 ,then:F[R]=>F[ST2]
+                                                 ,elseB:F[R]=>F[ST2]):F[ST2] =
+        if (top != 0) then(IF(rest)) else elseB(IF(rest))
       
       import java.lang.reflect.{Array => jArray}
-      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T,LT] = {
-        IF(rest**jArray.get(array,i).asInstanceOf[T],locals)
+      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T] = {
+        IF(rest**jArray.get(array,i).asInstanceOf[T])
       }
-      def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R,LT] = {
+      def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R] = {
         jArray.set(array,index,t)
-        IF(rest,locals)
+        IF(rest)
       }
-      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int,LT] = 
-        IF(rest**jArray.getLength(array),locals)
+      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int] = 
+        IF(rest**jArray.getLength(array))
       
-      def pop_unit_int[R<:List](rest:R):F[R,LT] = IF(rest,locals)      
+      def pop_unit_int[R<:List](rest:R):F[R] = IF(rest)      
 
       def get[T](i:Int,l:List):T = l match{
         case N => throw new Error("not possible")
@@ -74,21 +74,28 @@ object Interpreter extends ByteletCompiler{
         case N => if (i == 0) Cons(N,t) else Cons(store(i-1,N,t),N)
         case Cons(r,old:T) => if (i == 0) Cons(r,t) else Cons(store(i-1,r,t),old)
       }
-
-      def loadI[T](i:Int):F[ST**T,LT] = IF(stack**get(i,locals),locals)
-      def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT] =
-        IF(rest,store(i,locals,top).asInstanceOf[NewLT])
       
-      def newInstance[T](cl:Class[T]):F[ST**T,LT] = 
-        IF(stack**cl.newInstance,locals)
+      def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T] = 
+        IF(stack**cl.newInstance)
       
-      def tailRecursive_int[ST2<:List,LT2<:List]
-        (func: (F[ST,LT] => F[ST2,LT2]) => (F[ST,LT]=>F[ST2,LT2]))
-        	(fr:F[ST,LT]):F[ST2,LT2] =
+      def tailRecursive_int[ST1>:ST<:List,ST2<:List]
+        (func: (F[ST1] => F[ST2]) => (F[ST1]=>F[ST2]))
+        	(fr:F[ST1]):F[ST2] =
           // classical y combinator in strict languages
           func(tailRecursive_int(func)_)(fr)
+      
+      def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] = {
+        var value = top
+        code(new Local[T]{
+          def load[ST<:List]:F[ST] => F[ST**T] = f => IF(f.stack**value)
+          def store[ST<:List]:F[ST**T] => F[ST] = f => {
+            value = f.stack.top
+            IF(f.stack.rest)
+          }
+        })(IF(rest))
+      }
     }
 
-    def compile[T,U](cl:Class[T])(code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
-      t => code(IF((N:Nil)**t,N)).stack.top
+    def compile[T,U](cl:Class[T])(code: F[Nil**T]=>F[Nil**U]): T => U =
+      t => code(IF((N:Nil)**t)).stack.top
   }
