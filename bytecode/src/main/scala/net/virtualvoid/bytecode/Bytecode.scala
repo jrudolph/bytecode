@@ -34,12 +34,6 @@ object Bytecode{
 
     def bipush[ST2>:ST](i1:Int):F[ST2**Int]
     def ldc[ST2>:ST](str:jString):F[ST2**jString]
-    //def target:BackwardTarget[ST]
-    //def jmp(t:Target[ST]):Nothing
-    
-    // support for forward declaring targets
-    //def forwardTarget[ST<:List,LT<:List]:ForwardTarget[ST,LT]
-    //def targetHere(t:ForwardTarget[ST,LT]):F[ST,LT]
 
     def ~[X](f:F[ST]=>X):X = f(this)
     
