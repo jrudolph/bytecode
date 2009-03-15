@@ -211,6 +211,27 @@ object Bytecode{
 		    }
 		  }
 	    }
+    def foldIterator[R<:List,T,U]
+                    (func:Local[java.util.Iterator[T]]=>F[R**U**T]=>F[R**U])(implicit mf:scala.reflect.Manifest[T])
+          :F[R**java.util.Iterator[T]**U] => F[R**U] =
+            _ ~
+              swap ~
+              withLocal( iterator =>
+                  tailRecursive[R**U,R**U]( self =>
+                    _ ~
+	                  iterator.load ~
+	                  invokemethod1(_.hasNext) ~
+	                  ifne2(
+	                    _ ~
+	                      iterator.load ~
+	                      invokemethod1(_.next) ~
+	                      checkcast(mf.erasure.asInstanceOf[Class[T]]) ~
+	                      func(iterator) ~
+	                      self
+	                    ,f=>f
+	                  )
+                   )
+              )
   }
 
   trait ByteletCompiler{
