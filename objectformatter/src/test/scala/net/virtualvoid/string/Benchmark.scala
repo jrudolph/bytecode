@@ -78,7 +78,7 @@ object Benchmark {
 		  val variance = results.foldLeft(0d)((sum,x)=> sum + (x-avg)*(x-avg))/(averageOf-1.)
 		  val stdev = Math.pow(variance,.5)
 		  
-		  def ind(x:long) = (x-avg) match{
+		  def ind(x:Long) = (x-avg) match{
 		    case s if s <= -2*stdev => '↡'
 		    case s if s <= -stdev   => '↓'
 		    case s if s <= -stdev/2.=> '↘'
