@@ -26,6 +26,7 @@ object EvaluateSpecs extends Specification{
       def accs():Array[Account] = accounts().toArray(new Array[Account](0))
       def noAddress:Option[String] = None
       def address:Option[String] = Some("Some Street 5")
+      def nullAddress:String = null
   }
   val thePerson = new Person
 
@@ -51,6 +52,8 @@ object EvaluateSpecs extends Specification{
     "evaluate conditionals false" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(false),"no")}
     "evaluate conditionals with Some" in {"#address?[Found: #this|no address given]" must evaluateAs("Found: Some Street 5")}
     "evaluate conditionals with None" in {"#noAddress?[Found: #this|no address given]" must evaluateAs("no address given")}
+    "evaluate conditionals with non-null condition" in {"#this?[Is a person: #name|Is null]" must evaluateAs("Is a person: "+thePerson.name)}
+    "evaluate conditionals with null condition" in {"#nullAddress?[Is a person: #name|Is null]" must evaluateAs("Is null")}
   }
 
   "The format interpreter" should {
