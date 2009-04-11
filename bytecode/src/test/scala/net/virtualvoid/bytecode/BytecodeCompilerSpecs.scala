@@ -173,6 +173,34 @@ object BytecodeCompilerSpecs extends Specification{
       )
       f(java.util.Arrays.asList("a","b","c").iterator) must be_==("abc")
     }
+    "ifnull" in {
+      val f = compiler.compile(classOf[AnyRef])(
+          _ ~ 
+            dup ~
+            ifnull(
+              _ ~ pop ~ ldc("isnull")
+             ,_ ~ 
+                invokemethod1(_.toString) ~
+               	ldc(" isnotnull") ~
+                invokemethod2(_.concat(_)))
+      )
+      f(null) must be_==("isnull")
+      f("blub") must be_==("blub isnotnull")
+    }
+    "ifnonnull" in {
+      val f = compiler.compile(classOf[AnyRef])(
+          _ ~ 
+            dup ~
+            ifnonnull(
+             _ ~ 
+                invokemethod1(_.toString) ~
+               	ldc(" isnotnull") ~
+                invokemethod2(_.concat(_)),
+             _ ~ pop ~ ldc("isnull"))
+      )
+      f(null) must be_==("isnull")
+      f("blub") must be_==("blub isnotnull")
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)

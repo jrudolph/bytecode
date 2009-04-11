@@ -53,6 +53,21 @@ object Interpreter extends ByteletCompiler{
                                                  ,elseB:F[R]=>F[ST2]):F[ST2] =
         if (top != 0) then(IF(rest)) else elseB(IF(rest))
       
+      import org.objectweb.asm.Opcodes._
+      def isConditionTrue(cond:Int,value:Any):Boolean = cond match {
+        case IFNULL => value.asInstanceOf[AnyRef] eq null
+        case IFNONNULL => value.asInstanceOf[AnyRef] ne null
+        case IFNE => value != 0
+        case IFEQ => value == 0
+      }
+      def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+    	              					  ,thenB:F[R]=>F[ST2]
+    									  ,elseB:F[R]=>F[ST2]):F[ST2] = 
+        if (isConditionTrue(cond,top))
+          thenB(IF(rest))
+        else
+          elseB(IF(rest))
+      
       import java.lang.reflect.{Array => jArray}
       def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T] = {
         IF(rest**jArray.get(array,i).asInstanceOf[T])

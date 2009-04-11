@@ -177,9 +177,9 @@ object ASMCompiler extends ByteletCompiler{
       def pop_unit_int[R<:List](rest:R):F[R] = 
         withStack(stackClass.rest)
       
-      def ifne2_int[R<:List,ST2<:List]
-      (rest:R,top:JVMInt,then:F[R]=>F[ST2],elseB:F[R]=>F[ST2])
-      :F[ST2] = {
+      def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+    	              					  ,thenB:F[R]=>F[ST2]
+    									  ,elseB:F[R]=>F[ST2]):F[ST2] = {
         /*
          * ifeq thenLabel
          *   elseB
@@ -194,7 +194,7 @@ object ASMCompiler extends ByteletCompiler{
         
         val frameAfterCheck = new ASMFrame[R](mv,stackClass.rest,localsClass)
         
-        mv.visitJumpInsn(IFNE,thenLabel)
+        mv.visitJumpInsn(cond,thenLabel)
         
         val afterElseFrame = elseB(frameAfterCheck)
         
@@ -202,7 +202,7 @@ object ASMCompiler extends ByteletCompiler{
         
         mv.visitLabel(thenLabel)
         
-        val afterThenFrame = then(frameAfterCheck)
+        val afterThenFrame = thenB(frameAfterCheck)
         
         mv.visitLabel(endLabel)
         
