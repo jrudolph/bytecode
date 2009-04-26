@@ -20,13 +20,13 @@ object Benchmark {
   
   val formatFactories = List(ObjectFormatter,FormatCompiler)
   
-  def benchmark(times:Int,formatter:IObjectFormatter[Test]) = {
+  def benchmark(times:Int,formatter:Test=>String) = {
         System.out.println("run")
     val startTime = System.nanoTime
  
 	var i = times
 	do{
-	  formatter.format(sampleObject)
+	  formatter(sampleObject)
 	  i = i - 1;
 	}while(i>0)
    
@@ -40,7 +40,7 @@ object Benchmark {
 	
 	var i = times
 	do{
-	  formatter.format(sampleObject)
+	  formatter(sampleObject)
 	  i = i - 1;
 	}while(i>0)
    

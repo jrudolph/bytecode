@@ -204,9 +204,5 @@ object Compiler{
 }
 
 object FormatCompiler extends IObjectFormatterFactory{
-  def formatter[T<:AnyRef](clazz:Class[T],fmt:String) = 
-	  new IObjectFormatter[T]{
-	  	val compiler = Compiler.compile[T](fmt,clazz)
-	  	def format(o:T):String = compiler(o)
-  	  }
+  def formatter[T<:AnyRef](clazz:Class[T],fmt:String) = Compiler.compile[T](fmt,clazz)
 }
