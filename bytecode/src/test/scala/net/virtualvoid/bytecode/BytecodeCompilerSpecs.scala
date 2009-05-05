@@ -15,7 +15,7 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[String])(_~invokemethod1(_.length)~invokemethod1(Integer.valueOf(_)))
         .apply("Test") must be_==(4)}
     "locals + method2" in {
-      compiler.compile(classOf[java.lang.String])(_ ~ local[_0,String](_0).store() ~ local[_0,String](_0).load()~ local[_0,String](_0).load() ~ invokemethod2(_.concat(_)))
+      compiler.compile(classOf[java.lang.String])(_ ~ local[String].store(_0) ~ local[String].load(_0)~ local[String].load(_0) ~ invokemethod2(_.concat(_)))
       .apply("Test") must be_==("TestTest")}
     "iadd with operations" in {
       compiler.compile(classOf[java.lang.Integer])(
@@ -28,16 +28,16 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.Integer])(_~invokemethod1(_.intValue)~dup~iadd~bipush(3)~iadd~invokemethod1(Integer.valueOf(_)))
       .apply(12) must be_==(27)}
     "store(_) int in locals" in {
-      compiler.compile(classOf[java.lang.Integer])(_~invokemethod1(_.intValue)~dup~local[_0,Int](_0).store()~local[_0,Int](_0).load()~iadd~invokemethod1(Integer.valueOf(_)))
+      compiler.compile(classOf[java.lang.Integer])(_~invokemethod1(_.intValue)~dup~local[Int].store(_0)~local[Int].load(_0)~iadd~invokemethod1(Integer.valueOf(_)))
       .apply(12) must be_==(24)}
     "store(_) double in locals" in {
-      compiler.compile(classOf[java.lang.Double])(_~invokemethod1(_.doubleValue)~local[_0,Double](_0).store()~local[_0,Double](_0).load()~invokemethod1(java.lang.Double.valueOf(_)))
+      compiler.compile(classOf[java.lang.Double])(_~invokemethod1(_.doubleValue)~local[Double].store(_0)~local[Double].load(_0)~invokemethod1(java.lang.Double.valueOf(_)))
       .apply(12.453) must be_==(12.453)}
     "store(_) double after method2" in {
-      compiler.compile(classOf[java.lang.Double])(_~invokemethod1(_.doubleValue)~ldc("test")~dup~invokemethod2(_.concat(_))~pop~local[_0,Double](_0).store() ~ local[_0,Double](_0).load()~invokemethod1(java.lang.Double.valueOf(_:Double)))
+      compiler.compile(classOf[java.lang.Double])(_~invokemethod1(_.doubleValue)~ldc("test")~dup~invokemethod2(_.concat(_))~pop~local[Double].store(_0) ~ local[Double].load(_0)~invokemethod1(java.lang.Double.valueOf(_:Double)))
       .apply(12.453) must be_==(12.453)}
     "store(_) something more than 1 level deep" in {
-      compiler.compile(classOf[String])(_~local[_1,String](_1).store() ~ local[_1,String](_1).load())
+      compiler.compile(classOf[String])(_~local[String].store(_1) ~ local[String].load(_1))
       .apply("test") must be_==("test")
     }
     "load element with index 1 from a string array" in {
@@ -69,7 +69,7 @@ object BytecodeCompilerSpecs extends Specification{
       .apply("test") must be_==("testtest") 
     }
     "store(_) string after void method" in {
-      compiler.compile(classOf[java.lang.String])(_ ~ newInstance(classOf[java.text.SimpleDateFormat]) ~ ldc("yyyy") ~ invokemethod2(_.applyPattern(_)) ~ pop_unit ~ local[_0,String](_0).store() ~ local[_0,String](_0).load())
+      compiler.compile(classOf[java.lang.String])(_ ~ newInstance(classOf[java.text.SimpleDateFormat]) ~ ldc("yyyy") ~ invokemethod2(_.applyPattern(_)) ~ pop_unit ~ local[String].store(_0) ~ local[String].load(_0))
       .apply("test") must be_==("test")
     }
     "scala parameterless method call" in {
@@ -103,26 +103,26 @@ object BytecodeCompilerSpecs extends Specification{
         f => {
           val start = f ~
             invokemethod1(_.intValue) ~
-            local[_0,Int](_0).store() ~ //  store(_) current i in local 0
+            local[Int].store(_0) ~ //  store(_) current i in local 0
             bipush(0) ~
-            local[_1,Int](_1).store() ~ //  store(_) sum in local 1
+            local[Int].store(_1) ~ //  store(_) sum in local 1
             target
           
           start ~
-            local[_0,Int](_0).load() ~ // load i to check if it is already 0 
+            local[Int].load(_0) ~ // load i to check if it is already 0 
             ifne(f => 
               f ~ 
-                local[_0,Int](_0).load() ~
+                local[Int].load(_0) ~
                 dup ~
                 bipush(1) ~
                 isub ~
-                local[_0,Int](_0).store() ~
-                local[_1,Int](_1).load() ~
+                local[Int].store(_0) ~
+                local[Int].load(_1) ~
                 iadd ~
-                local[_1,Int](_1).store() ~
+                local[Int].store(_1) ~
                 jmp(start)
             ) ~
-            local[_1,Int](_1).load() ~
+            local[Int].load(_1) ~
             invokemethod1(Integer.valueOf(_))
       }).apply(5) must be_==(15)
     }
@@ -256,15 +256,15 @@ object BytecodeCompilerSpecs extends Specification{
           :F[R**U**It,LT**X] => F[R**U,LT**jIterator[T]] =
         _ ~
         invokemethod1(_.iterator) ~
-        local[_0,jIterator[T]](_0).store() ~
+        local[jIterator[T]].store(_0) ~
         tailRecursive[R**U,LT**jIterator[T],R**U,LT**jIterator[T]]{ self =>
           _ ~
-          local[_0,jIterator[T]](_0).load() ~
+          local[jIterator[T]].load(_0) ~
           invokemethod1(_.hasNext) ~
           ifeq2(
                 f=>f,
                 _ ~
-                local[_0,jIterator[T]](_0).load() ~
+                local[jIterator[T]].load(_0) ~
                 invokemethod1(_.next) ~
                 checkcast(eleType) ~
                 func ~
@@ -276,7 +276,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
         bipush(0) ~
         dup ~
-        local[_0,Int](_0).store() ~
+        local[Int].store(_0) ~
         foldArray(iadd) ~
         invokemethod1(Integer.valueOf(_))
       )
@@ -285,7 +285,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
         bipush(0) ~
         dup ~
-        local[_0,Int](_0).store() ~
+        local[Int].store(_0) ~
         swap ~
         foldIterable[Nil,Nil,java.lang.Integer,Int,Int,java.util.List[java.lang.Integer]](
           (f:F[Nil**Int**java.lang.Integer,Nil**jIterator[java.lang.Integer]]) 

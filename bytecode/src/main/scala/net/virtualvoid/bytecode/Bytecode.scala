@@ -142,10 +142,10 @@ object Bytecode{
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
-  trait LocalAccess[N<:Nat,T]{
-    def load[ST<:List,LT<:List]()(implicit fn:CheckNTh[N,LT,T])
+  trait LocalAccess[T]{
+    def load[N<:Nat,ST<:List,LT<:List](n:N)(implicit fn:CheckNTh[N,LT,T])
                                           :F[ST,LT] => F[ST**T,LT]
-    def store[ST<:List,LT<:List]():F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
+    def store[N<:Nat,ST<:List,LT<:List](n:N):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
      
   final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
@@ -156,11 +156,11 @@ object Bytecode{
   type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Instructions {
-    def local[N<:Nat,T](index:N):LocalAccess[N,T] = new LocalAccess[N,T]{
-      def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T])
+    def local[T]:LocalAccess[T] = new LocalAccess[T]{
+      def load[N<:Nat,ST<:List,LT<:List](index:N)(implicit check:CheckNTh[N,LT,T])
                                             :F[ST,LT] => F[ST**T,LT] = 
         f => f.loadI(index.value)
-      def store[ST<:List,LT<:List]()
+      def store[N<:Nat,ST<:List,LT<:List](index:N)
       	:F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
         f => f.storeI(f.stack.rest,f.stack.top,index.value)
     }
@@ -269,18 +269,18 @@ object Bytecode{
 	                :F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        local[_0,Array[T]](_0).store() ~ 
+        local[Array[T]].store(_0) ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
 	      dup ~
-	      local[_0,Array[T]](_0).load() ~
+	      local[Array[T]].load(_0) ~
 	      arraylength ~
 	      isub ~
 	      ifeq2(pop,
 	            _ ~
 	            dup_x1 ~
-	            local[_0,Array[T]](_0).load() ~
+	            local[Array[T]].load(_0) ~
 	            swap ~
 	            aload ~
 	            func ~
