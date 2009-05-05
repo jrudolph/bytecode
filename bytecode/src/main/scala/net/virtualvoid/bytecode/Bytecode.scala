@@ -14,12 +14,15 @@ object Bytecode{
   /* Peano-like natural numbers types */  
   trait Nat{
     type Accept[V<:NatVisitor] <: V#ResultType
+    def value:Int
   }
   final class _0 extends Nat{
     type Accept[V<:NatVisitor] = V#Visit0
+    val value = 0
   }  
-  final class Succ[Pre<:Nat] extends Nat{
+  final class Succ[Pre<:Nat](pred:Pre) extends Nat{
     type Accept[V<:NatVisitor] = V#VisitSucc[Pre]
+    val value = pred.value + 1
   }
   
   type _1 = Succ[_0]
@@ -28,9 +31,9 @@ object Bytecode{
   type _4 = Succ[_3]
   
   val _0 = new _0
-  val _1 = new _1
-  val _2 = new _2
-  val _3 = new _3  
+  val _1 = new _1(_0)
+  val _2 = new _2(_1)
+  val _3 = new _3(_2)
 
   trait List{
     type Rest <: List
@@ -134,22 +137,15 @@ object Bytecode{
   implicit def nth_0[R<:List,T,U<:T]:CheckNTh[_0,R**U,T] = null
   implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:CheckNTh[P,R,T])
   	:CheckNTh[Succ[P],R**U,T] = null
-  
-  case class Depth[P<:Nat](depth:Int)
-  implicit def depth_0:Depth[_0] = Depth[_0](0)
-  implicit def depthSucc[P<:Nat](implicit next:Depth[P]):Depth[Succ[P]] = 
-	  Depth[Succ[P]](next.depth + 1)
-  
+   
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
   trait LocalAccess[N<:Nat,T]{
-    def load[ST<:List,LT<:List]()(implicit fn:CheckNTh[N,LT,T]
-                                          ,depth:Depth[N])
+    def load[ST<:List,LT<:List]()(implicit fn:CheckNTh[N,LT,T])
                                           :F[ST,LT] => F[ST**T,LT]
-    def store[ST<:List,LT<:List]()(implicit fn:Depth[N])
-    	:F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
+    def store[ST<:List,LT<:List]():F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
      
   final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
@@ -160,14 +156,13 @@ object Bytecode{
   type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Instructions {
-    def local[N<:Nat,T]:LocalAccess[N,T] = new LocalAccess[N,T]{
-      def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T]
-                                            ,depth:Depth[N])
+    def local[N<:Nat,T](index:N):LocalAccess[N,T] = new LocalAccess[N,T]{
+      def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T])
                                             :F[ST,LT] => F[ST**T,LT] = 
-        f => f.loadI(depth.depth)
-      def store[ST<:List,LT<:List]()(implicit depth:Depth[N])
+        f => f.loadI(index.value)
+      def store[ST<:List,LT<:List]()
       	:F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
-        f => f.storeI(f.stack.rest,f.stack.top,depth.depth)
+        f => f.storeI(f.stack.rest,f.stack.top,index.value)
     }
     
     def iop[R<:List,LT<:List](func:(F[R**Int**Int,LT],R,Int,Int)=>F[R**Int,LT])
@@ -274,18 +269,18 @@ object Bytecode{
 	                :F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        local[_0,Array[T]].store() ~ 
+        local[_0,Array[T]](_0).store() ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
 	      dup ~
-	      local[_0,Array[T]].load() ~
+	      local[_0,Array[T]](_0).load() ~
 	      arraylength ~
 	      isub ~
 	      ifeq2(pop,
 	            _ ~
 	            dup_x1 ~
-	            local[_0,Array[T]].load() ~
+	            local[_0,Array[T]](_0).load() ~
 	            swap ~
 	            aload ~
 	            func ~
