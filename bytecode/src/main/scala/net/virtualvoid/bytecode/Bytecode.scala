@@ -138,6 +138,9 @@ object Bytecode{
   implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:CheckNTh[P,R,T])
   	:CheckNTh[Succ[P],R**U,T] = null
    
+  implicit val val_0 = _0
+  implicit def succ[P<:Nat](implicit v:P):Succ[P] = new Succ(v)
+   
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
@@ -156,7 +159,7 @@ object Bytecode{
   type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Instructions {
-    def local[N<:Nat,T](index:N):LocalAccess[N,T] = new LocalAccess[N,T]{
+    def local[N<:Nat,T](implicit index:N):LocalAccess[N,T] = new LocalAccess[N,T]{
       def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T])
                                             :F[ST,LT] => F[ST**T,LT] = 
         f => f.loadI(index.value)
@@ -269,7 +272,7 @@ object Bytecode{
 	                :F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        local[_0,Array[T]](_0).store() ~ 
+        local[_0,Array[T]].store() ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
@@ -280,7 +283,7 @@ object Bytecode{
 	      ifeq2(pop,
 	            _ ~
 	            dup_x1 ~
-	            local[_0,Array[T]](_0).load() ~
+	            local[_0,Array[T]].load() ~
 	            swap ~
 	            aload ~
 	            func ~

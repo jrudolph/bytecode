@@ -122,7 +122,7 @@ object BytecodeCompilerSpecs extends Specification{
                 local[_1,Int](_1).store() ~
                 jmp(start)
             ) ~
-            local[_1,Int](_1).load() ~
+            local[_1,Int].load() ~
             invokemethod1(Integer.valueOf(_))
       }).apply(5) must be_==(15)
     }
@@ -256,15 +256,15 @@ object BytecodeCompilerSpecs extends Specification{
           :F[R**U**It,LT**X] => F[R**U,LT**jIterator[T]] =
         _ ~
         invokemethod1(_.iterator) ~
-        local[_0,jIterator[T]](_0).store() ~
+        local[_0,jIterator[T]].store() ~
         tailRecursive[R**U,LT**jIterator[T],R**U,LT**jIterator[T]]{ self =>
           _ ~
-          local[_0,jIterator[T]](_0).load() ~
+          local[_0,jIterator[T]].load() ~
           invokemethod1(_.hasNext) ~
           ifeq2(
                 f=>f,
                 _ ~
-                local[_0,jIterator[T]](_0).load() ~
+                local[_0,jIterator[T]].load() ~
                 invokemethod1(_.next) ~
                 checkcast(eleType) ~
                 func ~
@@ -276,7 +276,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
         bipush(0) ~
         dup ~
-        local[_0,Int](_0).store() ~
+        local[_0,Int].store() ~
         foldArray(iadd) ~
         invokemethod1(Integer.valueOf(_))
       )
@@ -285,7 +285,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
         bipush(0) ~
         dup ~
-        local[_0,Int](_0).store() ~
+        local[_0,Int].store() ~
         swap ~
         foldIterable[Nil,Nil,java.lang.Integer,Int,Int,java.util.List[java.lang.Integer]](
           (f:F[Nil**Int**java.lang.Integer,Nil**jIterator[java.lang.Integer]]) 
