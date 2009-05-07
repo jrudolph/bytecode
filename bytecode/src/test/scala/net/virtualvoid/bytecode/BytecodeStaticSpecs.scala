@@ -8,6 +8,8 @@ object BytecodeStaticSpecs extends Specification {
   import _root_.scala.tools.nsc.reporters._
 
   val mySettings = new Settings
+  mySettings.Yrecursion.value = 5
+
   object interpreter extends Interpreter(mySettings){
     var writer = new java.io.StringWriter
     var pWriter = newWriter
