@@ -89,6 +89,6 @@ object Interpreter extends ByteletCompiler{
           func(tailRecursive_int(func)_)(fr)
     }
 
-    def compile[T,U](cl:Class[T])(code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
-      t => code(IF((N:Nil)**t,N)).stack.top
+    def compileWithReturn[T,U](cl:Class[T])(code: Return[U] => F[Nil**T,Nil]=>F[Nil**U,_]): T => U =
+      t => code(null)(IF((N:Nil)**t,N)).stack.top
   }

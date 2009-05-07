@@ -276,8 +276,8 @@ object ASMCompiler extends ByteletCompiler{
       }.loadClass(className)
     }
     var i = 0
-    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])
-    (code: F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
+    def compileWithReturn[T<:AnyRef,U<:AnyRef](cl:Class[T])
+    (code: Return[U] => F[Nil**T,Nil]=>F[Nil**U,_]): T => U = {
       i+=1
       val className = "Compiled" + i
 
@@ -309,7 +309,13 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitVarInsn(ALOAD, 1);
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
 
-        code(new ASMFrame[Nil**T,Nil](mv,EmptyClassStack ** cl,EmptyClassStack))
+        code(new Return[U]{
+        	def jmp[LT<:List]:F[Nil**U,LT] => Nothing = f => { 
+        		mv.visitInsn(ARETURN)
+        		throw JmpException
+        	}
+          }     
+        )(new ASMFrame[Nil**T,Nil](mv,EmptyClassStack ** cl,EmptyClassStack))
 
         mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)
