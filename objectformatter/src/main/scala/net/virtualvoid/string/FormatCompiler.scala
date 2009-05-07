@@ -53,7 +53,7 @@ object Compiler{
       case Literal(str) => 
         f ~ ldc(str) ~ invokemethod2(_.append(_))
       case ToStringConversion(e) =>
-        f ~ local[_0,T].load() ~
+        f ~ local(_0).load() ~
           compileGetExp(e,cl,classOf[AnyRef]) ~ 
           invokemethod1(_.toString) ~ 
           invokemethod2(_.append(_))
@@ -66,29 +66,29 @@ object Compiler{
                                                   .asInstanceOf[Class[AnyRef]]
           val jmpTarget =
             f ~ 
-             local[_0,T].load() ~
+             local(_0).load() ~
              swap ~ // save one instance of T for later
-             local[_0,T].load() ~
+             local(_0).load() ~
              compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
              invokemethod1(_.iterator) ~
-             local[_0,java.util.Iterator[AnyRef]].store() ~
+             local(_0).store() ~
              target
           
           jmpTarget ~
-             local[_0,java.util.Iterator[AnyRef]].load() ~
+             local(_0).load() ~
              invokemethod1(_.hasNext) ~
              ifne(f =>
                f ~
-                local[_0,java.util.Iterator[AnyRef]].load() ~
+                local(_0).load() ~
                 swap ~
-                local[_0,java.util.Iterator[AnyRef]].load() ~
+                local(_0).load() ~
                 invokemethod1(_.next) ~
                 checkcast(eleType) ~
-                local[_0,AnyRef].store() ~
+                local(_0).store() ~
                 compileFormatElementList(inner,eleType) ~
                 swap ~
                 dup ~
-                local[_0,java.util.Iterator[AnyRef]].store() ~
+                local(_0).store() ~
                 invokemethod1(_.hasNext) ~
                 ifne(f =>
                    f~ldc(sep:jString) ~
@@ -96,7 +96,7 @@ object Compiler{
                     jmp(jmpTarget)) ~ //todo: introduce ifeq(thenCode,elseTarget)
                 jmp(jmpTarget)) ~
              swap ~
-             local[_0,T].store[R**StringBuilder,LR**java.util.Iterator[AnyRef]]()
+             local(_0).store() ~ (f=>f)
         }
         else if (retType.isArray){
           val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
@@ -108,12 +108,12 @@ object Compiler{
           
           def swapTopWithLocal0[S<:List,L<:List,ST,LT]:F[S**ST,L**LT] => F[S**LT,L**ST] = 
             _ ~
-            local[_0,LT].load() ~
+            local(_0).load() ~
             swap ~
-            local[_0,ST].store() ~ id
+            local(_0).store() ~ id
           
           f ~  //sb | o
-            local[_0,T].load() ~ // sb,o
+            local(_0).load() ~ // sb,o
             dup ~ //sb,o,o
             compileGetExp(exp,cl,retType.asInstanceOf[Class[Array[AnyRef]]]) ~
             newInstance(classOf[StringBuilder]) ~
@@ -134,10 +134,10 @@ object Compiler{
                 swap ~
                 compileFormatElementList(inner,eleType) ~ 
                 swap ~
-                local[_0,Array[AnyRef]].store() ~ id// sb,o,index,sb | array
+                local(_0).store() ~ id// sb,o,index,sb | array
             ) ~ // sb,o,sb | array
             swap ~ // sb,sb,o | array
-            local[_0,T].store() ~
+            local(_0).store() ~
             invokemethod2(_.append(_))
         }
         else
@@ -150,7 +150,7 @@ object Compiler{
         if (retType == java.lang.Boolean.TYPE || 
               classOf[java.lang.Boolean].isAssignableFrom(retType)){
           f ~ 
-            local[_0,T].load() ~
+            local(_0).load() ~
             (if (retType == java.lang.Boolean.TYPE)
                compileGetExp(inner,cl,classOf[Boolean])
              else 
@@ -166,7 +166,7 @@ object Compiler{
                                     ,classOf[Option[_]])
             .asInstanceOf[Class[AnyRef]]
           f ~
-            local[_0,T].load() ~
+            local(_0).load() ~
             compileGetExp(inner,cl,classOf[Option[AnyRef]]) ~
             dup ~
             invokemethod1(_.isDefined) ~
@@ -175,13 +175,13 @@ object Compiler{
               _ ~ 
                 checkcast(classOf[Some[AnyRef]]) ~
                 invokemethod1(_.get) ~
-                local[_0,T].load() ~
+                local(_0).load() ~
                 swap ~
-                local[_0,AnyRef].store() ~
+                local(_0).store() ~
                 swap ~
                 compileFormatElementList(thens,eleType) ~
                 swap ~
-                local[_0,T].store[R**StringBuilder,LR**AnyRef]())
+                local(_0).store()~(f=>f))
         }
         else
           throw new Error("can't use "+retType+" in a conditional")
@@ -196,7 +196,7 @@ object Compiler{
           dup ~
           ldc(format) ~ 
           invokemethod2(_.applyPattern(_)) ~ pop_unit ~
-          local[_0,T].load() ~
+          local(_0).load() ~
           (f => 
             retType match {
               case x if DateClass.isAssignableFrom(x)     => 
@@ -218,7 +218,7 @@ object Compiler{
     val elements:FormatElementList = parser.parse(format)
     ASMCompiler.compile(cl)(
       _ 
-      ~ local[_0,T].store()
+      ~ local(_0).store()
       ~ newInstance(classOf[StringBuilder])
       ~ compileFormatElementList(elements,cl)
       ~ invokemethod1(_.toString)
