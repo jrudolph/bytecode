@@ -83,7 +83,7 @@ import net.virtualvoid.bytecode.Bytecode.Implicits._
     "arraylength with String[]" in {Stack("Nil**Array[String]") must haveOp("arraylength")}
     "dup_x1" in {Stack("Nil**String**Int") must haveOp("dup_x1")}
     
-    "ifeq with int stack" in {Stack("Nil**Int") must haveOp("ifeq(null)")}
+    "ifne with int stack" in {Stack("Nil**Int") must haveOp("ifne(null)")}
   }
   
   "implicits" should notApply {
