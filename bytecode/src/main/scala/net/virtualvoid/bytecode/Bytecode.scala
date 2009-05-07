@@ -70,6 +70,9 @@ object Bytecode{
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
   }
+  trait Category1
+  implicit val cat1Int:Int => Category1 = null
+  implicit val cat1AnyRef:AnyRef => Category1 = null
   
   trait F[ST<:List,LT<:List]{
     def depth = -1
@@ -195,7 +198,7 @@ object Bytecode{
       f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2**T1,LT] = 
       f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-    def swap[R<:List,LT<:List,T2,T1]:F[R**T2**T1,LT] => F[R**T1**T2,LT] = 
+    def swap[R<:List,LT<:List,T2<%Category1,T1<%Category1]():F[R**T2**T1,LT] => F[R**T1**T2,LT] = 
       f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
     def checkcast[T,U,R<:List,LT<:List](cl:Class[U]):F[R**T,LT]=>F[R**U,LT] = 
@@ -264,11 +267,11 @@ object Bytecode{
        *    f(0,start)
       */
       import Bytecode.Implicits._
-	  def foldArray[R<:List,LT<:List,T,U,X]
+	  def foldArray[R<:List,LT<:List,T,U<%Category1,X]
 	                (func:F[R**Int**U**T,LT**Array[T]]=>F[R**Int**U,LT**Array[T]])
 	                :F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
-	    swap ~ 
+	    swap() ~ 
         local[_0,Array[T]](_0).store() ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
@@ -281,10 +284,10 @@ object Bytecode{
 	            _ ~
 	            dup_x1 ~
 	            local[_0,Array[T]](_0).load() ~
-	            swap ~
+	            swap() ~
 	            aload ~
 	            func ~
-	            swap ~
+	            swap() ~
 	            bipush(1) ~ 
 	            iadd ~
 	            self
