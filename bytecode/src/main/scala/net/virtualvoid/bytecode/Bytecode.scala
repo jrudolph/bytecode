@@ -132,19 +132,13 @@ object Bytecode{
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
-  
-  case class CheckNTh[N<:Nat,L<:List,T]
-  implicit def nth_0[R<:List,T,U<:T]:CheckNTh[_0,R**U,T] = null
-  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:CheckNTh[P,R,T])
-  	:CheckNTh[Succ[P],R**U,T] = null
-   
+    
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
   trait LocalAccess[T]{
-    def load[N<:Nat,ST<:List,LT<:List](n:N)(implicit fn:CheckNTh[N,LT,T])
-                                          :F[ST,LT] => F[ST**T,LT]
+    def load[N<:Nat,ST<:List,LT<:ReplaceNTh[N,LT,T]](n:N):F[ST,LT] => F[ST**T,LT]
     def store[N<:Nat,ST<:List,LT<:List](n:N):F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
      
@@ -157,9 +151,8 @@ object Bytecode{
   
   object Instructions {
     def local[T]:LocalAccess[T] = new LocalAccess[T]{
-      def load[N<:Nat,ST<:List,LT<:List](index:N)(implicit check:CheckNTh[N,LT,T])
-                                            :F[ST,LT] => F[ST**T,LT] = 
-        f => f.loadI(index.value)
+      def load[N<:Nat,ST<:List,LT<:ReplaceNTh[N,LT,T]](n:N):F[ST,LT] => F[ST**T,LT] = 
+        f => f.loadI(n.value)
       def store[N<:Nat,ST<:List,LT<:List](index:N)
       	:F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
         f => f.storeI(f.stack.rest,f.stack.top,index.value)
