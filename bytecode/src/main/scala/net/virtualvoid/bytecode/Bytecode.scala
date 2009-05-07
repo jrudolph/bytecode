@@ -132,20 +132,14 @@ object Bytecode{
     def loadI[T](i:Int):F[ST**T,LT]
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
-  
-  case class CheckNTh[N<:Nat,L<:List,T]
-  implicit def nth_0[R<:List,T,U<:T]:CheckNTh[_0,R**U,T] = null
-  implicit def nthSucc[P<:Nat,R<:List,T,U](implicit next:CheckNTh[P,R,T])
-  	:CheckNTh[Succ[P],R**U,T] = null
    
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
    * type and implicit infering won't work any more
    */
-  trait LocalAccess[N<:Nat,T]{
-    def load[ST<:List,LT<:List]()(implicit fn:CheckNTh[N,LT,T])
-                                          :F[ST,LT] => F[ST**T,LT]
-    def store[ST<:List,LT<:List]():F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
+  trait LocalAccess[N<:Nat,ST<:List,LT<:List]{
+    def load[T]():F[ST,ReplaceNTh[N,LT,T]] => F[ST**T,ReplaceNTh[N,LT,T]]
+    def store[T]():F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
      
   final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
@@ -156,12 +150,10 @@ object Bytecode{
   type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
   
   object Instructions {
-    def local[N<:Nat,T](index:N):LocalAccess[N,T] = new LocalAccess[N,T]{
-      def load[ST<:List,LT<:List]()(implicit check:CheckNTh[N,LT,T])
-                                            :F[ST,LT] => F[ST**T,LT] = 
-        f => f.loadI(index.value)
-      def store[ST<:List,LT<:List]()
-      	:F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
+    def local[N<:Nat,ST<:List,LT<:List](index:N):LocalAccess[N,ST,LT] = new LocalAccess[N,ST,LT]{
+      def load[T]():F[ST,ReplaceNTh[N,LT,T]] => F[ST**T,ReplaceNTh[N,LT,T]] = 
+        f => f.loadI[T](index.value)
+      def store[T]():F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]] = 
         f => f.storeI(f.stack.rest,f.stack.top,index.value)
     }
     
@@ -269,12 +261,12 @@ object Bytecode{
 	                :F[R**Array[T]**U,LT**X] => F[R**U,LT**Array[T]] =
 	    _ ~
 	    swap ~ 
-        local[_0,Array[T]](_0).store() ~ 
+        local(_0).store[Array[T]]() ~ 
 	    bipush(0) ~
 	    tailRecursive[R**U**Int,LT**Array[T],R**U,LT**Array[T]]{self =>
 	      _ ~
 	      dup ~
-	      local[_0,Array[T]](_0).load() ~
+	      local(_0).load[Array[T]]() ~
 	      arraylength ~
 	      isub ~
 	      ifeq2(pop,
