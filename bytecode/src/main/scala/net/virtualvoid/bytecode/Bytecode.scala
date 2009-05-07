@@ -36,18 +36,15 @@ object Bytecode{
   val _3 = new _3(_2)
 
   trait List{
-    type Rest <: List
-    type Top
+    type Accept[V<:ListVisitor] <: ListVisitor#ResultType
   }
   trait Nil extends List{
-    type Rest = Nil
-    type Top = Nothing
+    type Accept[V<:ListVisitor] = V#VisitNil
   }
   object N extends Nil
   
-  case class Cons[R<:List,T](rest:R,top:T) extends List{
-    type Rest = R
-    type Top = T
+  case class Cons[+R<:List,+T](rest:R,top:T) extends List{
+    type Accept[R1<:R,T1<:T,V<:ListVisitor] = V#VisitCons[R1,T1]
     def l = rest
     /*def rest2:Rest = rest
     def top2:Top = top*/
@@ -133,12 +130,12 @@ object Bytecode{
     def storeI[R<:List,T,NewLT<:List](rest:R,top:T,i:Int):F[R,NewLT]
   }
   
-  final class NThVisitor[R<:List,N<:Nat] extends NatVisitor{
+  final class NThVisitor[R<:List,T,N<:Nat] extends NatVisitor{
     type ResultType = Any
-    type Visit0 = R#Top
-    type VisitSucc[P<:Nat] = P#Accept[NThVisitor[R#Rest,P]]
+    type Visit0 = T
+    type VisitSucc[P<:Nat] = P#Accept[NThVisitor[R#Accept[RestVisitor],R#Accept[TopVisitor],P]]
   }
-  type NTh[R<:List,N<:Nat] = N#Accept[NThVisitor[R,N]]
+  type NTh[R<:List,N<:Nat] = N#Accept[NThVisitor[R#Accept[RestVisitor],R#Accept[TopVisitor],N]]
 
   /* it would be nice if we could abandon the () in declaration and application of 
    * load/store altogether but that doesn't seems to work since then
@@ -148,13 +145,36 @@ object Bytecode{
     def load[ST<:List,LT<:List]():F[ST,LT] => F[ST**NTh[LT,N],LT]
     def store[T,ST<:List,LT<:List]():F[ST**T,LT] => F[ST,ReplaceNTh[N,LT,T]]
   }
-     
-  final class ReplaceNThVisitor[R<:List,T] extends NatVisitor{
-    type ResultType = List
-    type Visit0 = Cons[R#Rest,T]
-    type VisitSucc[P<:Nat] = Cons[P#Accept[ReplaceNThVisitor[R#Rest,T]],R#Top]
+  
+  trait ListVisitor{
+    type ResultType
+    type VisitNil <: ResultType
+    type VisitCons[+Rest<:List,+Top] <: ResultType
   }
-  type ReplaceNTh[N<:Nat,R<:List,T] = N#Accept[ReplaceNThVisitor[R,T]]
+  final class RestVisitor extends ListVisitor {
+  type ResultType = List
+  type VisitNil = Nil
+  type VisitCons[+REST<:List,+TOP] = REST
+ }
+
+ final class TopVisitor extends ListVisitor {
+  type ResultType = Any
+  type VisitNil = Nothing
+  type VisitCons[+REST<:List,+TOP] = TOP
+ }
+  /*final class ReplaceNThVisitor[R<:List,Top,T] extends NatVisitor{
+    type ResultType = List
+    type Visit0 = Cons[R,T]
+    type VisitSucc[P<:Nat] = Cons[P#Accept[ReplaceNThVisitor[R#Rest,R#Top,T]],Top]
+  }
+  type ReplaceNTh[N<:Nat,R<:List,Top,T] = N#Accept[ReplaceNThVisitor[R,Top,T]]*/
+  final class ReplaceNThVisitor[REST<:List,TOP,T] extends NatVisitor{
+	  type ResultType = List
+	  type Visit0 = Cons[REST,T]
+	  type VisitSucc[P<:Nat] = Cons[P#Accept[ReplaceNThVisitor[REST#Accept[RestVisitor],REST#Accept[TopVisitor],T]],TOP]
+  }
+  type ReplaceNTh[N<:Nat,ST<:List,T] =
+	  N#Accept[ReplaceNThVisitor[ST#Accept[RestVisitor],ST#Accept[TopVisitor],T]]
   
   object Instructions {
     def local[N<:Nat](index:N):LocalAccess[N] = new LocalAccess[N]{
