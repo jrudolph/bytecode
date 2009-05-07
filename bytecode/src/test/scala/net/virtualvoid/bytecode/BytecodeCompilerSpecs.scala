@@ -61,11 +61,11 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(12) must be_==(9)
     }
     "dup_x1" in {
-      compiler.compile(classOf[java.lang.Integer])(_~dup~invokemethod1(_.toString)~swap~invokemethod1(_.intValue)~dup_x1~swap~pop~iadd~invokemethod1(Integer.valueOf(_)))
+      compiler.compile(classOf[java.lang.Integer])(_~dup~invokemethod1(_.toString)~swap()~invokemethod1(_.intValue)~dup_x1~swap()~pop~iadd~invokemethod1(Integer.valueOf(_)))
       .apply(12) must be_==(24)
     }
     "create new StringBuilder" in {
-      compiler.compile(classOf[java.lang.String])(_~dup~newInstance(classOf[java.lang.StringBuilder])~swap~invokemethod2(_.append(_))~swap~invokemethod2(_.append(_))~invokemethod1(_.toString))
+      compiler.compile(classOf[java.lang.String])(_~dup~newInstance(classOf[java.lang.StringBuilder])~swap()~invokemethod2(_.append(_))~swap()~invokemethod2(_.append(_))~invokemethod1(_.toString))
       .apply("test") must be_==("testtest") 
     }
     "store(_) string after void method" in {
@@ -217,7 +217,7 @@ object BytecodeCompilerSpecs extends Specification{
             ~ dup_x1 //x,sum,x
             ~ iadd ~ dup ~ invokemethod1(println(_)) ~ pop_unit
             //~ state("after println")
-            ~ swap
+            ~ swap()
             ~ bipush(1) ~ isub ~ call(f)
         )
       
@@ -235,7 +235,7 @@ object BytecodeCompilerSpecs extends Specification{
       val func = ASMCompiler.compile(classOf[java.lang.Integer])(_ //simple[Nil**java.lang.Integer]
                                                                  ~ invokemethod1(_.intValue) 
                                                                  ~ bipush(1) 
-                                                                 ~ swap
+                                                                 ~ swap()
                                                                  ~ tailRecursive[Nil**Int**Int,Nil,Nil**Int,Nil]{self =>
                                                                    simple[Nil**Int**Int] ~
                                                                      //state("before check: ") ~
@@ -249,7 +249,7 @@ object BytecodeCompilerSpecs extends Specification{
 															            ~ dup_x1 //x,sum,x
 															            ~ iadd ~ dup ~ invokemethod1(println(_)) ~ pop_unit
 															            //~ state("after println")
-															            ~ swap
+															            ~ swap()
 															            ~ bipush(1) ~ isub ~ self)
 															        )
                                                                  } _ 
@@ -304,7 +304,7 @@ object BytecodeCompilerSpecs extends Specification{
         bipush(0) ~
         dup ~
         local[_0,Int](_0).store() ~
-        swap ~
+        swap() ~
         foldIterable[Nil,Nil,java.lang.Integer,Int,Int,java.util.List[java.lang.Integer]](
           (f:F[Nil**Int**java.lang.Integer,Nil**jIterator[java.lang.Integer]]) 
               => f ~ invokemethod1((_:java.lang.Integer).intValue) ~ iadd,classOf[java.lang.Integer]) ~
