@@ -72,9 +72,9 @@ import net.virtualvoid.bytecode.Bytecode.Implicits._
     "iadd on Int**Int" in {Stack("Nil**Int**Int") must haveOp("iadd")}
     "iadd on _**Int**Int" in {Stack("(_<:List)**Int**Int") must haveOp("iadd")}
    
-    "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("local[_0,Int].load()~dup~iadd")}
-    "l.l.load.e.e.dup.iadd with Int local on place 2" in {Locals("Nil**Int**String") must haveOp("local[_1,Int].load()~dup~iadd")}
-    "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("local[_0,String].store()~local[_0,String].load()~invokemethod1(_.length)")}
+    "l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("local[Int].load(_0)~dup~iadd")}
+    "l.l.load.e.e.dup.iadd with Int local on place 2" in {Locals("Nil**Int**String") must haveOp("local[Int].load(_1)~dup~iadd")}
+    "l.store.e on no locals (should generate one local)" in {Frame("Nil**String","Nil") must haveOp("local[String].store(_0)~local[String].load(_0)~invokemethod1(_.length)")}
     
     "aload with String[]" in {Stack("Nil**Array[String]**Int") must haveOp("aload")}
     "aload with int[]" in {Stack("Nil**Array[Int]**Int") must haveOp("aload")}
@@ -92,6 +92,8 @@ import net.virtualvoid.bytecode.Bytecode.Implicits._
     "dup_x1 on one Stack" in {Stack("Nil**String") mustNot haveOp("dup_x1")}
     
     "iadd on String**Int" in {Stack("Nil**String**Int") mustNot haveOp("iadd")}
+    
+    "local load wrong type" in {Stack("Nil**String**Int") mustNot haveOp("local[Float].load(_1)")}
   }
 }
 
