@@ -40,6 +40,14 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[String])(_~local[_1,String](_1).store() ~ local[_1,String](_1).load())
       .apply("test") must be_==("test")
     }
+    "store Int after double" in {
+      compiler.compile(classOf[java.lang.Double])(_~invokemethod1(_.doubleValue)~local[_0,Double](_0).store()~bipush(5)~local[_1,Int](_1).store() ~ local[_0,Double](_0).load()~invokemethod1(java.lang.Double.valueOf(_)))
+      .apply(.753) must be_==(.753)
+    }
+    "store Int after double, replace double by String, access int" in {
+      compiler.compile(classOf[java.lang.Double])(_~invokemethod1(_.doubleValue)~local[_0,Double](_0).store()~bipush(5)~local[_1,Int](_1).store() ~ local[_0,Double](_0).load() ~ pop ~ ldc("test") ~ local[_0,String](_0).store()~local[_1,Int](_1).load()~invokemethod1(java.lang.Integer.valueOf(_)))
+      .apply(.753) must be_==(5)
+    } 
     "load element with index 1 from a string array" in {
       compiler.compile(classOf[Array[String]])(_.bipush(1)~aload)
       .apply(array("That","is","a","Test")) must be_==("is")
