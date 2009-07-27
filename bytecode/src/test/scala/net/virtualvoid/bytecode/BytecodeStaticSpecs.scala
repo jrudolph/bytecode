@@ -85,6 +85,12 @@ import Bytecode.Implicits._
     "dup_x1" in {Stack("Nil**String**Int") must haveOp("dup_x1")}
     
     //"ifeq with int stack" in {Stack("Nil**Int") must haveOp("ifeq(null)")}
+    
+    "swap on String**Int" in {Stack("Nil**String**Int") must haveOp("swap()")}
+    "swap on Byte**Character" in {Stack("Nil**Byte**Character") must haveOp("swap()")}
+    "swap on Boolean**Character" in {Stack("Nil**Boolean**Character") must haveOp("swap()")}
+    "swap on Int**Short" in {Stack("Nil**Int**Short") must haveOp("swap()")}
+    "swap on Float**Object" in {Stack("Nil**Float**Object") must haveOp("swap()")}
   }
   
   "implicits" should {
@@ -93,6 +99,10 @@ import Bytecode.Implicits._
     "dup_x1 on one Stack" in {Stack("Nil**String") mustNot haveOp("dup_x1")}
     
     "iadd on String**Int" in {Stack("Nil**String**Int") mustNot haveOp("iadd")}
+    
+    "swap on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("swap()")}
+    "swap on Long**String" in {Stack("Nil**Long**String") mustNot haveOp("swap()")}
+    "swap on Long**Double" in {Stack("Nil**Long**Double") mustNot haveOp("swap()")}
   }
 }
 

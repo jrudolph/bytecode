@@ -25,8 +25,20 @@ object Bytecode{
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
   }
+  
+  /*
+   * Define type and implicits for so-called Category 1 data types:
+   * types which are of 32-bit size.
+   * See §3.11.1 of the JVM specs
+   * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
+   */
   trait Category1
+  implicit val cat1Boolean:Boolean => Category1 = null
+  implicit val cat1Byte:Byte => Category1 = null
+  implicit val cat1Character:Character => Category1 = null
+  implicit val cat1Short:Short => Category1 = null
   implicit val cat1Int:Int => Category1 = null
+  implicit val cat1Float:Float => Category1 = null
   implicit val cat1AnyRef:AnyRef => Category1 = null
   
   trait F[+ST<:List]{
