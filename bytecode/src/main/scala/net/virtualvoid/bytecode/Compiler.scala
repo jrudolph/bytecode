@@ -256,12 +256,18 @@ object ASMCompiler extends ByteletCompiler{
       }
     }
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
-      new java.lang.ClassLoader{
-        override def findClass(name:String):java.lang.Class[_] = {
-          val fos = new java.io.FileOutputStream(name+".class")
+      new java.lang.ClassLoader(getClass.getClassLoader){
+        lazy val thisClass = {
+          val fos = new java.io.FileOutputStream(className+".class")
           fos.write(bytes)
           fos.close
-          defineClass(className,bytes,0,bytes.length);
+          defineClass(className,bytes,0,bytes.length)
+        }
+        override def findClass(name:String):java.lang.Class[_] = {
+          if (name == className)
+            thisClass
+          else
+            getParent.loadClass(name)
         }
       }.loadClass(className)
     }
