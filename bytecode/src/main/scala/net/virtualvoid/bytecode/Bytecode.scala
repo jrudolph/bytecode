@@ -25,6 +25,9 @@ object Bytecode{
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
   }
+  trait Category1
+  implicit val cat1Int:Int => Category1 = null
+  implicit val cat1AnyRef:AnyRef => Category1 = null
   
   trait F[+ST<:List]{
     def depth = -1
@@ -118,7 +121,7 @@ object Bytecode{
       f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:List,T2,T1]:F[R**T2**T1] => F[R**T1**T2**T1] = 
       f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-    def swap[R<:List,T2,T1]:F[R**T2**T1] => F[R**T1**T2] = 
+    def swap[R<:List,T2<%Category1,T1<%Category1]():F[R**T2**T1] => F[R**T1**T2] = 
       f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
     def checkcast[T,U,R<:List](cl:Class[U]):F[R**T]=>F[R**U] = 
@@ -176,11 +179,11 @@ object Bytecode{
        *            u
        *    f(0,start)
       */
-    def foldArray[R<:List,T,U]
+    def foldArray[R<:List,T,U<%Category1]
 	                (func:Local[Int]=>F[R**U**T]=>F[R**U])
 	                :F[R**Array[T]**U] => F[R**U] =
 	    _ ~
-	    swap ~ 
+	    swap() ~ 
         withLocal{ array =>
 		  bipush(0) ~
 		  withLocal{ index =>
@@ -206,10 +209,10 @@ object Bytecode{
 		  }
 	    }
     def foldIterator[R<:List,T,U]
-                    (func:Local[java.util.Iterator[T]]=>F[R**U**T]=>F[R**U])(implicit mf:scala.reflect.Manifest[T])
+                    (func:Local[java.util.Iterator[T]]=>F[R**U**T]=>F[R**U])(implicit mf:scala.reflect.Manifest[T],cat1U:U=>Category1)
           :F[R**java.util.Iterator[T]**U] => F[R**U] =
             _ ~
-              swap ~
+              swap() ~
               withLocal( iterator =>
                   tailRecursive[R**U,R**U]( self =>
                     _ ~

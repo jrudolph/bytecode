@@ -57,11 +57,11 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(12) must be_==(9)
     }
     "dup_x1" in {
-      compiler.compile(classOf[java.lang.Integer])(_~dup~invokemethod1(_.toString)~swap~invokemethod1(_.intValue)~dup_x1~swap~pop~iadd~invokemethod1(Integer.valueOf(_)))
+      compiler.compile(classOf[java.lang.Integer])(_~dup~invokemethod1(_.toString)~swap()~invokemethod1(_.intValue)~dup_x1~swap()~pop~iadd~invokemethod1(Integer.valueOf(_)))
       .apply(12) must be_==(24)
     }
     "create new StringBuilder" in {
-      compiler.compile(classOf[java.lang.String])(_~dup~newInstance(classOf[java.lang.StringBuilder])~swap~invokemethod2(_.append(_))~swap~invokemethod2(_.append(_))~invokemethod1(_.toString))
+      compiler.compile(classOf[java.lang.String])(_~dup~newInstance(classOf[java.lang.StringBuilder])~swap()~invokemethod2(_.append(_))~swap()~invokemethod2(_.append(_))~invokemethod1(_.toString))
       .apply("test") must be_==("testtest") 
     }
     "store(_) string after void method" in {
