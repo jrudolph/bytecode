@@ -73,6 +73,9 @@ object Bytecode{
                                     ,top1:T1
                                     ,code:scala.reflect.Code[(T2,T1)=>U])
                                     :F[R**U]
+    def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
+    def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
+    
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
     def ifne2_int[R<:List,ST2<:List](rest:R
                                               ,top:JVMInt
@@ -124,6 +127,13 @@ object Bytecode{
                                                ,resT:Class[U])
                                                :F[R**T] => F[R**U] = 
         f => f.method1Dyn_int(f.stack.rest,f.stack.top,method,resT)
+                                               
+    def getstatic[R<:List,T](code:scala.reflect.Code[()=>T])
+        :F[R] => F[R**T] =
+        f => f.getstatic_int(code)
+    def putstatic[R<:List,T](code:scala.reflect.Code[T=>Unit])
+    	:F[R**T] => F[R] =
+        f => f.putstatic_int(f.stack.rest,f.stack.top,code)
     
     def pop_unit[R<:List]:F[R**Unit] => F[R] =
       f => f.pop_unit_int(f.stack.rest)

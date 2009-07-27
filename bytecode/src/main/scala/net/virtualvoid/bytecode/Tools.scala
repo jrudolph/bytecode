@@ -100,7 +100,26 @@ object CodeTools{
   }
   catch{
     case e:Exception => throw new Error("Error while calling method: "+tree,e);
-  }    
+  }
+  
+  import java.lang.reflect.Modifier
+  def fieldFromTree(tree:Tree):java.lang.reflect.Field = {
+    def getField(clazz:String,field:String) = {
+    	val cl = forName(clazz).getOrElse(throw new RuntimeException("Clazz not found "+clazz+" in "+tree))
+		val fieldName = field.substring(field.lastIndexOf(".")+1)
+		val f = cl.getField(fieldName)
+		assert ((f.getModifiers & Modifier.STATIC) == Modifier.STATIC)
+		f
+    }
+    tree match {
+	    // read access
+	    case Function(List(),Select(Ident(Field(clazz,_)),Field(field,_))) => getField(clazz,field)
+	    // write access
+	    case Function(List(varDecl),Assign(Select(Ident(Field(clazz,_)),Field(field,_)),Ident(varUse))) if varDecl == varUse=> 
+	      	getField(clazz,field)
+	    case _ => throw new RuntimeException("Can't match this "+tree)
+    }
+  }
   
   def box(a:Any):AnyRef = a match{
     case i:Int => Integer.valueOf(i)

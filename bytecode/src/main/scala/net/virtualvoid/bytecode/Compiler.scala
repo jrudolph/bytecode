@@ -174,6 +174,23 @@ object ASMCompiler extends ByteletCompiler{
       def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U] = 
         invokeMethod(methodFromTree(code.tree))
       
+      def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
+        val field = fieldFromTree(code.tree)
+        mv.visitFieldInsn(GETSTATIC
+                          ,Type.getInternalName(field.getDeclaringClass)
+                          ,field.getName
+                          ,Type.getDescriptor(field.getType))
+        newStacked(field.getType)
+      }
+      def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
+        val field = fieldFromTree(code.tree)
+        mv.visitFieldInsn(PUTSTATIC
+                          ,Type.getInternalName(field.getDeclaringClass)
+                          ,field.getName
+                          ,Type.getDescriptor(field.getType))
+        withStack(stackClass.rest)
+      }
+      
       def pop_unit_int[R<:List](rest:R):F[R] = 
         withStack(stackClass.rest)
       

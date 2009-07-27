@@ -92,6 +92,28 @@ object BytecodeCompilerSpecs extends Specification{
       )
       .apply(new java.lang.StringBuilder)
     }
+    "getstatic StaticVariableContainer.x" in {
+      StaticVariableContainer.x = 3263
+      compiler.compile(classOf[java.lang.StringBuilder])(
+        _ ~
+          pop ~
+          getstatic(() => StaticVariableContainer.x) ~
+          invokemethod1(java.lang.Integer.valueOf(_))
+      )
+      .apply(null) must be_==(3263)
+    }
+    "putstatic StaticVariableContainer.x" in {
+      StaticVariableContainer.x = 15
+      compiler.compile(classOf[java.lang.StringBuilder])(
+        _ ~
+          bipush(38) ~
+          putstatic(StaticVariableContainer.x = _) ~
+          pop ~
+          getstatic(() => StaticVariableContainer.x) ~
+          invokemethod1(java.lang.Integer.valueOf(_))
+      )
+      .apply(null) must be_==(38)
+    }
     /*"ifeq and jmp" in {
       if (compiler != Interpreter)
       compiler.compile(classOf[java.lang.Integer])(

@@ -43,6 +43,15 @@ object Interpreter extends ByteletCompiler{
                                       ,top1:T1
                                       ,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U] = 
         IF(rest ** invokeMethod(methodFromCode(code),top2,top1).asInstanceOf[U])
+
+      def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
+        IF(stack ** fieldFromTree(code.tree).get(null).asInstanceOf[T])
+
+      def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
+        fieldFromTree(code.tree).set(null,top)
+        IF(rest)
+      }
+      
       def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U] = 
         IF(rest**top.asInstanceOf[U])
       def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R] => Nothing):F[R] = 

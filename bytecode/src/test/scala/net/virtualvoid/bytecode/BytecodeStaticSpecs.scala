@@ -84,6 +84,9 @@ import Bytecode.Implicits._
     "arraylength with String[]" in {Stack("Nil**Array[String]") must haveOp("arraylength")}
     "dup_x1" in {Stack("Nil**String**Int") must haveOp("dup_x1")}
     
+    "getstatic" in {Stack("Nil") must haveOp("getstatic(() => net.virtualvoid.bytecode.StaticVariableContainer.x)")} 
+    "putstatic" in {Stack("Nil**Int") must haveOp("putstatic(net.virtualvoid.bytecode.StaticVariableContainer.x = _)")}
+    
     //"ifeq with int stack" in {Stack("Nil**Int") must haveOp("ifeq(null)")}
     
     "swap on String**Int" in {Stack("Nil**String**Int") must haveOp("swap()")}
@@ -103,6 +106,8 @@ import Bytecode.Implicits._
     "swap on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("swap()")}
     "swap on Long**String" in {Stack("Nil**Long**String") mustNot haveOp("swap()")}
     "swap on Long**Double" in {Stack("Nil**Long**Double") mustNot haveOp("swap()")}
+    
+    "putstatic must respect element on the stack vs variable type" in {Stack("Nil**String") mustNot haveOp("putstatic(net.virtualvoid.bytecode.StaticVariableContainer.x = _)")}
   }
 }
 
