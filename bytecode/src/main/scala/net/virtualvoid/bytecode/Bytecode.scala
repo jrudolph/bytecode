@@ -242,21 +242,6 @@ object Bytecode{
       def apply(f:F[ST1]):F[ST3] = second(first(f))
     }
   }
-  def test{
-    import Instructions._
-    
-    val f:F[Nil] = null
-    
-    f ~ bipush(5) ~ 
-      withLocal { counter =>
-        _ ~
-          counter.load ~
-          counter.load ~
-          iadd
-      }
-    
-    f
-  }
 }
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]
