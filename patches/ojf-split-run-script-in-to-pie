@@ -1,0 +1,26 @@
+Bottom: 5ce1e411053e5d0a20ad4eec716992a6848f19ea
+Top:    675b0d3f0525e2f592b568ab613b59e3555298de
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-08-16 12:25:01 +0200
+
+ojf: split run script in to pieces
+
+
+---
+
+diff --git a/objectformatter/compile-plugin.sh b/objectformatter/compile-plugin.sh
+index 877b156..2fdc250 100755
+--- a/objectformatter/compile-plugin.sh
++++ b/objectformatter/compile-plugin.sh
+@@ -1,3 +1,3 @@
+ mvn package
+ zip target/objectformatter-1.0-SNAPSHOT.jar scalac-plugin.xml
+-scala -Xplugin:target/objectformatter-1.0-SNAPSHOT.jar 
++./with-plugin.sh
+diff --git a/objectformatter/with-plugin.sh b/objectformatter/with-plugin.sh
+new file mode 100755
+index 0000000..fcc6cf6
+--- /dev/null
++++ b/objectformatter/with-plugin.sh
+@@ -0,0 +1 @@
++scala -Xplugin:target/objectformatter-1.0-SNAPSHOT.jar
