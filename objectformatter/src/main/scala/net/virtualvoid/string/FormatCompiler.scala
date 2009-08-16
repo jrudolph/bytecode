@@ -71,7 +71,7 @@ object Compiler{
             value.load ~
             compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
             invokemethod1(_.iterator) ~
-            swap ~
+            swap() ~
             foldIterator[R,AnyRef,StringBuilder](
               it => 
               	_ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
@@ -83,7 +83,7 @@ object Compiler{
               	  	  invokemethod2(_.append(_))
                     ,f=>f
               	  )
-            )(scala.reflect.Manifest.classType(eleType))
+            )(scala.reflect.Manifest.classType(eleType),cat1AnyRef)
         }
         else if (retType.isArray){
           val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
@@ -102,7 +102,7 @@ object Compiler{
             isub ~
             withLocal(lastIndex =>
               _ ~
-	            swap ~
+	            swap() ~
 	            foldArray(index =>
 	              _ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
                     lastIndex.load ~
