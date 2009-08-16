@@ -5,3 +5,5 @@
 /.classpath
 /.settings
 /*.class
+/project/boot
+/lib_managed
