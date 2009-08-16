@@ -155,7 +155,13 @@ object Compiler{
                 withLocal(newValue => compileFormatElementList(thens,eleType,newValue)))
         }
         else
-          throw new Error("can't use "+retType+" in a conditional")
+          f ~
+            value.load ~
+            compileGetExp(inner,cl,classOf[AnyRef]) ~
+            dup ~
+            ifnull(
+            	_ ~ pop ~ compileFormatElementList(elses,cl,value),
+                _ ~ withLocal{newValue => compileFormatElementList(thens,retType.asInstanceOf[Class[AnyRef]],newValue)})
       }
       case DateConversion(exp,format) => {
         val retType = exp.returnType(cl)
@@ -198,9 +204,5 @@ object Compiler{
 }
 
 object FormatCompiler extends IObjectFormatterFactory{
-  def formatter[T<:AnyRef](clazz:Class[T],fmt:String) = 
-	  new IObjectFormatter[T]{
-	  	val compiler = Compiler.compile[T](fmt,clazz)
-	  	def format(o:T):String = compiler(o)
-  	  }
+  def formatter[T<:AnyRef](clazz:Class[T],fmt:String) = Compiler.compile[T](fmt,clazz)
 }

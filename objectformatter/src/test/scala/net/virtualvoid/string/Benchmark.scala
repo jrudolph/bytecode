@@ -20,13 +20,13 @@ object Benchmark {
   
   val formatFactories = List(ObjectFormatter,FormatCompiler)
   
-  def benchmark(times:Int,formatter:IObjectFormatter[Test]) = {
+  def benchmark(times:Int,formatter:Test=>String) = {
         System.out.println("run")
     val startTime = System.nanoTime
  
 	var i = times
 	do{
-	  formatter.format(sampleObject)
+	  formatter(sampleObject)
 	  i = i - 1;
 	}while(i>0)
    
@@ -40,7 +40,7 @@ object Benchmark {
 	
 	var i = times
 	do{
-	  formatter.format(sampleObject)
+	  formatter(sampleObject)
 	  i = i - 1;
 	}while(i>0)
    
@@ -78,7 +78,7 @@ object Benchmark {
 		  val variance = results.foldLeft(0d)((sum,x)=> sum + (x-avg)*(x-avg))/(averageOf-1.)
 		  val stdev = Math.pow(variance,.5)
 		  
-		  def ind(x:long) = (x-avg) match{
+		  def ind(x:Long) = (x-avg) match{
 		    case s if s <= -2*stdev => '↡'
 		    case s if s <= -stdev   => '↓'
 		    case s if s <= -stdev/2.=> '↘'

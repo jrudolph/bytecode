@@ -33,6 +33,8 @@ object AST{
       case java.lang.Boolean.TRUE => thenToks.format(o)
       case java.lang.Boolean.FALSE => elseToks.format(o)
       case x:Option[AnyRef] => x.map(thenToks.format).getOrElse(elseToks.format(o))
+      case null => elseToks.format(o)
+      case x => thenToks.format(x)
     }
   }
   case class DateConversion(exp:Exp,format:String) extends FormatElement{

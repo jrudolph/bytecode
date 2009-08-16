@@ -77,11 +77,9 @@ object Bytecode{
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
     
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
-    def ifne2_int[R<:List,ST2<:List](rest:R
-                                              ,top:JVMInt
-                                              ,then:F[R]=>F[ST2]
-                                              ,elseB:F[R]=>F[ST2])
-                                              :F[ST2]
+    def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+    									,thenB:F[R]=>F[ST2]
+    									,elseB:F[R]=>F[ST2]):F[ST2]
     def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T]
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int]
@@ -167,16 +165,29 @@ object Bytecode{
            
     def newInstance[ST<:List,T](cl:Class[T]) = 
       (f:F[ST]) => f.newInstance(cl)
-        
-    def ifne2[R<:List,ST2<:List,T<%JVMInt]
-              (then:F[R]=>F[ST2]
-              ,elseB:F[R]=>F[ST2]):F[R**T]=>F[ST2] =
-      f => f.ifne2_int[R,ST2](f.stack.rest,f.stack.top,then,elseB)
-    def ifeq2[R<:List,ST2<:List,T<%JVMInt]
-              (then:F[R]=>F[ST2],elseB:F[R]=>F[ST2])
+
+    import org.objectweb.asm.Opcodes._
+    def ifne2[R<:List,ST2<:List,T]
+              (thenB:F[R]=>F[ST2]
+              ,elseB:F[R]=>F[ST2])
+              (implicit conv:T => JVMInt):F[R**T]=>F[ST2] =
+      f => f.conditional(IFNE,f.stack.rest,conv(f.stack.top),thenB,elseB)
+    def ifeq2[R<:List,ST2<:List,T]
+              (thenB:F[R]=>F[ST2],elseB:F[R]=>F[ST2])
+              (implicit conv:T => JVMInt)
               	:F[R**T]=>F[ST2] = 
-      ifne2(elseB,then) // implemented in terms of ifne2     
-    
+      f => f.conditional(IFEQ,f.stack.rest,conv(f.stack.top),thenB,elseB)
+               
+    def ifnull[R<:List,ST2<:List,T<:AnyRef](thenB:F[R]=>F[ST2]
+    									   ,elseB:F[R]=>F[ST2])
+    									   :F[R**T]=>F[ST2] =
+      f => f.conditional(IFNULL,f.stack.rest,f.stack.top,thenB,elseB)
+                
+    def ifnonnull[R<:List,ST2<:List,T<:AnyRef](thenB:F[R]=>F[ST2]
+    									   ,elseB:F[R]=>F[ST2])
+    									   :F[R**T]=>F[ST2] =
+      f => f.conditional(IFNONNULL,f.stack.rest,f.stack.top,thenB,elseB)
+      
     def tailRecursive[ST<:List,ST2<:List]
       (func: (F[ST] => F[ST2]) => (F[ST]=>F[ST2]))
       	(fr:F[ST]):F[ST2] =
