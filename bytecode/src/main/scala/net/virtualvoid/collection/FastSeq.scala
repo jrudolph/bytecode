@@ -21,10 +21,10 @@ trait Seq[+T] { outer =>
 }
 
 trait CompilableFunc[T,U] {
-  def compile[R <: List](frame:F[R**T]):F[R**U]
+  def compile[R <: List]:F[R**T]=>F[R**U]
 }
 trait CompilableFunc2[T1,T2,U] {
-  def compile[R <: List](frame:F[R**T1**T2]):F[R**U]
+  def compile[R <: List]:F[R**T1**T2]=>F[R**U]
 }
 
 
@@ -51,14 +51,11 @@ class IntSeq(until:Int) {//extends FastSeq[Int]{
     import Instructions._
     override def compiledFoldLeft[U<:AnyRef](start:U)(f:CompilableFunc2[U,Int,U])(implicit mf:scala.reflect.Manifest[U]):U = {
       outer.compiledFoldLeft(start)(new CompilableFunc2[U,Int,U]{
-        def compile[R <: List](frame:F[R**U**Int]):F[R**U] =
-	        frame ~ 
-	        	  dup ~
-	        	  filterF.compile[R**U**Int] _ ~
-	        	  ifeq2(
-	        			  _ ~ pop,
-	        			  _ ~ f.compile[R] _
-	        	  )
+        def compile[R <: List]:F[R**U**Int]=>F[R**U] =
+          _ ~ 
+            dup ~
+            filterF.compile ~
+            ifeq2(pop,f.compile)
       })(mf)
     }
   }
@@ -66,10 +63,10 @@ class IntSeq(until:Int) {//extends FastSeq[Int]{
     import Instructions._
     override def compiledFoldLeft[U<:AnyRef](start:U)(f:CompilableFunc2[U,Int,U])(implicit mf:scala.reflect.Manifest[U]):U =
       outer.compiledFoldLeft(start)(new CompilableFunc2[U,Int,U]{
-        def compile[R <: List](frame:F[R**U**Int]):F[R**U] =
-	      frame ~ 
-	      		mapF.compile[R**U]  ~
-	      		f.compile[R] _
+        def compile[R <: List]:F[R**U**Int]=>F[R**U] =
+	      _ ~ 
+	      	mapF.compile ~
+	      	f.compile
       })(mf)
   }
   def compiledFoldLeft[U<:AnyRef](start:U)(f:CompilableFunc2[U,Int,U])(implicit mf:scala.reflect.Manifest[U]):U = {
@@ -87,7 +84,7 @@ class IntSeq(until:Int) {//extends FastSeq[Int]{
                     x=>x,
                     _ ~
                       cur.load ~
-                      f.compile[Nil] _ ~
+                      f.compile ~
                       cur.load ~
                       bipush(1) ~
                       iadd ~
@@ -102,22 +99,23 @@ class IntSeq(until:Int) {//extends FastSeq[Int]{
 
 object BoxedIntAdd extends CompilableFunc2[Integer,Int,Integer]{
   import Instructions._
-  def compile[R <: List](frame:F[R**Integer**Int]):F[R**Integer] = frame ~ swap() ~ invokemethod1(_.intValue) ~ iadd ~ invokemethod1(java.lang.Integer.valueOf(_))
+  def compile[R <: List]:F[R**Integer**Int]=>F[R**Integer] = _ ~ swap() ~ invokemethod1(_.intValue) ~ iadd ~ invokemethod1(java.lang.Integer.valueOf(_))
 }
 
 case class NE(i:Int) extends CompilableFunc[Int,Int] {
   import Instructions._
-  def compile[R <: List](frame:F[R**Int]):F[R**Int] = frame ~ bipush(i) ~ isub
+  def compile[R <: List]:F[R**Int]=>F[R**Int] = _ ~ bipush(i) ~ isub
 }
 
 case class AddConstant(i:Int) extends CompilableFunc[Int,Int] {
   import Instructions._
-  def compile[R <: List](frame:F[R**Int]):F[R**Int] = frame ~ bipush(i) ~ iadd
+  def compile[R <: List]:F[R**Int]=>F[R**Int] = _ ~ bipush(i) ~ iadd
 }
 
 object TestIntSeq {
   def main(args:Array[String]){
     val seq = new IntSeq(5)
     println(seq.map(AddConstant(12)).filter(NE(2)).compiledFoldLeft(Integer.valueOf(0))(BoxedIntAdd))
+    println(seq.filter(NE(2)).map(AddConstant(12)).compiledFoldLeft(Integer.valueOf(0))(BoxedIntAdd))
   }
 }
