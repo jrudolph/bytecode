@@ -278,6 +278,36 @@ object Bytecode{
       def apply(f:F[ST1]):F[ST3] = second(first(f))
     }
   }
+      
+  trait Signature
+  case class Method1[T1](name:String,bodyFactory:BodyFactory[T1]) extends Signature
+  object M1{
+    def unapply[T1](x:Method1[T1]):Option[Method1[T1]] = Some(x)
+  }
+  case class Param[T]()
+  
+  trait Implementation
+  trait BodyFactory[T1] {
+    def apply[R](f:Local[T1] => F[Nil] => F[Nil**R])(implicit mf:scala.reflect.Manifest[T1]):Implementation
+  }
+  
+  trait InterfaceCompiler{
+    
+    def assemble[T](iface:Class[T])(impls:PartialFunction[Signature,Implementation]):T
+  }
+  object IFCTest{
+    trait Getter {
+      def get(str:java.lang.String):java.lang.Integer
+    }
+    
+    import Instructions._
+    val ifc:InterfaceCompiler = null
+    val Str:Class[java.lang.String] = classOf[java.lang.String]
+    type Str = java.lang.String
+    ifc.assemble(classOf[Getter]){
+      case M1(Method1("get",body:BodyFactory[Str])) => body(s => _ ~ s.load ~ invokemethod1(Integer.parseInt(_)) ~ invokemethod1(Integer.valueOf(_)))
+    }
+  }
 }
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]
