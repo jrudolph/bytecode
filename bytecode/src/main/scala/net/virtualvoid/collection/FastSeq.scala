@@ -97,25 +97,28 @@ class IntSeq(until:Int) {//extends FastSeq[Int]{
   }
 }
 
+object Helper {
+  def func1[T,U](f:F[Nil**T]=>F[Nil**U]):CompilableFunc[T,U] = new CompilableFunc[T,U]{
+    def compile[R <: List]:F[R**T]=>F[R**U] = f.asInstanceOf[F[R**T]=>F[R**U]]
+  }
+  
+  import Instructions._
+  def NE(i:Int) = func1[Int,Int](_ ~ bipush(i) ~ isub)
+  def AddConstant(i:Int) = func1[Int,Int](_ ~ bipush(i) ~ iadd)
+}
+
 object BoxedIntAdd extends CompilableFunc2[Integer,Int,Integer]{
   import Instructions._
   def compile[R <: List]:F[R**Integer**Int]=>F[R**Integer] = _ ~ swap() ~ invokemethod1(_.intValue) ~ iadd ~ invokemethod1(java.lang.Integer.valueOf(_))
 }
-
-case class NE(i:Int) extends CompilableFunc[Int,Int] {
-  import Instructions._
-  def compile[R <: List]:F[R**Int]=>F[R**Int] = _ ~ bipush(i) ~ isub
-}
-
-case class AddConstant(i:Int) extends CompilableFunc[Int,Int] {
-  import Instructions._
-  def compile[R <: List]:F[R**Int]=>F[R**Int] = _ ~ bipush(i) ~ iadd
-}
+ 
 
 object TestIntSeq {
+  import Helper._
+  
   def main(args:Array[String]){
     val seq = new IntSeq(5)
-    println(seq.map(AddConstant(12)).filter(NE(2)).compiledFoldLeft(Integer.valueOf(0))(BoxedIntAdd))
-    println(seq.filter(NE(2)).map(AddConstant(12)).compiledFoldLeft(Integer.valueOf(0))(BoxedIntAdd))
+    println(seq.map(AddConstant(12)).filter(Helper.NE(2)).compiledFoldLeft(Integer.valueOf(0))(BoxedIntAdd))
+    println(seq.filter(Helper.NE(2)).map(AddConstant(12)).compiledFoldLeft(Integer.valueOf(0))(BoxedIntAdd))
   }
 }
