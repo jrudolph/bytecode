@@ -115,9 +115,27 @@ object Bytecode{
     def isub[R<:List] = 
       iop[R](_.isub_int(_,_,_))
     
-    def invokemethod1[T,U,R<:List](code:scala.reflect.Code[T=>U])
-    	:F[R**T] => F[R**U] = 
-      f => f.method1_int(f.stack.rest,f.stack.top,code)
+    trait NoUnit[+X]
+    //implicit val anyref2NoUnit:NoUnit[AnyRef] = null
+    implicit val bool2NoUnit:NoUnit[Boolean] = null
+    trait Method[R<:List,U]{
+      def call():F[R]
+      def call()(implicit evidence:NoUnit[U]):F[R**U]
+      def ~[X](f:Method[R,U]=>X):X = f(this)
+      def f
+    }
+    
+    def invokemethod1[T,U,R<:List](code:scala.reflect.Code[T=>U])//(implicit ev:NoUnit[U])
+    	:F[R**T] => F[R**U] = f => f.method1_int(f.stack.rest,f.stack.top,code)
+     def invokemethod16[T,U,R<:List](code:scala.reflect.Code[T=>U])()//(implicit ev:NoUnit[U])
+    	:F[R**T] => F[R**U] = f => f.method1_int(f.stack.rest,f.stack.top,code)
+    
+    def call[R<:List]():Method[R,Unit] => F[R] = null
+    def call[R<:List,U]()(implicit evidence:NoUnit[U]):Method[R,U]=>F[R**U] = null//m => m.f.method1_int(f.stack.rest,f.stack.top,code)
+     
+    def invokemethod15[T,U,R<:List](code:scala.reflect.Code[T=>U])//(implicit ev:NoUnit[U])
+    	:F[R**T] => Method[R,U] = null
+    
     def invokemethod2[T1,T2,U,R<:List](code:scala.reflect.Code[(T1,T2)=>U])
       :F[R**T1**T2] => F[R**U] = 
     	  f => f.method2_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
@@ -250,7 +268,7 @@ object Bytecode{
                   tailRecursive[R**U,R**U]( self =>
                     _ ~
 	                  iterator.load ~
-	                  invokemethod1(_.hasNext) ~
+	                  invokemethod16(x => x.hasNext) ~ 
 	                  ifne2(
 	                    _ ~
 	                      iterator.load ~
@@ -278,6 +296,7 @@ object Bytecode{
       def apply(f:F[ST1]):F[ST3] = second(first(f))
     }
   }
+      
 }
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]
