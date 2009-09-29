@@ -333,7 +333,7 @@ object ASMCompiler extends ByteletCompiler{
 
         for (i <- 1 to numParams){
 	        mv.visitVarInsn(ALOAD, i);
-	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i)));
+	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i-1)));
 	        mv.visitVarInsn(ASTORE,i);
         }
 
