@@ -278,5 +278,3 @@ object Bytecode{
     }
   }
 }
-
-abstract class AbstractFunction1[T,U] extends Function1[T,U]
