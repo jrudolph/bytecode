@@ -298,6 +298,13 @@ object ASMCompiler extends ByteletCompiler{
         code(local(1,cl))(new ASMFrame[Nil](mv,EmptyClassStack,2))
       }
     }
+    def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2])(
+	    code: (Local[T1],Local[T2]) => F[Nil] => F[Nil**U]
+	  ): (T1,T2) => U = {
+      classStub[(T1,T2)=>U](cl1,cl2){ mv =>
+        code(local(1,cl1),local(2,cl2))(new ASMFrame[Nil](mv,EmptyClassStack,3))
+      }
+    }
     def classStub[T](params:Class[_]*)(body: MethodVisitor => Unit) :T = {
       val numParams = params.length
       val superClass = "net/virtualvoid/bytecode/AbstractFunction"+numParams
@@ -349,3 +356,4 @@ object ASMCompiler extends ByteletCompiler{
   }
 
 abstract class AbstractFunction1[T,U] extends Function1[T,U]
+abstract class AbstractFunction2[T1,T2,U] extends Function2[T1,T2,U]

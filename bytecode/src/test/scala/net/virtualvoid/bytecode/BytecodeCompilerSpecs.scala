@@ -234,6 +234,14 @@ object BytecodeCompilerSpecs extends Specification{
       f(null) must be_==("isnull")
       f("blub") must be_==("blub isnotnull")
     }
+    "binary methods" in {
+      compiler.compile(classOf[String],classOf[String])((str1,str2) =>
+        _ ~
+          str1.load ~
+          str2.load ~
+          invokemethod2(_.concat(_))
+      )("String1","String2") must be_==("String1String2")
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)
