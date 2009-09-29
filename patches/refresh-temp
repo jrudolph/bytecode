@@ -1,0 +1,21 @@
+Bottom: 7380d79b1528a3cb9a0935e73577b46ca849cb69
+Top:    0e7f030794721ffc113d0f2a3a6287d8bb10c752
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-09-29 16:39:30 +0200
+
+Refresh of preps
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+index 9537d92..ab98020 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+@@ -333,7 +333,7 @@ object ASMCompiler extends ByteletCompiler{
+ 
+         for (i <- 1 to numParams){
+ 	        mv.visitVarInsn(ALOAD, i);
+-	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i)));
++	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i-1)));
+ 	        mv.visitVarInsn(ASTORE,i);
+         }
