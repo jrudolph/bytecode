@@ -1,0 +1,152 @@
+Bottom: 791b78c9e4225ae2d87fefdd3b48c1fd5512b020
+Top:    7380d79b1528a3cb9a0935e73577b46ca849cb69
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-09-29 16:28:58 +0200
+
+preparations for generation of functions with other arities than 1
+
+ * refactored stub class generation out of the actual compilation function
+ * classStub generation works well for several parameters
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index 1eb1576..5028d8a 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -277,6 +277,4 @@ object Bytecode{
+       def apply(f:F[ST1]):F[ST3] = second(first(f))
+     }
+   }
+-}
+-
+-abstract class AbstractFunction1[T,U] extends Function1[T,U]
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+index 5109994..9537d92 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+@@ -36,7 +36,7 @@ object ASMCompiler extends ByteletCompiler{
+     
+     class ASMFrame[+ST<:List](val mv:MethodVisitor
+                                       ,val stackClass:ClassStack
+-                                      ,val localsClass:ClassStack) 
++                                      ,val nextFreeLocal:Int) 
+                                       	extends F[ST]{
+       def self[T]:T = this.asInstanceOf[T]
+ 
+@@ -48,7 +48,7 @@ object ASMCompiler extends ByteletCompiler{
+       def stack = loopingList.asInstanceOf[ST]
+       
+       def withStack[ST2<:List](classes:ClassStack) =
+-        new ASMFrame[ST2](mv,classes,localsClass)
++        new ASMFrame[ST2](mv,classes,nextFreeLocal)
+       
+       def newStacked[T,ST2>:ST](cl:Class[T]) = 
+         withStack(stackClass**cl)
+@@ -208,7 +208,7 @@ object ASMCompiler extends ByteletCompiler{
+         val thenLabel = new Label
+         val endLabel = new Label
+         
+-        val frameAfterCheck = new ASMFrame[R](mv,stackClass.rest,localsClass)
++        val frameAfterCheck = new ASMFrame[R](mv,stackClass.rest,nextFreeLocal)
+         
+         mv.visitJumpInsn(cond,thenLabel)
+         
+@@ -231,7 +231,7 @@ object ASMCompiler extends ByteletCompiler{
+         else            
+           afterElseFrame
+       }
+-      class InvalidFrame extends ASMFrame[Nothing](null,null,null){
++      class InvalidFrame extends ASMFrame[Nothing](null,null,0){
+         override val toString = "invalid frame" 
+       }
+       def invalidFrame[ST<:List]:F[ST] = 
+@@ -249,14 +249,14 @@ object ASMCompiler extends ByteletCompiler{
+       def withLocal_int[T,ST<:List,ST2<:List](top:T
+                                              ,rest:ST
+                                              ,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] = {
+-        val localIndex = localsClass.firstUnset
++        val localIndex = nextFreeLocal
+         var localClazz:Class[_] = stackClass.top
+         
+         mv.visitVarInsn(opcode(localClazz,ISTORE),localIndex)
+         
+-        val afterBlock = code(local(localIndex,localClazz))(new ASMFrame[ST](mv,stackClass.rest,localsClass.set(localIndex,localClazz))).asInstanceOf[ASMFrame[ST2]]
++        val afterBlock = code(local(localIndex,localClazz))(new ASMFrame[ST](mv,stackClass.rest,nextFreeLocal+1)).asInstanceOf[ASMFrame[ST2]]
+         
+-        new ASMFrame[ST2](mv,afterBlock.stackClass,localsClass.unset(localIndex))
++        new ASMFrame[ST2](mv,afterBlock.stackClass,nextFreeLocal)
+       }
+     }
+     def opcode(cl:Class[_],opcode:Int) = 
+@@ -294,19 +294,28 @@ object ASMCompiler extends ByteletCompiler{
+     def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
+                        code: Local[T] => F[Nil] => F[Nil**U]   
+ 	  ): T => U = {
++      classStub[T=>U](cl){ mv =>
++        code(local(1,cl))(new ASMFrame[Nil](mv,EmptyClassStack,2))
++      }
++    }
++    def classStub[T](params:Class[_]*)(body: MethodVisitor => Unit) :T = {
++      val numParams = params.length
++      val superClass = "net/virtualvoid/bytecode/AbstractFunction"+numParams
++      val signature = "("+"Ljava/lang/Object;"*numParams+")Ljava/lang/Object;"
++      
+       i+=1
+       val className = "Compiled" + i
+ 
+       val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS)
+       cw.visit(V1_5,ACC_PUBLIC + ACC_SUPER,className,null
+-               ,"net/virtualvoid/bytecode/AbstractFunction1", null)
++               ,superClass, null)
+ 
+       { // constructor
+         val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+         mv.visitCode();
+         mv.visitVarInsn(ALOAD, 0);
+         mv.visitMethodInsn(INVOKESPECIAL
+-                           , "net/virtualvoid/bytecode/AbstractFunction1"
++                           , superClass
+                            , "<init>"
+                            , "()V");
+         mv.visitInsn(RETURN);
+@@ -317,22 +326,26 @@ object ASMCompiler extends ByteletCompiler{
+       { // apply
+         val mv = cw.visitMethod(ACC_PUBLIC
+                                 , "apply"
+-                                , "(Ljava/lang/Object;)Ljava/lang/Object;"
++                                , signature
+                                 , null
+                                 , null);
+         mv.visitCode()
+-        // put the parameter on the stackClass
+-        mv.visitVarInsn(ALOAD, 1);
+-        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
+-        mv.visitVarInsn(ASTORE,1);
+ 
+-        code(local(1,cl))(new ASMFrame[Nil](mv,EmptyClassStack,EmptyClassStack))
++        for (i <- 1 to numParams){
++	        mv.visitVarInsn(ALOAD, i);
++	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i)));
++	        mv.visitVarInsn(ASTORE,i);
++        }
++
++        body(mv)
+ 
+         mv.visitInsn(ARETURN);
+         mv.visitMaxs(1, 2)
+         mv.visitEnd
+       }
+       cw.visitEnd
+-      classFromBytes(className,cw.toByteArray).newInstance.asInstanceOf[T=>U]
++      classFromBytes(className,cw.toByteArray).newInstance.asInstanceOf[T]
+     }
+-  }
+\ No newline at end of file
++  }
++
++abstract class AbstractFunction1[T,U] extends Function1[T,U]
