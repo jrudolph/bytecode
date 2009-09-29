@@ -1,5 +1,5 @@
 Bottom: 791b78c9e4225ae2d87fefdd3b48c1fd5512b020
-Top:    7380d79b1528a3cb9a0935e73577b46ca849cb69
+Top:    0e7f030794721ffc113d0f2a3a6287d8bb10c752
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-09-29 16:28:58 +0200
 
@@ -26,7 +26,7 @@ index 1eb1576..5028d8a 100644
 +}
 \ No newline at end of file
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
-index 5109994..9537d92 100644
+index 5109994..ab98020 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 @@ -36,7 +36,7 @@ object ASMCompiler extends ByteletCompiler{
@@ -131,7 +131,7 @@ index 5109994..9537d92 100644
 -        code(local(1,cl))(new ASMFrame[Nil](mv,EmptyClassStack,EmptyClassStack))
 +        for (i <- 1 to numParams){
 +	        mv.visitVarInsn(ALOAD, i);
-+	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i)));
++	        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(params(i-1)));
 +	        mv.visitVarInsn(ASTORE,i);
 +        }
 +
