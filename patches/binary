@@ -1,5 +1,5 @@
-Bottom: 7380d79b1528a3cb9a0935e73577b46ca849cb69
-Top:    ac4e3981d633544366582ee92e2449affd412d16
+Bottom: 0e7f030794721ffc113d0f2a3a6287d8bb10c752
+Top:    ce291fa2601636333ed43274a71255742d0ff043
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-09-29 16:36:45 +0200
 
@@ -23,7 +23,7 @@ index 5028d8a..6f9fe6e 100644
  
    trait RichFunc[ST1<:List,ST2<:List] 
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
-index 9537d92..5c9aab5 100644
+index ab98020..43f8b67 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 @@ -298,6 +298,13 @@ object ASMCompiler extends ByteletCompiler{
