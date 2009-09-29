@@ -63,16 +63,16 @@ object Bytecode{
                                 ,top:T
                                 ,code:scala.reflect.Code[T=>U])
                                 :F[R**U]
-    def method1Dyn_int[R<:List,T,U](rest:R
-                                   ,top:T
-                                   ,method:java.lang.reflect.Method
-                                   ,resCl:Class[U])
-                                   :F[R**U]
     def method2_int[R<:List,T2,T1,U](rest:R
                                     ,top2:T2
                                     ,top1:T1
                                     ,code:scala.reflect.Code[(T2,T1)=>U])
                                     :F[R**U]
+    def methodDyn_int[R<:List,T,U](rest:R
+                                   ,top:T
+                                   ,handle:MethodHandle)
+                                   :F[R**U]
+
     def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
     
@@ -99,6 +99,30 @@ object Bytecode{
     def load[ST<:List]:F[ST] => F[ST**T]
     def store[ST<:List]:F[ST**T] => F[ST]
   }
+
+  import _root_.java.lang.reflect.Method
+  import _root_.scala.reflect.Manifest
+
+  abstract class MethodHandle(val method:Method)
+  trait Method1[-T,+U] extends MethodHandle
+  trait Method2[-T1,-T2,+U] extends MethodHandle
+  
+  /** checks type information and returns a statically and dynamically safe handle
+  */
+  def methodHandle[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] = {
+    val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
+    
+    def check(assertMsg:String)(condition:Boolean) = {
+      if (!condition)
+        throw new RuntimeException(assertMsg+"("+m.toString+")")
+    }
+    
+    check("Method must have exactly one parameter")(params.length == 1)
+    check("Method's 1st parameter must be a supertype of "+p1.erasure)(params(0).isAssignableFrom(p1.erasure))
+    check("Method's return type must be a subtype of "+r.erasure)(r.erasure.isAssignableFrom(m.getReturnType))
+    
+    new MethodHandle(m) with Method1[T,U]
+  }
   
   object Instructions {
     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
@@ -121,10 +145,8 @@ object Bytecode{
     def invokemethod2[T1,T2,U,R<:List](code:scala.reflect.Code[(T1,T2)=>U])
       :F[R**T1**T2] => F[R**U] = 
     	  f => f.method2_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
-    def invokemethod1Dyn[T,U,R<:List](method:java.lang.reflect.Method
-                                               ,resT:Class[U])
-                                               :F[R**T] => F[R**U] = 
-        f => f.method1Dyn_int(f.stack.rest,f.stack.top,method,resT)
+    def invokemethod1Dyn[T,U,R<:List](handle:Method1[T,U]):F[R**T] => F[R**U] = 
+        f => f.methodDyn_int(f.stack.rest,f.stack.top,handle)
                                                
     def getstatic[R<:List,T](code:scala.reflect.Code[()=>T])
         :F[R] => F[R**T] =

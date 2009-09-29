@@ -33,11 +33,11 @@ object Interpreter extends ByteletCompiler {
         IF(rest**t1**t2**t1)
       def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U] = 
         IF(rest ** invokeMethod(methodFromTree(code.tree),top).asInstanceOf[U])
-      def method1Dyn_int[R<:List,T,U](rest:R
-                                      ,top:T
-                                      ,method:java.lang.reflect.Method
-                                      ,resCl:Class[U])
-      	:F[R**U] = IF(rest ** method.invoke(top).asInstanceOf[U])
+      def methodDyn_int[R<:List,T,U](rest:R
+                                   ,top:T
+                                   ,handle:MethodHandle)
+                                   :F[R**U] =
+        IF(rest**handle.method.invoke(top).asInstanceOf[U])                                     
       def method2_int[R<:List,T2,T1,U](rest:R
                                       ,top2:T2
                                       ,top1:T1

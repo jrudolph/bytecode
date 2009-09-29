@@ -102,13 +102,14 @@ object CodeTools{
     case e:Exception => throw new Error("Error while calling method: "+tree,e);
   }
   
-  import java.lang.reflect.Modifier
+  import java.lang.reflect.{Member,Modifier}
+  def static_?(m:Member):Boolean = (m.getModifiers & Modifier.STATIC) == Modifier.STATIC
   def fieldFromTree(tree:Tree):java.lang.reflect.Field = {
     def getField(clazz:String,field:String) = {
     	val cl = forName(clazz).getOrElse(throw new RuntimeException("Clazz not found "+clazz+" in "+tree))
 		val fieldName = field.substring(field.lastIndexOf(".")+1)
 		val f = cl.getField(fieldName)
-		assert ((f.getModifiers & Modifier.STATIC) == Modifier.STATIC)
+		assert(static_?(f))
 		f
     }
     tree match {

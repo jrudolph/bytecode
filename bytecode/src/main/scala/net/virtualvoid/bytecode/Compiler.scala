@@ -152,11 +152,12 @@ object ASMCompiler extends ByteletCompiler{
       def method2_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1
                                        ,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U] = 
         invokeMethod2(methodFromCode(code))
-      def method1Dyn_int[R<:List,T,U](rest:R
-                                      ,top:T
-                                      ,method:java.lang.reflect.Method
-                                      ,resCl:Class[U]):F[R**U] = 
-        invokeMethod(method)
+      
+      def methodDyn_int[R<:List,T,U](rest:R
+                                   ,top:T
+                                   ,handle:MethodHandle)
+                                   :F[R**U] = 
+        invokeMethod(handle.method)
 
       def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method) = {
         val cl = m.getDeclaringClass

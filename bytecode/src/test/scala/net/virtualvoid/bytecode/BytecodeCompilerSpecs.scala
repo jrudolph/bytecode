@@ -242,6 +242,16 @@ object BytecodeCompilerSpecs extends Specification{
           invokemethod2(_.concat(_))
       )("String1","String2") must be_==("String1String2")
     }
+    "dynamic unary method invocation" in {
+      import java.lang.{Integer => jInt}
+      val m = methodHandle[jInt,Int](classOf[jInt].getMethod("intValue"))
+      compiler.compile(classOf[jInt])(i =>
+        _ ~
+          i.load ~
+          invokemethod1Dyn(m) ~
+          invokemethod1(jInt.toString(_))
+      )(5) must be_==("5")
+    }    
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)
@@ -251,6 +261,23 @@ object BytecodeCompilerSpecs extends Specification{
   }
   "Interpreter" should {
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.Interpreter)
+  }
+  "Dynamic method type checking" should {
+    import Bytecode.methodHandle
+    "work with static methods" in {
+      methodHandle[Int,java.lang.Integer](classOf[Integer].getMethod("valueOf",classOf[Int]))
+    }
+    "work with instance methods" in {
+      methodHandle[java.lang.Integer,String](classOf[Integer].getMethod("toString"))
+    }
+    "comply with subtyping rules" in {
+      methodHandle[java.lang.Integer,String](classOf[Number].getMethod("toString"))
+      methodHandle[Number,String](classOf[java.lang.Integer].getMethod("toString")) must throwA[RuntimeException]
+    }
+    "throw if parameter count doesn't match" in {
+      methodHandle[String,java.lang.Integer](classOf[String].getMethod("concat",classOf[String])) must throwA[RuntimeException]
+      methodHandle[String,java.lang.Integer](classOf[Runtime].getMethod("getRuntime")) must throwA[RuntimeException]
+    }
   }
 }
 
