@@ -107,6 +107,7 @@ object Bytecode{
   trait Method1[-T,+U] extends MethodHandle
   trait Method2[-T1,-T2,+U] extends MethodHandle
   
+  
   /** checks type information and returns a statically and dynamically safe handle
   */
   def methodHandle[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] = {
@@ -123,6 +124,7 @@ object Bytecode{
     
     new MethodHandle(m) with Method1[T,U]
   }
+  def methodHandle[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] = methodHandle(m)(Manifest.classType(p1),Manifest.classType(r))
   
   object Instructions {
     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
