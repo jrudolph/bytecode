@@ -223,6 +223,24 @@ object BytecodeCompilerSpecs extends Specification{
       f(null) must be_==("isnull")
       f("blub") must be_==("blub isnotnull")
     }
+    "return" in {
+      if (compiler != Interpreter) {
+      val f = compiler.compileWithReturn(classOf[java.lang.Integer])( (ret:Return[String]) =>
+        _ ~ 
+          invokemethod1(_.intValue) ~
+          bipush(5) ~
+          isub ~
+          ifne(
+            _ ~
+              ldc("does not equal 5") ~
+              ret.jmp
+          ) ~
+          ldc("equals 5")
+      )
+      f(10) must be_==("does not equal 5")
+      f(5) must be_==("equals 5")
+      }
+    }
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)

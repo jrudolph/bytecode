@@ -264,11 +264,21 @@ object Bytecode{
               )
   }
 
+  trait Return[U<:AnyRef]{
+    def jmp:F[Nil**U] => Nothing
+  }
+
   trait ByteletCompiler{
+	  def compileWithReturn[T<:AnyRef,U<:AnyRef](cl:Class[T])(
+                       code: Return[U] =>
+	                      	 F[Nil**T] => F[Nil**U]   
+	  ): T => U
+
+	  // default implementation: ignore return target
 	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
                        code: F[Nil**T] 
 	                      => F[Nil**U]   
-	  ): T => U
+	  ): T => U = compileWithReturn(cl)((x:Return[U]) => code)
   }
 
   trait RichFunc[ST1<:List,ST2<:List] 

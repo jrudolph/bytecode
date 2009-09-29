@@ -120,6 +120,6 @@ object Interpreter extends ByteletCompiler{
       }
     }
 
-    def compile[T,U](cl:Class[T])(code: F[Nil**T]=>F[Nil**U]): T => U =
-      t => code(IF((N:Nil)**t)).stack.top
+    def compileWithReturn[T,U](cl:Class[T])(code: Return[U] => F[Nil**T]=>F[Nil**U]): T => U =
+      t => code(null)(IF((N:Nil)**t)).stack.top
   }
