@@ -266,8 +266,7 @@ object Bytecode{
 
   trait ByteletCompiler{
 	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
-                       code: F[Nil**T] 
-	                      => F[Nil**U]   
+                       code: Local[T] => F[Nil] => F[Nil**U]   
 	  ): T => U
   }
 

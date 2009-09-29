@@ -130,8 +130,7 @@ object ASMCompiler extends ByteletCompiler{
         
         withStack(stackClass.rest ** classOf[Int])
       }      
-      def opcode(cl:Class[_],opcode:Int) = 
-        Type.getType(cleanClass(cl.getName)).getOpcode(opcode)
+      
       
       def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T] = {
         val cons = cl.getConstructor()
@@ -247,7 +246,6 @@ object ASMCompiler extends ByteletCompiler{
             invalidFrame
           }(this)
       }
-        
       def withLocal_int[T,ST<:List,ST2<:List](top:T
                                              ,rest:ST
                                              ,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] = {
@@ -256,22 +254,26 @@ object ASMCompiler extends ByteletCompiler{
         
         mv.visitVarInsn(opcode(localClazz,ISTORE),localIndex)
         
-        val afterBlock = code(new Local[T]{
-          def load[ST<:List]:F[ST] => F[ST**T] = f => {
-            val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
-            asmF.mv.visitVarInsn(opcode(localClazz,ILOAD),localIndex)
-            asmF.withStack(asmF.stackClass ** localClazz)
-          }
-          def store[ST<:List]:F[ST**T] => F[ST] = f => {
-            val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
-            asmF.mv.visitVarInsn(opcode(localClazz,ISTORE),localIndex)
-            asmF.withStack(asmF.stackClass.rest)
-          }
-        })(new ASMFrame[ST](mv,stackClass.rest,localsClass.set(localIndex,localClazz))).asInstanceOf[ASMFrame[ST2]]
+        val afterBlock = code(local(localIndex,localClazz))(new ASMFrame[ST](mv,stackClass.rest,localsClass.set(localIndex,localClazz))).asInstanceOf[ASMFrame[ST2]]
         
         new ASMFrame[ST2](mv,afterBlock.stackClass,localsClass.unset(localIndex))
       }
     }
+    def opcode(cl:Class[_],opcode:Int) = 
+        Type.getType(CodeTools.cleanClass(cl.getName)).getOpcode(opcode)
+    def local[T](index:Int,clazz:Class[_]):Local[T] = 
+        new Local[T]{
+          def load[ST<:List]:F[ST] => F[ST**T] = f => {
+            val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
+            asmF.mv.visitVarInsn(opcode(clazz,ILOAD),index)
+            asmF.withStack(asmF.stackClass ** clazz)
+          }
+          def store[ST<:List]:F[ST**T] => F[ST] = f => {
+            val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
+            asmF.mv.visitVarInsn(opcode(clazz,ISTORE),index)
+            asmF.withStack(asmF.stackClass.rest)
+          }
+        }                                     
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader(getClass.getClassLoader){
         lazy val thisClass = {
@@ -289,8 +291,9 @@ object ASMCompiler extends ByteletCompiler{
       }.loadClass(className)
     }
     var i = 0
-    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])
-    (code: F[Nil**T]=>F[Nil**U]): T => U = {
+    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
+                       code: Local[T] => F[Nil] => F[Nil**U]   
+	  ): T => U = {
       i+=1
       val className = "Compiled" + i
 
@@ -321,8 +324,9 @@ object ASMCompiler extends ByteletCompiler{
         // put the parameter on the stackClass
         mv.visitVarInsn(ALOAD, 1);
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
+        mv.visitVarInsn(ASTORE,1);
 
-        code(new ASMFrame[Nil**T](mv,EmptyClassStack ** cl,EmptyClassStack))
+        code(local(1,cl))(new ASMFrame[Nil](mv,EmptyClassStack,EmptyClassStack))
 
         mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)

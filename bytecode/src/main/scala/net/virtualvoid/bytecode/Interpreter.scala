@@ -120,6 +120,12 @@ object Interpreter extends ByteletCompiler{
       }
     }
 
-    def compile[T,U](cl:Class[T])(code: F[Nil**T]=>F[Nil**U]): T => U =
-      t => code(IF((N:Nil)**t)).stack.top
+    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
+                       code: Local[T] => F[Nil] => F[Nil**U]   
+	  ): T => U =
+      t => code(new Local[T]{
+        var value = t
+        def load[ST<:List]:F[ST] => F[ST**T] = f => IF(f.stack**value)
+        def store[ST<:List]:F[ST**T] => F[ST] = f => {value = f.stack.top; IF(f.stack.rest)}
+      })(IF(N)).stack.top
   }
