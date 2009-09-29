@@ -268,6 +268,9 @@ object Bytecode{
 	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
                        code: Local[T] => F[Nil] => F[Nil**U]   
 	  ): T => U
+	  def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2])(
+	    code: (Local[T1],Local[T2]) => F[Nil] => F[Nil**U]
+	  ): (T1,T2) => U
   }
 
   trait RichFunc[ST1<:List,ST2<:List] 
