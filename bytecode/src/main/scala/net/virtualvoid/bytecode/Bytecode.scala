@@ -72,7 +72,12 @@ object Bytecode{
                                    ,top:T
                                    ,handle:MethodHandle)
                                    :F[R**U]
-
+    def methodDyn_int[R<:List,T1,T2,U](rest:R
+                                   ,p1:T1
+                                   ,p2:T2
+                                   ,handle:MethodHandle)
+                                   :F[R**U]
+                                   
     def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
     
@@ -107,10 +112,7 @@ object Bytecode{
   trait Method1[-T,+U] extends MethodHandle
   trait Method2[-T1,-T2,+U] extends MethodHandle
   
-  
-  /** checks type information and returns a statically and dynamically safe handle
-  */
-  def methodHandle[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] = {
+  private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
     val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
     
     def check(assertMsg:String)(condition:Boolean) = {
@@ -118,13 +120,26 @@ object Bytecode{
         throw new RuntimeException(assertMsg+"("+m.toString+")")
     }
     
-    check("Method must have exactly one parameter")(params.length == 1)
-    check("Method's 1st parameter must be a supertype of "+p1.erasure)(params(0).isAssignableFrom(p1.erasure))
-    check("Method's return type must be a subtype of "+r.erasure)(r.erasure.isAssignableFrom(m.getReturnType))
+    check("Method must have exactly "+paramClasses.length+" parameter")(params.length == paramClasses.length)
+    check("Method's return type must be a subtype of "+retClazz)(retClazz.isAssignableFrom(m.getReturnType))
+    for (i <- 0 until paramClasses.length)
+    	check("Method's "+i+". parameter must be a supertype of "+paramClasses(i))(
+              params(i).isAssignableFrom(paramClasses(i)))
     
-    new MethodHandle(m) with Method1[T,U]
+    f(m)
   }
-  def methodHandle[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] = methodHandle(m)(Manifest.classType(p1),Manifest.classType(r))
+  /** checks type information and returns a statically and dynamically safe handle
+  */
+  def methodHandle[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
+    checkMethod(m,r.erasure,p1.erasure)(new MethodHandle(_) with Method1[T,U])
+
+  def methodHandle[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
+    methodHandle[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
+  
+  def methodHandle[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
+    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new MethodHandle(_) with Method2[T1,T2,U])
+  def methodHandle[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
+    methodHandle[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
   
   object Instructions {
     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
@@ -149,6 +164,8 @@ object Bytecode{
     	  f => f.method2_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
     def invokemethod1Dyn[T,U,R<:List](handle:Method1[T,U]):F[R**T] => F[R**U] = 
         f => f.methodDyn_int(f.stack.rest,f.stack.top,handle)
+    def invokemethod2Dyn[T1,T2,U,R<:List](handle:Method2[T1,T2,U]):F[R**T1**T2] => F[R**U] =
+        f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,handle)
                                                
     def getstatic[R<:List,T](code:scala.reflect.Code[()=>T])
         :F[R] => F[R**T] =

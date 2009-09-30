@@ -252,6 +252,15 @@ object BytecodeCompilerSpecs extends Specification{
           invokemethod1(jInt.toString(_))
       )(5) must be_==("5")
     }    
+    "dynamic binary method invocation" in {
+      val m = methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String]))
+      compiler.compile(classOf[String])(str =>
+        _ ~
+          str.load ~
+          dup ~
+          invokemethod2Dyn(m)
+      )("Test") must be_==("TestTest")
+    } 
   }
   def array(els:Int*):Array[Int] = Array(els:_*)
   def array(els:String*):Array[String] = Array(els:_*)
@@ -277,6 +286,12 @@ object BytecodeCompilerSpecs extends Specification{
     "throw if parameter count doesn't match" in {
       methodHandle[String,java.lang.Integer](classOf[String].getMethod("concat",classOf[String])) must throwA[RuntimeException]
       methodHandle[String,java.lang.Integer](classOf[Runtime].getMethod("getRuntime")) must throwA[RuntimeException]
+    }
+    "work for binary static methods" in {
+      methodHandle[Int,Int,String](classOf[java.lang.Integer].getMethod("toString",classOf[Int],classOf[Int]))
+    }
+    "work for binary instance methods" in {
+      methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String]))
     }
   }
 }
