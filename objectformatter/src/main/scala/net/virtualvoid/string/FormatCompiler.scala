@@ -27,14 +27,17 @@ object Compiler{
   exp match {
     case p@ParentExp(inner,parent) =>{
       val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
-      f ~ invokemethod1Dyn(m) ~ 
-       compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
+      f ~ 
+        invokemethod1Dyn(m) ~ 
+        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
     }
     case ThisExp =>
-      f ~ checkcast(retType) // TODO: don't know why we need this, examine it
+      f ~ 
+        checkcast(retType) // TODO: don't know why we need this, examine it
     case e:Exp => {
       val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
-      f ~ invokemethod1Dyn(m)
+      f ~ 
+        invokemethod1Dyn(m)
     }
   }
     
@@ -203,6 +206,6 @@ object Compiler{
   }
 }
 
-object FormatCompiler extends IObjectFormatterFactory{
+object FormatCompiler extends IObjectFormatterFactory {
   def formatter[T<:AnyRef](clazz:Class[T],fmt:String) = Compiler.compile[T](fmt,clazz)
 }
