@@ -28,7 +28,7 @@ object Compiler{
     case p@ParentExp(inner,parent) =>{
       val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
       f ~ 
-        invokemethod1Dyn(m) ~ 
+        m.invoke ~ 
         compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
     }
     case ThisExp =>
@@ -37,7 +37,7 @@ object Compiler{
     case e:Exp => {
       val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
       f ~ 
-        invokemethod1Dyn(m)
+        m.invoke
     }
   }
     

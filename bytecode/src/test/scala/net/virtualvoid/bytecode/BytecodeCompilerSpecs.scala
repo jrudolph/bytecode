@@ -244,21 +244,21 @@ object BytecodeCompilerSpecs extends Specification{
     }
     "dynamic unary method invocation" in {
       import java.lang.{Integer => jInt}
-      val m = methodHandle[jInt,Int](classOf[jInt].getMethod("intValue"))
+      val intValue = methodHandle[jInt,Int](classOf[jInt].getMethod("intValue"))
       compiler.compile(classOf[jInt])(i =>
         _ ~
           i.load ~
-          invokemethod1Dyn(m) ~
+          intValue.invoke ~
           invokemethod1(jInt.toString(_))
       )(5) must be_==("5")
-    }    
+    }
     "dynamic binary method invocation" in {
-      val m = methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String]))
+      val intValue = methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String]))
       compiler.compile(classOf[String])(str =>
         _ ~
           str.load ~
           dup ~
-          invokemethod2Dyn(m)
+          intValue.invoke
       )("Test") must be_==("TestTest")
     } 
   }

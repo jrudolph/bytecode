@@ -109,8 +109,12 @@ object Bytecode{
   import _root_.scala.reflect.Manifest
 
   abstract class MethodHandle(val method:Method)
-  trait Method1[-T,+U] extends MethodHandle
-  trait Method2[-T1,-T2,+U] extends MethodHandle
+  trait Method1[-T,+U] extends MethodHandle {
+    def invoke[R<:List,T1X<:T,UX>:U]:F[R**T1X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest,f.stack.top,this)
+  }
+  trait Method2[-T1,-T2,+U] extends MethodHandle {
+    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U]:F[R**T1X**T2X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,this)
+  }
   
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
     val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
@@ -162,10 +166,6 @@ object Bytecode{
     def invokemethod2[T1,T2,U,R<:List](code:scala.reflect.Code[(T1,T2)=>U])
       :F[R**T1**T2] => F[R**U] = 
     	  f => f.method2_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
-    def invokemethod1Dyn[T,U,R<:List](handle:Method1[T,U]):F[R**T] => F[R**U] = 
-        f => f.methodDyn_int(f.stack.rest,f.stack.top,handle)
-    def invokemethod2Dyn[T1,T2,U,R<:List](handle:Method2[T1,T2,U]):F[R**T1**T2] => F[R**U] =
-        f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,handle)
                                                
     def getstatic[R<:List,T](code:scala.reflect.Code[()=>T])
         :F[R] => F[R**T] =
