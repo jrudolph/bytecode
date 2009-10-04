@@ -186,6 +186,7 @@ object Bytecode{
     def pop_unit[R<:List]:F[R**Unit] => F[R] =
       f => f.pop_unit_int(f.stack.rest)
     
+    def nop[R<:List]:F[R] => F[R] = f => f
     def pop[R<:List,T]:F[R**T]=>F[R] = f=>f.pop_int(f.stack.rest)
     def dup[R<:List,T]:F[R**T]=>F[R**T**T] = 
       f => f.dup_int(f.stack.rest,f.stack.top)
