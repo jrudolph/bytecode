@@ -146,6 +146,17 @@ object BytecodeCompilerSpecs extends Specification{
                     invokemethod1(Integer.valueOf(_))
       )))).apply(5) must be_==(15)
     }
+    "returning out of branch" in {
+      val f:java.lang.Integer => String = 
+      compiler.compile(classOf[java.lang.Integer],classOf[String])(input => ret =>
+        _ ~
+          input.load ~
+          invokemethod1(_.intValue) ~
+          ifne(_ ~ ldc(">0") ~ ret.jmp) ~ ldc("==0") ~ ret.jmp
+      )
+      f(15) must be_==(">0")
+      f(0) must be_==("==0")
+    }
     "ifeq2" in {
       val f = compiler.compile(classOf[java.lang.Integer])( i => 
         _ ~ 
