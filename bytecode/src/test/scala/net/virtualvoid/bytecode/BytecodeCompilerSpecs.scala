@@ -36,6 +36,39 @@ object BytecodeCompilerSpecs extends Specification{
     "store(_) double after method2" in {
       compiler.compile(classOf[java.lang.Double])(i => _~i.load~invokemethod1(_.doubleValue)~ldc("test")~dup~invokemethod2(_.concat(_))~pop~withLocal{d=>d.load}~invokemethod1(java.lang.Double.valueOf(_:Double)))
       .apply(12.453) must be_==(12.453)}
+    "store Int after double" in {
+      import java.lang.{Double => jDouble}
+      compiler.compile(classOf[java.lang.Double])(dO => 
+        _ ~
+          dO.load ~
+          invokemethod1(_.doubleValue) ~
+          withLocal(d =>
+            _ ~
+              bipush(5) ~
+              withLocal(i =>
+                _ ~
+                  d.load ~
+                  invokemethod1(jDouble.valueOf(_))))
+      ).apply(.753) must be_==(.753)
+    }
+    "store Int after double, replace double by String, access int" in {
+      compiler.compile(classOf[java.lang.Double])(dO =>
+        _ ~
+          dO.load ~
+          invokemethod1(_.doubleValue) ~
+          withLocal(d =>
+            _ ~
+              bipush(5) ~
+              withLocal(i =>
+                _ ~
+                  d.load ~ 
+                  pop ~ 
+                  ldc("test") ~ 
+                  withLocal(str => f => f) ~
+                  i.load)) ~
+          invokemethod1(Integer.valueOf(_))
+      ).apply(.753) must be_==(5)
+    } 
     "load element with index 1 from a string array" in {
       compiler.compile(classOf[Array[String]])(ar => _~ar.load~bipush(1)~aload)
       .apply(array("That","is","a","Test")) must be_==("is")
