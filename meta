@@ -1,11 +1,10 @@
 Version: 1
-Previous: ad7fe621e7ffd4d55cec663943a6cb897fdfdb36
-Head: 934b1b5900e8d5c82e32b51c7128ed885b131b22
+Previous: 89b59877ec2a0cd3359c9b909e7aea80819c9410
+Head: 44569348b3c2b9c978a21d9913f8cc62fe169972
 Applied:
-  add-test-revealing-problems-wi: 9976a85c861177ec8cd9cd5ab017f79a0dfdd9a4
-  fix-for-problem-with-cat2-vari: 46a3fd7952537ad76a2ee44e423de8786292cab0
-  another-fix-for-cat2-values-ma: 1f3d01e7614245a46b03391671624715bdd0bdee
-  add-another-test-for-getting-m: b36b17c915a2fd32369bb6eccd2c1f6dbdd22d9f
-  refresh-temp: 934b1b5900e8d5c82e32b51c7128ed885b131b22
+  add-test-revealing-problems-wi: edbb0a6aaac8fbb819db1d8c2ef3503976522d87
+  fix-for-problem-with-cat2-vari: 4006122fb9f18ebbdf8df70ac791759e0fdfbced
+  another-fix-for-cat2-values-ma: be2ab1b17a50ed91353f56dbbbbd148c4c126149
+  add-another-test-for-getting-m: 44569348b3c2b9c978a21d9913f8cc62fe169972
 Unapplied:
 Hidden:

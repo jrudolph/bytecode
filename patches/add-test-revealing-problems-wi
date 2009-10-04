@@ -1,5 +1,5 @@
 Bottom: a8838668156b3cdc4e734056a5817c8da1d2e3da
-Top:    aba664e59d4e7d4e3340a43278105dfbd7a85f49
+Top:    2d2b1537c819562980d1482005fdc2e915a70038
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-04 13:54:15 +0200
 
@@ -9,23 +9,26 @@ add test revealing problems with local variable allocation when both category 1 
 ---
 
 diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
-index 222a322..5d8d839 100644
+index 222a322..2c8ecf0 100644
 --- a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
 +++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
-@@ -36,6 +36,36 @@ object BytecodeCompilerSpecs extends Specification{
+@@ -36,6 +36,39 @@ object BytecodeCompilerSpecs extends Specification{
      "store(_) double after method2" in {
        compiler.compile(classOf[java.lang.Double])(i => _~i.load~invokemethod1(_.doubleValue)~ldc("test")~dup~invokemethod2(_.concat(_))~pop~withLocal{d=>d.load}~invokemethod1(java.lang.Double.valueOf(_:Double)))
        .apply(12.453) must be_==(12.453)}
 +    "store Int after double" in {
 +      import java.lang.{Double => jDouble}
-+      compiler.compile(classOf[java.lang.Double])(d => 
-+        _ ~ 
-+          d.load ~ 
++      compiler.compile(classOf[java.lang.Double])(dO => 
++        _ ~
++          dO.load ~
 +          invokemethod1(_.doubleValue) ~
-+          withLocal(_ => f => f) ~ // store and forget
-+          bipush(5) ~
-+          withLocal(d => d.load) ~
-+          invokemethod1(jDouble.valueOf(_))
++          withLocal(d =>
++            _ ~
++              bipush(5) ~
++              withLocal(i =>
++                _ ~
++                  d.load ~
++                  invokemethod1(jDouble.valueOf(_))))
 +      ).apply(.753) must be_==(.753)
 +    }
 +    "store Int after double, replace double by String, access int" in {
