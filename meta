@@ -1,6 +1,9 @@
 Version: 1
-Previous: None
+Previous: e6271d95dbe30c93ac1def7fe33381090374b2a4
 Head: b36b17c915a2fd32369bb6eccd2c1f6dbdd22d9f
 Applied:
+  fix-for-problem-with-cat2-vari: 46a3fd7952537ad76a2ee44e423de8786292cab0
+  another-fix-for-cat2-values-ma: 1f3d01e7614245a46b03391671624715bdd0bdee
+  add-another-test-for-getting-m: b36b17c915a2fd32369bb6eccd2c1f6dbdd22d9f
 Unapplied:
 Hidden:
