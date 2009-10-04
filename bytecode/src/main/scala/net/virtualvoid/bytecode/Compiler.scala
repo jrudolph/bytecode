@@ -74,12 +74,19 @@ object ASMCompiler extends ByteletCompiler{
         mv.visitInsn(IMUL)
         withStack(stackClass.rest)
       }
+      def withCategory(insns:(Int,Int)):Int = size(stackClass.top) match {
+        case 1 => insns._1
+        case 2 => insns._2
+      }
+      val pop = (POP,POP2)
+      val dup = (DUP,DUP2)
+      val dup_x1 = (DUP_X1,DUP2_X1)
       def pop_int[R<:List](rest:R):F[R] = {
-        mv.visitInsn(POP)
+        mv.visitInsn(withCategory(pop))
         withStack(stackClass.rest)
       }
       def dup_int[R<:List,T](rest:R,top:T):F[R**T**T] = {
-        mv.visitInsn(DUP)
+        mv.visitInsn(withCategory(dup))
         withStack(stackClass**stackClass.top)
       }
       def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2] = {
@@ -87,7 +94,7 @@ object ASMCompiler extends ByteletCompiler{
         withStack(stackClass.rest.rest**stackClass.top**stackClass.rest.top)
       }
       def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1] = {
-        mv.visitInsn(DUP_X1)
+        mv.visitInsn(withCategory(dup_x1))
         withStack(
           stackClass.rest.rest**stackClass.top**
             stackClass.rest.top**stackClass.top)
