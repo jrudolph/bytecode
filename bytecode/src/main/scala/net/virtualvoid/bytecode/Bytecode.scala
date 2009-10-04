@@ -324,16 +324,16 @@ object Bytecode{
   }
   
   trait ByteletCompiler{
-	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
-                       code: Local[T] => F[Nil] => F[Nil**U]   
-	  )(implicit mf:scala.reflect.Manifest[U]): T => U = 
-		compile(cl,mf.erasure.asInstanceOf[Class[U]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
-	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],retCl:Class[U])(
-                       code: Local[T] => Return[U] => F[Nil] => Nothing   
-	  ): T => U
-	  def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[U])(
-	    code: (Local[T1],Local[T2]) => Return[U] => F[Nil] => Nothing
-	  ): (T1,T2) => U
+	  def compile[T1<:AnyRef,R<:AnyRef](cl:Class[T1])(
+                       code: Local[T1] => F[Nil] => F[Nil**R]   
+	  )(implicit mf:scala.reflect.Manifest[R]): T1 => R = 
+		compile(cl,mf.erasure.asInstanceOf[Class[R]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
+	  def compile[T1<:AnyRef,R<:AnyRef]
+	    (par1Cl:Class[T1],retCl:Class[R])
+	    (code: Local[T1] => Return[R] => F[Nil] => Nothing): T1 => R	  
+     def compile[T1<:AnyRef,T2<:AnyRef,R<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[R])(
+	    code: (Local[T1],Local[T2]) => Return[R] => F[Nil] => Nothing
+	  ): (T1,T2) => R
   }
 
   trait RichFunc[ST1<:List,ST2<:List] 
