@@ -268,12 +268,11 @@ object Bytecode{
        *            u
        *    f(0,start)
       */
-    def foldArray[R<:List,T,U<%Category1]
-	                (func:Local[Int]=>F[R**U**T]=>F[R**U])
-	                :F[R**Array[T]**U] => F[R**U] =
+    def foldArray[R<:List,T,U]
+      (array:Local[Array[T]])
+      (func:Local[Int]=>F[R**U**T]=>F[R**U])
+	  :F[R**U] => F[R**U] =
 	    _ ~
-	    swap() ~ 
-        withLocal{ array =>
 		  bipush(0) ~
 		  withLocal{ index =>
 		    tailRecursive[R**U,R**U]{self =>
@@ -282,7 +281,7 @@ object Bytecode{
 		      array.load ~
 		      arraylength ~
 		      isub ~
-		      ifeq2(f=>f,
+		      ifeq2(nop,
 				_ ~
 				array.load ~
 				index.load ~
@@ -296,7 +295,7 @@ object Bytecode{
 		      )
 		    }
 		  }
-	    }
+	    
     def foldIterator[R<:List,T,U]
                     (func:Local[java.util.Iterator[T]]=>F[R**U**T]=>F[R**U])(implicit mf:scala.reflect.Manifest[T],cat1U:U=>Category1)
           :F[R**java.util.Iterator[T]**U] => F[R**U] =
@@ -336,7 +335,6 @@ object Bytecode{
 	    code: (Local[T1],Local[T2]) => Return[R] => F[Nil] => Nothing
 	  ): (T1,T2) => R
   }
-
   trait RichFunc[ST1<:List,ST2<:List] 
       extends (F[ST1] => F[ST2]){ first =>
     def ~[ST3<:List](second:F[ST2]=>F[ST3])

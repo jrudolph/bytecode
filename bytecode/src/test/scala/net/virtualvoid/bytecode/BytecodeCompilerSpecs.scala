@@ -227,9 +227,8 @@ object BytecodeCompilerSpecs extends Specification{
     "foldArray" in {
       val f = compiler.compile(classOf[Array[Int]])( array =>
         _ ~
-          array.load ~
           bipush(0) ~
-          RichOperations.foldArray(index => iadd) ~
+          RichOperations.foldArray(array)(index => iadd) ~
           invokemethod1(Integer.valueOf(_))
       )
       f(Array(1,2,3,4)) must be_==(10)
