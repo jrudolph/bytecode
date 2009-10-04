@@ -38,14 +38,17 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(12.453) must be_==(12.453)}
     "store Int after double" in {
       import java.lang.{Double => jDouble}
-      compiler.compile(classOf[java.lang.Double])(d => 
-        _ ~ 
-          d.load ~ 
+      compiler.compile(classOf[java.lang.Double])(dO => 
+        _ ~
+          dO.load ~
           invokemethod1(_.doubleValue) ~
-          withLocal(_ => f => f) ~ // store and forget
-          bipush(5) ~
-          withLocal(d => d.load) ~
-          invokemethod1(jDouble.valueOf(_))
+          withLocal(d =>
+            _ ~
+              bipush(5) ~
+              withLocal(i =>
+                _ ~
+                  d.load ~
+                  invokemethod1(jDouble.valueOf(_))))
       ).apply(.753) must be_==(.753)
     }
     "store Int after double, replace double by String, access int" in {
