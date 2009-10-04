@@ -235,11 +235,12 @@ object BytecodeCompilerSpecs extends Specification{
       f("blub") must be_==("blub isnotnull")
     }
     "binary methods" in {
-      compiler.compile(classOf[String],classOf[String])((str1,str2) =>
+      compiler.compile(classOf[String],classOf[String],classOf[String])((str1,str2) => ret =>
         _ ~
           str1.load ~
           str2.load ~
-          invokemethod2(_.concat(_))
+          invokemethod2(_.concat(_)) ~
+          ret.jmp
       )("String1","String2") must be_==("String1String2")
     }
     "dynamic unary method invocation" in {
@@ -250,7 +251,7 @@ object BytecodeCompilerSpecs extends Specification{
           i.load ~
           intValue.invoke ~
           invokemethod1(jInt.toString(_))
-      )(5) must be_==("5")
+      ).apply(5) must be_==("5")
     }
     "dynamic binary method invocation" in {
       val intValue = methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String]))
@@ -259,7 +260,7 @@ object BytecodeCompilerSpecs extends Specification{
           str.load ~
           dup ~
           intValue.invoke
-      )("Test") must be_==("TestTest")
+      ).apply("Test") must be_==("TestTest")
     } 
   }
   def array(els:Int*):Array[Int] = Array(els:_*)

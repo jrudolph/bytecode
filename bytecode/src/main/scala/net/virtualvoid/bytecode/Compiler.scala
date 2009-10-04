@@ -299,19 +299,21 @@ object ASMCompiler extends ByteletCompiler{
         }
       }.loadClass(className)
     }
+    def ret[U](mv:MethodVisitor):Return[U] = new Return[U]{def jmp:F[Nil**U] => Nothing = {f => mv.visitInsn(ARETURN);throw JmpException}}
+    
     var i = 0
-    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
-                       code: Local[T] => F[Nil] => F[Nil**U]   
+    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],retCl:Class[U])(
+                       code: Local[T] => Return[U] => F[Nil] => Nothing   
 	  ): T => U = {
       classStub[T=>U](cl){ mv =>
-        code(local(1,cl))(new ASMFrame[Nil](mv,EmptyClassStack,2))
+        code(local(1,cl))(ret(mv))(new ASMFrame[Nil](mv,EmptyClassStack,2))
       }
     }
-    def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2])(
-	    code: (Local[T1],Local[T2]) => F[Nil] => F[Nil**U]
+    def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[U])(
+	    code: (Local[T1],Local[T2]) => Return[U] => F[Nil] => Nothing
 	  ): (T1,T2) => U = {
       classStub[(T1,T2)=>U](cl1,cl2){ mv =>
-        code(local(1,cl1),local(2,cl2))(new ASMFrame[Nil](mv,EmptyClassStack,3))
+        code(local(1,cl1),local(2,cl2))(ret(mv))(new ASMFrame[Nil](mv,EmptyClassStack,3))
       }
     }
     def classStub[T](params:Class[_]*)(body: MethodVisitor => Unit) :T = {
@@ -353,9 +355,14 @@ object ASMCompiler extends ByteletCompiler{
 	        mv.visitVarInsn(ASTORE,i);
         }
 
-        body(mv)
+        try{
+        	body(mv)
+        	throw new RuntimeException("Return statement is missing")
+        }catch{
+          case JmpException => // we expect to end by catching an exception
+        }
 
-        mv.visitInsn(ARETURN);
+        //mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 2)
         mv.visitEnd
       }

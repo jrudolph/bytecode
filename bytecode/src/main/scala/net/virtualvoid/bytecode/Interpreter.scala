@@ -129,13 +129,23 @@ object Interpreter extends ByteletCompiler {
       }
     } 
     
-    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
-                       code: Local[T] => F[Nil] => F[Nil**U]   
-	  ): T => U =
-      t => code(local(t))(IF(N)).stack.top
+    def ret[U](func:F[Nil**U] => Nothing):Return[U] = new Return[U]{def jmp:F[Nil**U]=>Nothing = func}
     
-    def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2])(
-	    code: (Local[T1],Local[T2]) => F[Nil] => F[Nil**U]
-	  ): (T1,T2) => U = 
-      (t1,t2) => code(local(t1),local(t2))(IF(N)).stack.top
+    def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],retCl:Class[U])(
+                       code: Local[T] => Return[U] => F[Nil] => Nothing   
+	  ):T=>U = t => realCompile(cl,retCl)(code)(t)
+    
+    def realCompile[T<:AnyRef,U<:AnyRef](cl:Class[T],retCl:Class[U])(
+                       code: Local[T] => Return[U] => F[Nil] => Nothing   
+	  )(t:T):U =
+        code(local(t))(ret(f => return f.stack.top))(IF(N))
+    
+    def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[U])(
+	    code: (Local[T1],Local[T2]) => Return[U] => F[Nil] => Nothing
+	  ):(T1,T2) => U = 
+        (t1,t2) => realCompile(cl1,cl2,retCl)(code)(t1,t2)
+    def realCompile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[U])(
+	    code: (Local[T1],Local[T2]) => Return[U] => F[Nil] => Nothing
+	  )(t1:T1,t2:T2):U = 
+        code(local(t1),local(t2))(ret(f => return f.stack.top))(IF(N))
 }

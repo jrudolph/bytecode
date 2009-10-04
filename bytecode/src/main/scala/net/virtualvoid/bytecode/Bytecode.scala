@@ -305,12 +305,20 @@ object Bytecode{
               )
   }
 
+  trait Return[T]{
+    def jmp:F[Nil**T] => Nothing
+  }
+  
   trait ByteletCompiler{
 	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T])(
                        code: Local[T] => F[Nil] => F[Nil**U]   
+	  )(implicit mf:scala.reflect.Manifest[U]): T => U = 
+		compile(cl,mf.erasure.asInstanceOf[Class[U]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
+	  def compile[T<:AnyRef,U<:AnyRef](cl:Class[T],retCl:Class[U])(
+                       code: Local[T] => Return[U] => F[Nil] => Nothing   
 	  ): T => U
-	  def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2])(
-	    code: (Local[T1],Local[T2]) => F[Nil] => F[Nil**U]
+	  def compile[T1<:AnyRef,T2<:AnyRef,U<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[U])(
+	    code: (Local[T1],Local[T2]) => Return[U] => F[Nil] => Nothing
 	  ): (T1,T2) => U
   }
 
