@@ -140,6 +140,9 @@ object Bytecode{
   def methodHandle[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
     methodHandle[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
   
+  def methodHandle[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
+    new MethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
+  
   def methodHandle[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
     checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new MethodHandle(_) with Method2[T1,T2,U])
   def methodHandle[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
@@ -291,7 +294,7 @@ object Bytecode{
                   tailRecursive[R**U,R**U]( self =>
                     _ ~
 	                  iterator.load ~
-	                  invokemethod1(_.hasNext) ~
+	                  methodHandle((_:java.util.Iterator[T]).hasNext).invoke ~
 	                  ifne2(
 	                    _ ~
 	                      iterator.load ~
