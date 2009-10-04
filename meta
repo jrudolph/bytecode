@@ -1,10 +1,6 @@
 Version: 1
-Previous: 89b59877ec2a0cd3359c9b909e7aea80819c9410
+Previous: b0729b979976d49bcfd8a0ddff0e92cc2434ab7d
 Head: 44569348b3c2b9c978a21d9913f8cc62fe169972
 Applied:
-  add-test-revealing-problems-wi: edbb0a6aaac8fbb819db1d8c2ef3503976522d87
-  fix-for-problem-with-cat2-vari: 4006122fb9f18ebbdf8df70ac791759e0fdfbced
-  another-fix-for-cat2-values-ma: be2ab1b17a50ed91353f56dbbbbd148c4c126149
-  add-another-test-for-getting-m: 44569348b3c2b9c978a21d9913f8cc62fe169972
 Unapplied:
 Hidden:
