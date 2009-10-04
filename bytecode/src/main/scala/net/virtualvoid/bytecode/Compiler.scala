@@ -255,6 +255,15 @@ object ASMCompiler extends ByteletCompiler{
             invalidFrame
           }(this)
       }
+      def size(cl:Class[_]) = {
+        val Double = classOf[Double]
+        val Long = classOf[Long]
+        cl match {
+          case Double => 2
+          case Long => 2
+          case _ => 1
+        }
+      }
       def withLocal_int[T,ST<:List,ST2<:List](top:T
                                              ,rest:ST
                                              ,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] = {
@@ -263,7 +272,7 @@ object ASMCompiler extends ByteletCompiler{
         
         mv.visitVarInsn(opcode(localClazz,ISTORE),localIndex)
         
-        val afterBlock = code(local(localIndex,localClazz))(new ASMFrame[ST](mv,stackClass.rest,nextFreeLocal+1)).asInstanceOf[ASMFrame[ST2]]
+        val afterBlock = code(local(localIndex,localClazz))(new ASMFrame[ST](mv,stackClass.rest,nextFreeLocal + size(stackClass.top))).asInstanceOf[ASMFrame[ST2]]
         
         new ASMFrame[ST2](mv,afterBlock.stackClass,nextFreeLocal)
       }
