@@ -267,6 +267,29 @@ object ASMCompiler extends ByteletCompiler{
         
         new ASMFrame[ST2](mv,afterBlock.stackClass,nextFreeLocal)
       }
+      def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X = {
+        val label = new Label
+        mv.visitLabel(label)
+        code(new Target[ST]{
+          def jmp[ST2>:ST<:List]:F[ST2] => Nothing = {_ => mv.visitJumpInsn(GOTO,label); throw JmpException}
+                                               
+        })(this)
+      }
+      def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+    											  ,thenB:F[R]=>Nothing):F[R] = {
+        val afterCondition:F[R] = withStack(stackClass.rest)
+        
+        val after = new Label
+    	mv.visitJumpInsn(cond,after)
+    	try{
+    	  thenB(afterCondition)
+    	  throw new RuntimeException("Control-flow exception expected")
+    	}catch{
+    	  case JmpException => // do nothing
+    	}
+    	mv.visitLabel(after)
+    	afterCondition
+      }
     }
     def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(CodeTools.cleanClass(cl.getName)).getOpcode(opcode)

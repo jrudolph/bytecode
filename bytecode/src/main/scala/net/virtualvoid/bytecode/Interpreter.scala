@@ -118,6 +118,27 @@ object Interpreter extends ByteletCompiler {
       
       def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] =
         code(local(top))(IF(rest))
+      
+      def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X = 
+        code(new Target[ST]{
+          def jmp[ST2>:ST<:List]:F[ST2] => Nothing = f => throw ResultException(code(this)(f.asInstanceOf[F[ST]]))
+        })(this)
+      
+      case class ResultException(res:Any) extends RuntimeException
+      def executeAndExtract(block: () => Nothing):Any = {
+        try{
+          block()
+          throw new RuntimeException("Expected control-flow exception")
+        }catch{
+          case x:ResultException => x.res
+        }
+      }
+      def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+    											  ,thenB:F[R]=>Nothing):F[R] =
+        if(!isConditionTrue(cond,top)) // this is called with inverted conditions
+          executeAndExtract(() => thenB(IF(rest))).asInstanceOf[F[R]]
+        else
+          IF(rest)
     }
 
     def local[T](initial:T):Local[T] = new Local[T] {

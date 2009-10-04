@@ -25,7 +25,7 @@ object Bytecode{
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
   }
-  
+ 
   /*
    * Define type and implicits for so-called Category 1 data types:
    * types which are of 32-bit size.
@@ -40,6 +40,10 @@ object Bytecode{
   implicit val cat1Int:Int => Category1 = null
   implicit val cat1Float:Float => Category1 = null
   implicit val cat1AnyRef:AnyRef => Category1 = null
+  
+  trait Target[+ST<:List]{
+    def jmp[ST2>:ST<:List]:F[ST2] => Nothing
+  }
   
   trait F[+ST<:List]{
     def depth = -1
@@ -85,6 +89,7 @@ object Bytecode{
     def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
     									,thenB:F[R]=>F[ST2]
     									,elseB:F[R]=>F[ST2]):F[ST2]
+
     def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T]
     def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R]
     def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int]
@@ -98,6 +103,10 @@ object Bytecode{
     def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T]
     
     def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
+    
+    def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X
+    def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+    											  ,thenB:F[R]=>Nothing):F[R]
   }
   
   trait Local[T]{
@@ -233,6 +242,11 @@ object Bytecode{
       (func: (F[ST] => F[ST2]) => (F[ST]=>F[ST2]))
       	(fr:F[ST]):F[ST2] =
         fr.tailRecursive_int(func)(fr)
+
+    def withTargetHere[ST<:List,X](func:Target[ST] => F[ST] => X):F[ST] => X = 
+      f => f.withTargetHere_int(func)
+    def ifne[T<%JVMInt,R<:List](thenB:F[R] => Nothing):F[R**T] => F[R] =
+      f => f.conditionalImperative(IFEQ,f.stack.rest,f.stack.top,thenB)
   }
 
   object Implicits{

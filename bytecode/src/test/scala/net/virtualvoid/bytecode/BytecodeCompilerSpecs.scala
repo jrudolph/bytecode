@@ -119,36 +119,33 @@ object BytecodeCompilerSpecs extends Specification{
       )
       .apply(null) must be_==(38)
     }
-    /*"ifeq and jmp" in {
-      if (compiler != Interpreter)
-      compiler.compile(classOf[java.lang.Integer])(
+    "ifne and jmp" in {
+      //	if (compiler != Interpreter)
+      compiler.compile(classOf[java.lang.Integer])(input =>
         // sums all integers from 0 to i
-        f => {
-          val start = f ~
-            invokemethod1(_.intValue) ~
-            local[_0,Int].store() ~ //  store(_) current i in local 0
-            bipush(0) ~
-            local[_1,Int].store() ~ //  store(_) sum in local 1
-            target
-          
-          start ~
-            local[_0,Int].load() ~ // load i to check if it is already 0 
-            ifne(f => 
-              f ~ 
-                local[_0,Int].load() ~
-                dup ~
-                bipush(1) ~
-                isub ~
-                local[_0,Int].store() ~
-                local[_1,Int].load() ~
-                iadd ~
-                local[_1,Int].store() ~
-                jmp(start)
-            ) ~
-            local[_1,Int].load() ~
-            invokemethod1(Integer.valueOf(_))
-      }).apply(5) must be_==(15)
-    }*/
+        _ ~ input.load ~
+          	invokemethod1(_.intValue) ~
+          	withLocal(i => _ ~          	
+                bipush(0) ~
+                withLocal(sum => _ ~
+                  withTargetHere(start => _ ~ 
+                    i.load ~ 
+                    ifne(
+                      _ ~ 
+                        i.load ~
+                        dup ~
+                        bipush(1) ~
+                        isub ~
+                        i.store ~
+                        sum.load ~
+                        iadd ~
+                        sum.store ~
+                        start.jmp
+                    ) ~
+                    sum.load ~
+                    invokemethod1(Integer.valueOf(_))
+      )))).apply(5) must be_==(15)
+    }
     "ifeq2" in {
       val f = compiler.compile(classOf[java.lang.Integer])( i => 
         _ ~ 
