@@ -1,0 +1,25 @@
+Bottom: bd6245aa1b80af10ca2865305c750cc1c8c69b50
+Top:    40d2e5ed3278cfbd5c7df21871b3b02d0ab228b7
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-05 22:27:47 +0200
+
+Refresh of rolocal
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index e42c5d3..448e039 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -109,8 +109,10 @@ object Bytecode{
+     											  ,thenB:F[R]=>Nothing):F[R]
+   }
+   
+-  trait Local[T]{
+-    def load[ST<:List]:F[ST] => F[ST**T]
++  trait ROLocal[+T]{
++    def load[R<:List,T2>:T]:F[R] => F[R**T2]
++  }  
++  trait Local[T] extends ROLocal[T]{
+     def store[ST<:List]:F[ST**T] => F[ST]
+   }
