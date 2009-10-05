@@ -10,7 +10,7 @@ object TypedAST {
   case object ThisExp extends Exp[Any,Any]{
     override def eval(o:Any) = o
   }
-  case class ParentExp[T,U,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
+  case class ParentExp[T<:AnyRef,U<:AnyRef,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
     override def eval(o:T) = inner.eval(parent.eval(o))
   }
   case class MethodHandleExp[-T,+U](m:Method1[T,U]) extends Exp[T,U] {
@@ -28,7 +28,7 @@ object TypedAST {
     def convert(o:U):String
     def format(o:T):String = convert(exp.eval(o))
   }
-  case class ToStringConversion[T](exp:Exp[T,AnyRef]) extends Conversion[T,AnyRef](exp){
+  case class ToStringConversion[T<:AnyRef](exp:Exp[T,AnyRef]) extends Conversion[T,AnyRef](exp){
     def convert(o:AnyRef) = o.toString
   }/*
   case class Conditional(condition:Exp,thenToks:FormatElementList,elseToks:FormatElementList) extends FormatElement{
@@ -49,6 +49,12 @@ object TypedAST {
     })
     def chars = ""
   }*/
+  case class ConditionalOption[T<:AnyRef,U<:AnyRef](exp:Exp[T,Option[U]],thenToks:FormatElementList[U],elseToks:FormatElementList[T]) extends FormatElement[T]{
+    override def format(o:T):String = exp(o) match{
+      case Some(x) => thenToks.format(x)
+      case None => elseToks.format(o)
+    }
+  }
   abstract class Expand[T,C[_],U](exp:Exp[T,C[U]],sep:String,inner:FormatElementList[U]) extends Conversion[T,C[U]](exp){
     def asIterable(c:C[U]):Iterable[U]
     override def convert(i:C[U]) = asIterable(i) map (inner.format _) mkString sep
@@ -78,24 +84,26 @@ object TypedAST {
    * checks that outer expression fits nicely around the inner expression and then builds
    * a typed ParentExp
    */
-  def typedParentExp[T,U,V](inner:AST.Exp,innerMethod:java.lang.reflect.Method,cl:Class[T],innerType:Class[U],retCl:Class[V]):Exp[T,V] =
+  def typedParentExp[T<:AnyRef,U<:AnyRef,V](inner:AST.Exp,innerMethod:java.lang.reflect.Method,cl:Class[T],innerType:Class[U],retCl:Class[V]):Exp[T,V] =
     ParentExp[T,U,V](typedExp(inner,innerType,retCl),MethodHandleExp(methodHandle(innerMethod,cl,innerType)))
   
-  def typedExp[T,U](exp:AST.Exp,cl:Class[T],retClass:Class[U]):Exp[T,U] = exp match {
+  def typedExp[T<:AnyRef,U](exp:AST.Exp,cl:Class[T],retClass:Class[U]):Exp[T,U] = exp match {
     case AST.ThisExp => typedThisExp(cl,retClass)
     case p@AST.ParentExp(inner,parent) => {
       val innerMethod = p.method(cl)
-      val innerType = innerMethod.getReturnType
+      val innerType:Class[AnyRef] = innerMethod.getReturnType.asInstanceOf[Class[AnyRef]] //TODO: check that here
       typedParentExp(inner,innerMethod,cl,innerType,retClass)
     }
     case e:AST.Exp => MethodHandleExp(methodHandle[T,U](e.method(cl),cl,retClass))
   }
   
-  def typedExpandArray[T,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
+  def typedExpandArray[T<:AnyRef,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
   		:ExpandArray[T,E]
     = ExpandArray(typedExp(exp,cl,classOfArray(eleClass)),sep,typed(inner,eleClass))
+    
+  //def typedConditionalOption
   
-  def typed[T](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
+  def typed[T<:AnyRef](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
     ast.elements.map {
       case AST.Literal(str) => Literal(str)
       case AST.ToStringConversion(exp) => ToStringConversion(typedExp(exp,cl,classOf[AnyRef]))
@@ -106,6 +114,12 @@ object TypedAST {
         
         typedExpandArray(exp,sep,inner,cl,eleType)
       }
+      /*case AST.Conditional(exp,then,elseT) => {
+        if (classOf[Option].isAssignableFrom(exp.returnType(cl)))
+          
+        else
+          throw new RuntimeException("Only Option conditionals supported")
+      }*/
     }
   )
   

@@ -20,22 +20,22 @@ object Compiler{
     }
   }
 
-  def compileGetExp[R<:List,T,Ret](exp:Exp[T,Ret])
-                                  (f:F[R**T]):F[R**Ret] =
+  def compileExp[R<:List,T<:AnyRef,Ret](exp:Exp[T,Ret])
+                                  :F[R**T] => F[R**Ret] =
     exp match {
-      case p@ParentExp(inner,parent) => f ~ compileGetExp(parent) ~ compileGetExp(inner)
-      case MethodHandleExp(handle) => f ~ handle.invoke
-      case ThisExp => f
+      case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
+      case MethodHandleExp(handle) => _ ~ handle.invoke
+      case ThisExp => f => f
     }
     
   def compileFormatElementList[R<:List,T<:AnyRef]
-                 (elements:FormatElementList[T],value:Local[T])
+                 (elements:FormatElementList[T],value:ROLocal[T])
                  (f:F[R**StringBuilder]):F[R**StringBuilder] =
     elements.elements.foldLeft(f){(frame,element) => 
       compileElement(element,value)(frame)}
 
-  def compileElement[R<:List,T<:AnyRef]
-                     (ele:FormatElement[T],value:Local[T])
+  def compileElement[R<:List,T <: AnyRef]
+                     (ele:FormatElement[T],value:ROLocal[T])
                      (f:F[R**StringBuilder])
                      :F[R**StringBuilder]
     = ele match {
@@ -43,7 +43,7 @@ object Compiler{
         f ~ ldc(str) ~ invokemethod2(_.append(_))
       case ToStringConversion(e) =>
         f ~ value.load ~
-          compileGetExp(e) ~ 
+          compileExp(e) ~ 
           invokemethod1(_.toString) ~ 
           invokemethod2(_.append(_))
       case ExpandArray(exp,sep,inner) => {
@@ -51,27 +51,41 @@ object Compiler{
 		  
 		  f ~
 		    value.load ~
-		    compileGetExp(exp) ~
+		    compileExp(exp) ~
 		    dup ~
-		    arraylength ~
-		    bipush(1) ~
-		    isub ~
-		    withLocal(lastIndex =>
+		    withLocal(array =>
 		      _ ~
-		        swap() ~
-		        foldArray(index =>
-		          _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
-		            lastIndex.load ~
-		            index.load ~
-		            isub ~
-		            ifne2(
-		              _ ~
-		                ldc(sep) ~
-		                invokemethod2(_.append(_))
-		              , f=>f
-		            )
-		        )
-		    )
+			    arraylength ~
+			    bipush(1) ~
+			    isub ~
+			    withLocal(lastIndex =>
+			        foldArray(array)(index =>
+			          _ ~  
+			            withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
+			            lastIndex.load ~
+			            index.load ~
+			            isub ~
+			            ifne2(
+			              _ ~
+			                ldc(sep) ~
+			                invokemethod2(_.append(_))
+			              , nop
+			            )
+			        )
+			    )
+            )
+      }
+      case ConditionalOption(exp,then,elseB) => {
+        f ~
+            value.load ~
+            compileExp(exp) ~
+            dup ~
+            invokemethod1(_.isDefined) ~
+            ifeq2(
+              _ ~ pop /*None*/ ~ compileFormatElementList(elseB,value),
+              _ ~ 
+                invokemethod1(_.get) ~
+                withLocal(newValue => compileFormatElementList(then,newValue)))
       }
       /*case Expand(exp,sep,inner) => {
         import Bytecode.RichOperations.foldIterator
