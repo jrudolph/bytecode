@@ -10,7 +10,7 @@ object Compiler{
   import Bytecode.Implicits._
 
   val parser = EnhancedStringFormatParser
-  import AST._
+  import TypedAST._
   
   def elementType(it:java.lang.reflect.Type,of:Class[_])
   	:Class[_ <: AnyRef] = {
@@ -20,37 +20,22 @@ object Compiler{
     }
   }
 
-  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp
-                                            ,cl:Class[T]
-                                            ,retType:Class[Ret])
-                                           (f:F[R**T]):F[R**Ret] = 
-  exp match {
-    case p@ParentExp(inner,parent) =>{
-      val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
-      f ~ 
-        m.invoke ~ 
-        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
+  def compileGetExp[R<:List,T,Ret](exp:Exp[T,Ret])
+                                  (f:F[R**T]):F[R**Ret] =
+    exp match {
+      case p@ParentExp(inner,parent) => f ~ compileGetExp(parent) ~ compileGetExp(inner)
+      case MethodHandleExp(handle) => f ~ handle.invoke
+      case ThisExp => f
     }
-    case ThisExp =>
-      f ~ 
-        checkcast(retType) // TODO: don't know why we need this, examine it
-    case e:Exp => {
-      val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
-      f ~ 
-        m.invoke
-    }
-  }
     
-  def compileFormatElementList[R<:List,LR<:List,T<:java.lang.Object]
-                 (elements:FormatElementList,cl:Class[T],value:Local[T])
+  def compileFormatElementList[R<:List,T<:AnyRef]
+                 (elements:FormatElementList[T],value:Local[T])
                  (f:F[R**StringBuilder]):F[R**StringBuilder] =
     elements.elements.foldLeft(f){(frame,element) => 
-      compileElement(element,cl,value)(frame)}
+      compileElement(element,value)(frame)}
 
-  def id[X]:X=>X = x=>x
-  
-  def compileElement[R<:List,LR<:List,T<:java.lang.Object]
-                     (ele:FormatElement,cl:Class[T],value:Local[T])
+  def compileElement[R<:List,T<:AnyRef]
+                     (ele:FormatElement[T],value:Local[T])
                      (f:F[R**StringBuilder])
                      :F[R**StringBuilder]
     = ele match {
@@ -58,10 +43,37 @@ object Compiler{
         f ~ ldc(str) ~ invokemethod2(_.append(_))
       case ToStringConversion(e) =>
         f ~ value.load ~
-          compileGetExp(e,cl,classOf[AnyRef]) ~ 
+          compileGetExp(e) ~ 
           invokemethod1(_.toString) ~ 
           invokemethod2(_.append(_))
-      case Expand(exp,sep,inner) => {
+      case ExpandArray(exp,sep,inner) => {
+		  import Bytecode.RichOperations.foldArray
+		  
+		  f ~
+		    value.load ~
+		    compileGetExp(exp) ~
+		    dup ~
+		    arraylength ~
+		    bipush(1) ~
+		    isub ~
+		    withLocal(lastIndex =>
+		      _ ~
+		        swap() ~
+		        foldArray(index =>
+		          _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
+		            lastIndex.load ~
+		            index.load ~
+		            isub ~
+		            ifne2(
+		              _ ~
+		                ldc(sep) ~
+		                invokemethod2(_.append(_))
+		              , f=>f
+		            )
+		        )
+		    )
+      }
+      /*case Expand(exp,sep,inner) => {
         import Bytecode.RichOperations.foldIterator
           
         val retType = exp.returnType(cl)
@@ -124,8 +136,8 @@ object Compiler{
         else
           throw new java.lang.Error("can only iterate over "+
                                       "iterables and arrays right now")
-      }
-      case Conditional(inner,thens,elses) => {
+      }*/
+      /*case Conditional(inner,thens,elses) => {
         val retType = inner.returnType(cl)
 
         if (retType == java.lang.Boolean.TYPE || 
@@ -193,14 +205,14 @@ object Compiler{
           ) ~
           invokemethod2(_.format(_)) ~
           invokemethod2(_.append(_))
-      }
+      }*/
     }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
-    val elements:FormatElementList = parser.parse(format)
+    val elements:FormatElementList[T] = typed(parser.parse(format),cl)
     ASMCompiler.compile(cl)(value =>
       _ ~ 
         newInstance(classOf[StringBuilder]) ~
-        compileFormatElementList(elements,cl,value) ~
+        compileFormatElementList(elements,value) ~
         invokemethod1(_.toString)
     )
   }
