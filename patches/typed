@@ -1,5 +1,5 @@
 Bottom: c165f1d3c2775d18024b1d251a99f9540cd557fc
-Top:    bd6245aa1b80af10ca2865305c750cc1c8c69b50
+Top:    452f24543ea149615eb95f65920f0d47148192bb
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 11:44:03 +0200
 
@@ -9,7 +9,7 @@ checkpoint
 ---
 
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
-index 4f93a51..ef21cde 100644
+index 4f93a51..cca4b11 100644
 --- a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 @@ -10,7 +10,7 @@ object Compiler{
@@ -35,12 +35,12 @@ index 4f93a51..ef21cde 100644
 -      f ~ 
 -        m.invoke ~ 
 -        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
-+  def compileGetExp[R<:List,T,Ret](exp:Exp[T,Ret])
-+                                  (f:F[R**T]):F[R**Ret] =
++  def compileExp[R<:List,T<:AnyRef,Ret](exp:Exp[T,Ret])
++                                  :F[R**T] => F[R**Ret] =
 +    exp match {
-+      case p@ParentExp(inner,parent) => f ~ compileGetExp(parent) ~ compileGetExp(inner)
-+      case MethodHandleExp(handle) => f ~ handle.invoke
-+      case ThisExp => f
++      case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
++      case MethodHandleExp(handle) => _ ~ handle.invoke
++      case ThisExp => f => f
      }
 -    case ThisExp =>
 -      f ~ 
@@ -55,7 +55,7 @@ index 4f93a51..ef21cde 100644
 -  def compileFormatElementList[R<:List,LR<:List,T<:java.lang.Object]
 -                 (elements:FormatElementList,cl:Class[T],value:Local[T])
 +  def compileFormatElementList[R<:List,T<:AnyRef]
-+                 (elements:FormatElementList[T],value:Local[T])
++                 (elements:FormatElementList[T],value:ROLocal[T])
                   (f:F[R**StringBuilder]):F[R**StringBuilder] =
      elements.elements.foldLeft(f){(frame,element) => 
 -      compileElement(element,cl,value)(frame)}
@@ -65,17 +65,17 @@ index 4f93a51..ef21cde 100644
 -  
 -  def compileElement[R<:List,LR<:List,T<:java.lang.Object]
 -                     (ele:FormatElement,cl:Class[T],value:Local[T])
-+  def compileElement[R<:List,T<:AnyRef]
-+                     (ele:FormatElement[T],value:Local[T])
++  def compileElement[R<:List,T <: AnyRef]
++                     (ele:FormatElement[T],value:ROLocal[T])
                       (f:F[R**StringBuilder])
                       :F[R**StringBuilder]
      = ele match {
-@@ -58,10 +43,37 @@ object Compiler{
+@@ -58,10 +43,51 @@ object Compiler{
          f ~ ldc(str) ~ invokemethod2(_.append(_))
        case ToStringConversion(e) =>
          f ~ value.load ~
 -          compileGetExp(e,cl,classOf[AnyRef]) ~ 
-+          compileGetExp(e) ~ 
++          compileExp(e) ~ 
            invokemethod1(_.toString) ~ 
            invokemethod2(_.append(_))
 -      case Expand(exp,sep,inner) => {
@@ -84,33 +84,47 @@ index 4f93a51..ef21cde 100644
 +		  
 +		  f ~
 +		    value.load ~
-+		    compileGetExp(exp) ~
++		    compileExp(exp) ~
 +		    dup ~
-+		    arraylength ~
-+		    bipush(1) ~
-+		    isub ~
-+		    withLocal(lastIndex =>
++		    withLocal(array =>
 +		      _ ~
-+		        swap() ~
-+		        foldArray(index =>
-+		          _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
-+		            lastIndex.load ~
-+		            index.load ~
-+		            isub ~
-+		            ifne2(
-+		              _ ~
-+		                ldc(sep) ~
-+		                invokemethod2(_.append(_))
-+		              , f=>f
-+		            )
-+		        )
-+		    )
++			    arraylength ~
++			    bipush(1) ~
++			    isub ~
++			    withLocal(lastIndex =>
++			        foldArray(array)(index =>
++			          _ ~  
++			            withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
++			            lastIndex.load ~
++			            index.load ~
++			            isub ~
++			            ifne2(
++			              _ ~
++			                ldc(sep) ~
++			                invokemethod2(_.append(_))
++			              , nop
++			            )
++			        )
++			    )
++            )
++      }
++      case ConditionalOption(exp,then,elseB) => {
++        f ~
++            value.load ~
++            compileExp(exp) ~
++            dup ~
++            invokemethod1(_.isDefined) ~
++            ifeq2(
++              _ ~ pop /*None*/ ~ compileFormatElementList(elseB,value),
++              _ ~ 
++                invokemethod1(_.get) ~
++                withLocal(newValue => compileFormatElementList(then,newValue)))
 +      }
 +      /*case Expand(exp,sep,inner) => {
          import Bytecode.RichOperations.foldIterator
            
          val retType = exp.returnType(cl)
-@@ -124,8 +136,8 @@ object Compiler{
+@@ -124,8 +150,8 @@ object Compiler{
          else
            throw new java.lang.Error("can only iterate over "+
                                        "iterables and arrays right now")
@@ -121,7 +135,7 @@ index 4f93a51..ef21cde 100644
          val retType = inner.returnType(cl)
  
          if (retType == java.lang.Boolean.TYPE || 
-@@ -193,14 +205,14 @@ object Compiler{
+@@ -193,14 +219,14 @@ object Compiler{
            ) ~
            invokemethod2(_.format(_)) ~
            invokemethod2(_.append(_))
@@ -141,10 +155,10 @@ index 4f93a51..ef21cde 100644
    }
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala b/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala
 new file mode 100644
-index 0000000..8aa54ae
+index 0000000..48ab382
 --- /dev/null
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,144 @@
 +package net.virtualvoid.string
 +
 +import _root_.net.virtualvoid.bytecode.Bytecode._
@@ -157,7 +171,7 @@ index 0000000..8aa54ae
 +  case object ThisExp extends Exp[Any,Any]{
 +    override def eval(o:Any) = o
 +  }
-+  case class ParentExp[T,U,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
++  case class ParentExp[T<:AnyRef,U<:AnyRef,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
 +    override def eval(o:T) = inner.eval(parent.eval(o))
 +  }
 +  case class MethodHandleExp[-T,+U](m:Method1[T,U]) extends Exp[T,U] {
@@ -175,7 +189,7 @@ index 0000000..8aa54ae
 +    def convert(o:U):String
 +    def format(o:T):String = convert(exp.eval(o))
 +  }
-+  case class ToStringConversion[T](exp:Exp[T,AnyRef]) extends Conversion[T,AnyRef](exp){
++  case class ToStringConversion[T<:AnyRef](exp:Exp[T,AnyRef]) extends Conversion[T,AnyRef](exp){
 +    def convert(o:AnyRef) = o.toString
 +  }/*
 +  case class Conditional(condition:Exp,thenToks:FormatElementList,elseToks:FormatElementList) extends FormatElement{
@@ -196,6 +210,12 @@ index 0000000..8aa54ae
 +    })
 +    def chars = ""
 +  }*/
++  case class ConditionalOption[T<:AnyRef,U<:AnyRef](exp:Exp[T,Option[U]],thenToks:FormatElementList[U],elseToks:FormatElementList[T]) extends FormatElement[T]{
++    override def format(o:T):String = exp(o) match{
++      case Some(x) => thenToks.format(x)
++      case None => elseToks.format(o)
++    }
++  }
 +  abstract class Expand[T,C[_],U](exp:Exp[T,C[U]],sep:String,inner:FormatElementList[U]) extends Conversion[T,C[U]](exp){
 +    def asIterable(c:C[U]):Iterable[U]
 +    override def convert(i:C[U]) = asIterable(i) map (inner.format _) mkString sep
@@ -225,24 +245,26 @@ index 0000000..8aa54ae
 +   * checks that outer expression fits nicely around the inner expression and then builds
 +   * a typed ParentExp
 +   */
-+  def typedParentExp[T,U,V](inner:AST.Exp,innerMethod:java.lang.reflect.Method,cl:Class[T],innerType:Class[U],retCl:Class[V]):Exp[T,V] =
++  def typedParentExp[T<:AnyRef,U<:AnyRef,V](inner:AST.Exp,innerMethod:java.lang.reflect.Method,cl:Class[T],innerType:Class[U],retCl:Class[V]):Exp[T,V] =
 +    ParentExp[T,U,V](typedExp(inner,innerType,retCl),MethodHandleExp(methodHandle(innerMethod,cl,innerType)))
 +  
-+  def typedExp[T,U](exp:AST.Exp,cl:Class[T],retClass:Class[U]):Exp[T,U] = exp match {
++  def typedExp[T<:AnyRef,U](exp:AST.Exp,cl:Class[T],retClass:Class[U]):Exp[T,U] = exp match {
 +    case AST.ThisExp => typedThisExp(cl,retClass)
 +    case p@AST.ParentExp(inner,parent) => {
 +      val innerMethod = p.method(cl)
-+      val innerType = innerMethod.getReturnType
++      val innerType:Class[AnyRef] = innerMethod.getReturnType.asInstanceOf[Class[AnyRef]] //TODO: check that here
 +      typedParentExp(inner,innerMethod,cl,innerType,retClass)
 +    }
 +    case e:AST.Exp => MethodHandleExp(methodHandle[T,U](e.method(cl),cl,retClass))
 +  }
 +  
-+  def typedExpandArray[T,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
++  def typedExpandArray[T<:AnyRef,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
 +  		:ExpandArray[T,E]
 +    = ExpandArray(typedExp(exp,cl,classOfArray(eleClass)),sep,typed(inner,eleClass))
++    
++  //def typedConditionalOption
 +  
-+  def typed[T](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
++  def typed[T<:AnyRef](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
 +    ast.elements.map {
 +      case AST.Literal(str) => Literal(str)
 +      case AST.ToStringConversion(exp) => ToStringConversion(typedExp(exp,cl,classOf[AnyRef]))
@@ -253,6 +275,12 @@ index 0000000..8aa54ae
 +        
 +        typedExpandArray(exp,sep,inner,cl,eleType)
 +      }
++      /*case AST.Conditional(exp,then,elseT) => {
++        if (classOf[Option].isAssignableFrom(exp.returnType(cl)))
++          
++        else
++          throw new RuntimeException("Only Option conditionals supported")
++      }*/
 +    }
 +  )
 +  
