@@ -20,15 +20,13 @@ object Compiler{
     }
   }
 
-  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp[T,Ret])
-                                            //,cl:Class[T]
-                                            //,retType:Class[Ret])
-                                           (f:F[R**T]):F[R**Ret] =
+  def compileGetExp[R<:List,T,Ret](exp:Exp[T,Ret])
+                                  (f:F[R**T]):F[R**Ret] =
     exp match {
       case p@ParentExp(inner,parent) => f ~ compileGetExp(parent) ~ compileGetExp(inner)
       case MethodHandleExp(handle) => f ~ handle.invoke
-      case ThisExp(retCl) => f ~ checkcast(retCl)
-    }                                             
+      case ThisExp => f
+    }
   /*exp match {
     case p@ParentExp(inner,parent) =>{
       val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])

@@ -7,8 +7,8 @@ object TypedAST {
 	def eval(o:T):U
 	override def apply(o:T):U = eval(o) 
   }
-  case class ThisExp[T,U](retClass:Class[U]) extends Exp[T,U]{
-    override def eval(o:T) = o.asInstanceOf[U]
+  case object ThisExp extends Exp[Any,Any]{
+    override def eval(o:Any) = o
   }
   case class ParentExp[T,U,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
     override def eval(o:T) = inner.eval(parent.eval(o))
@@ -70,7 +70,7 @@ object TypedAST {
    */
   def typedThisExp[T,U](cl:Class[T],retCl:Class[U]):Exp[T,U] =
     if (retCl.isAssignableFrom(cl))
-      ThisExp(retCl)
+      ThisExp.asInstanceOf[Exp[T,U]] // we checked it
     else
       throw new TypingException("#this has not the expected type "+retCl)
   
