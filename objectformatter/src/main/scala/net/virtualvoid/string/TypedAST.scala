@@ -7,8 +7,8 @@ object TypedAST {
 	def eval(o:T):U
 	override def apply(o:T):U = eval(o) 
   }
-  case class ThisExp[T]() extends Exp[T,T]{
-    override def eval(o:T) = o
+  case class ThisExp[T,U](retClass:Class[U]) extends Exp[T,U]{
+    override def eval(o:T) = o.asInstanceOf[U]
   }
   case class ParentExp[T,U,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
     override def eval(o:T) = inner.eval(parent.eval(o))
@@ -51,9 +51,9 @@ object TypedAST {
   }*/
   abstract class Expand[T,C[_],U](exp:Exp[T,C[U]],sep:String,inner:FormatElementList[U]) extends Conversion[T,C[U]](exp){
     def asIterable(c:C[U]):Iterable[U]
-    override def convert(i:C[U]) = asIterable(i) map (inner.format _) mkString ""
+    override def convert(i:C[U]) = asIterable(i) map (inner.format _) mkString sep
   }
-  case class ExpandArray[T,U](exp:Exp[T,Array[U]],sep:String,inner:FormatElementList[U]) extends Expand[T,Array,U](exp,sep,inner){
+  case class ExpandArray[T,U<:AnyRef](exp:Exp[T,Array[U]],sep:String,inner:FormatElementList[U]) extends Expand[T,Array,U](exp,sep,inner){
     override def asIterable(i:Array[U]) = i
   }
   case class ExpandJavaIterable[T,U](exp:Exp[T,java.lang.Iterable[U]],sep:String,inner:FormatElementList[U]) extends Expand[T,java.lang.Iterable,U](exp,sep,inner){
@@ -70,7 +70,7 @@ object TypedAST {
    */
   def typedThisExp[T,U](cl:Class[T],retCl:Class[U]):Exp[T,U] =
     if (retCl.isAssignableFrom(cl))
-      ThisExp[T].asInstanceOf[Exp[T,U]] // we checked it
+      ThisExp(retCl)
     else
       throw new TypingException("#this has not the expected type "+retCl)
   
@@ -101,6 +101,9 @@ object TypedAST {
       case AST.ToStringConversion(exp) => ToStringConversion(typedExp(exp,cl,classOf[AnyRef]))
       case AST.Expand(exp,sep,inner) => {
         val eleType:Class[AnyRef] = exp.returnType(cl).getComponentType.asInstanceOf[Class[AnyRef]]
+        if (eleType == null)
+          throw new RuntimeException(exp+" must evaluate into an array but is "+exp.returnType(cl))
+        
         typedExpandArray(exp,sep,inner,cl,eleType)
       }
     }
@@ -108,7 +111,7 @@ object TypedAST {
   
   def classOfArray[T<:AnyRef](eleClass:Class[T]):Class[Array[T]] = Class.forName("[L"+eleClass.getName+";").asInstanceOf[Class[Array[T]]]
 }
-
+case class Person(name:String,town:String)
 object IterableHelper {
   implicit def java2scala[T](it:java.lang.Iterable[T]):Iterable[T] = new Iterable[T]{
     override def elements:Iterator[T] = new Iterator[T]{
@@ -118,3 +121,10 @@ object IterableHelper {
     }
   }
 }
+
+/*
+import net.virtualvoid.string._
+val ast = EnhancedStringFormatParser parse "#this[#name lives in #town]{,}*"
+TypedAST.typed(ast,classOf[Array[Person]])
+ 
+ */
