@@ -1,5 +1,5 @@
 Bottom: c165f1d3c2775d18024b1d251a99f9540cd557fc
-Top:    f15b0220168dcf9c69206b25302ba5043f355858
+Top:    98696897cbd7455e716bae94c697c853ca563ceb
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 11:44:03 +0200
 
@@ -9,7 +9,7 @@ checkpoint
 ---
 
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
-index 4f93a51..b391e92 100644
+index 4f93a51..6437f5e 100644
 --- a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 @@ -10,7 +10,7 @@ object Compiler{
@@ -21,7 +21,7 @@ index 4f93a51..b391e92 100644
    
    def elementType(it:java.lang.reflect.Type,of:Class[_])
    	:Class[_ <: AnyRef] = {
-@@ -20,11 +20,16 @@ object Compiler{
+@@ -20,11 +20,14 @@ object Compiler{
      }
    }
  
@@ -30,20 +30,18 @@ index 4f93a51..b391e92 100644
 -                                            ,retType:Class[Ret])
 -                                           (f:F[R**T]):F[R**Ret] = 
 -  exp match {
-+  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp[T,Ret])
-+                                            //,cl:Class[T]
-+                                            //,retType:Class[Ret])
-+                                           (f:F[R**T]):F[R**Ret] =
++  def compileGetExp[R<:List,T,Ret](exp:Exp[T,Ret])
++                                  (f:F[R**T]):F[R**Ret] =
 +    exp match {
 +      case p@ParentExp(inner,parent) => f ~ compileGetExp(parent) ~ compileGetExp(inner)
 +      case MethodHandleExp(handle) => f ~ handle.invoke
-+      case ThisExp(retCl) => f ~ checkcast(retCl)
-+    }                                             
++      case ThisExp => f
++    }
 +  /*exp match {
      case p@ParentExp(inner,parent) =>{
        val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
        f ~ 
-@@ -39,18 +44,18 @@ object Compiler{
+@@ -39,18 +42,18 @@ object Compiler{
        f ~ 
          m.invoke
      }
@@ -68,7 +66,7 @@ index 4f93a51..b391e92 100644
                       (f:F[R**StringBuilder])
                       :F[R**StringBuilder]
      = ele match {
-@@ -58,10 +63,42 @@ object Compiler{
+@@ -58,10 +61,42 @@ object Compiler{
          f ~ ldc(str) ~ invokemethod2(_.append(_))
        case ToStringConversion(e) =>
          f ~ value.load ~
@@ -113,7 +111,7 @@ index 4f93a51..b391e92 100644
          import Bytecode.RichOperations.foldIterator
            
          val retType = exp.returnType(cl)
-@@ -124,8 +161,8 @@ object Compiler{
+@@ -124,8 +159,8 @@ object Compiler{
          else
            throw new java.lang.Error("can only iterate over "+
                                        "iterables and arrays right now")
@@ -124,7 +122,7 @@ index 4f93a51..b391e92 100644
          val retType = inner.returnType(cl)
  
          if (retType == java.lang.Boolean.TYPE || 
-@@ -193,14 +230,14 @@ object Compiler{
+@@ -193,14 +228,14 @@ object Compiler{
            ) ~
            invokemethod2(_.format(_)) ~
            invokemethod2(_.append(_))
@@ -144,7 +142,7 @@ index 4f93a51..b391e92 100644
    }
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala b/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala
 new file mode 100644
-index 0000000..7f3f0a4
+index 0000000..8aa54ae
 --- /dev/null
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala
 @@ -0,0 +1,130 @@
@@ -157,8 +155,8 @@ index 0000000..7f3f0a4
 +	def eval(o:T):U
 +	override def apply(o:T):U = eval(o) 
 +  }
-+  case class ThisExp[T,U](retClass:Class[U]) extends Exp[T,U]{
-+    override def eval(o:T) = o.asInstanceOf[U]
++  case object ThisExp extends Exp[Any,Any]{
++    override def eval(o:Any) = o
 +  }
 +  case class ParentExp[T,U,V](inner:Exp[U,V],parent:Exp[T,U]) extends Exp[T,V]{
 +    override def eval(o:T) = inner.eval(parent.eval(o))
@@ -220,7 +218,7 @@ index 0000000..7f3f0a4
 +   */
 +  def typedThisExp[T,U](cl:Class[T],retCl:Class[U]):Exp[T,U] =
 +    if (retCl.isAssignableFrom(cl))
-+      ThisExp(retCl)
++      ThisExp.asInstanceOf[Exp[T,U]] // we checked it
 +    else
 +      throw new TypingException("#this has not the expected type "+retCl)
 +  
