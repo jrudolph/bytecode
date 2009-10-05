@@ -1,5 +1,5 @@
 Bottom: 49305c7a20f779ecdec043ee26eb421b4106d279
-Top:    49305c7a20f779ecdec043ee26eb421b4106d279
+Top:    25f5b1ce5b96d201bcf089e6e24a04d3330d59cd
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 12:12:34 +0200
 
@@ -8,4 +8,28 @@ ojf: name tests better, tests for array access
 
 ---
 
-
+diff --git a/objectformatter/src/test/scala/net/virtualvoid/string/EvaluateSpecs.scala b/objectformatter/src/test/scala/net/virtualvoid/string/EvaluateSpecs.scala
+index 2e0ce1e..41d39ce 100644
+--- a/objectformatter/src/test/scala/net/virtualvoid/string/EvaluateSpecs.scala
++++ b/objectformatter/src/test/scala/net/virtualvoid/string/EvaluateSpecs.scala
+@@ -21,6 +21,7 @@ object EvaluateSpecs extends Specification{
+   class Person{
+       def name():java.lang.String = "Joe"
+       def accountNames():java.util.List[java.lang.String] = java.util.Arrays.asList("a","b")
++      def accountNamesArray():Array[java.lang.String] = Array("a","b")
+       val sparkasse = Bank("Sparkasse")
+       def accounts():java.util.List[Account] = java.util.Arrays.asList(Account("78910",sparkasse),Account("12345",Bank("Volksbank")))
+       def accs():Array[Account] = accounts().toArray(new Array[Account](0))
+@@ -43,8 +44,10 @@ object EvaluateSpecs extends Specification{
+ 
+     "literal" in {"literal" must evaluateAs("literal")}
+     "property access" in {"#name" must evaluateAs(thePerson.name)}
+-    "string array access" in {"#accountNames*" must evaluateAs("ab")}
+-    "string array access with separator" in {"#accountNames{,}*" must evaluateAs("a,b")}
++    "string array access" in {"#accountNamesArray*" must evaluateAs("ab")}
++    "string array access with separator" in {"#accountNamesArray{,}*" must evaluateAs("a,b")}
++    "string iterable access" in {"#accountNames*" must evaluateAs("ab")}
++    "string iterable access with separator" in {"#accountNames{,}*" must evaluateAs("a,b")}
+     "object iterable access with inner expression" in {"#accounts[#number]{,}*" must evaluateAs("78910,12345")}
+     "object array access with inner expression" in {"#accs[#number]{,}*" must evaluateAs("78910,12345")}
+     "deep property access" in {"#accs[#bank.name]{,}*" must evaluateAs("Sparkasse,Volksbank")}
