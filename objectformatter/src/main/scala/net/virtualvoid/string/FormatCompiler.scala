@@ -34,8 +34,6 @@ object Compiler{
     elements.elements.foldLeft(f){(frame,element) => 
       compileElement(element,value)(frame)}
 
-  def id[X]:X=>X = x=>x
-  
   def compileElement[R<:List,T<:AnyRef]
                      (ele:FormatElement[T],value:Local[T])
                      (f:F[R**StringBuilder])
@@ -49,36 +47,31 @@ object Compiler{
           invokemethod1(_.toString) ~ 
           invokemethod2(_.append(_))
       case ExpandArray(exp,sep,inner) => {
-        /*val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
-
-          if (eleType.isPrimitive)
-            throw new java.lang.Error("can't handle primitive arrays right now");*/
-
-          import Bytecode.RichOperations.foldArray
-          
-          f ~
-            value.load ~
-            compileGetExp(exp) ~
-            dup ~
-            arraylength ~
-            bipush(1) ~
-            isub ~
-            withLocal(lastIndex =>
-              _ ~
-	            swap() ~
-	            foldArray(index =>
-	              _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
-                    lastIndex.load ~
-                    index.load ~
-                    isub ~
-                    ifne2(
-                      _ ~
-                        ldc(sep) ~
-                        invokemethod2(_.append(_))
-                      , f=>f
-                    )
-	            )
-            )
+		  import Bytecode.RichOperations.foldArray
+		  
+		  f ~
+		    value.load ~
+		    compileGetExp(exp) ~
+		    dup ~
+		    arraylength ~
+		    bipush(1) ~
+		    isub ~
+		    withLocal(lastIndex =>
+		      _ ~
+		        swap() ~
+		        foldArray(index =>
+		          _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
+		            lastIndex.load ~
+		            index.load ~
+		            isub ~
+		            ifne2(
+		              _ ~
+		                ldc(sep) ~
+		                invokemethod2(_.append(_))
+		              , f=>f
+		            )
+		        )
+		    )
       }
       /*case Expand(exp,sep,inner) => {
         import Bytecode.RichOperations.foldIterator
