@@ -1,5 +1,5 @@
 Bottom: c165f1d3c2775d18024b1d251a99f9540cd557fc
-Top:    98696897cbd7455e716bae94c697c853ca563ceb
+Top:    90b4b9f86df59bfbee867fff2901df319ec2461d
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 11:44:03 +0200
 
@@ -9,7 +9,7 @@ checkpoint
 ---
 
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
-index 4f93a51..6437f5e 100644
+index 4f93a51..ea95ff8 100644
 --- a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 @@ -10,7 +10,7 @@ object Compiler{
@@ -21,7 +21,7 @@ index 4f93a51..6437f5e 100644
    
    def elementType(it:java.lang.reflect.Type,of:Class[_])
    	:Class[_ <: AnyRef] = {
-@@ -20,11 +20,14 @@ object Compiler{
+@@ -20,37 +20,24 @@ object Compiler{
      }
    }
  
@@ -30,23 +30,27 @@ index 4f93a51..6437f5e 100644
 -                                            ,retType:Class[Ret])
 -                                           (f:F[R**T]):F[R**Ret] = 
 -  exp match {
+-    case p@ParentExp(inner,parent) =>{
+-      val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
+-      f ~ 
+-        m.invoke ~ 
+-        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
 +  def compileGetExp[R<:List,T,Ret](exp:Exp[T,Ret])
 +                                  (f:F[R**T]):F[R**Ret] =
 +    exp match {
 +      case p@ParentExp(inner,parent) => f ~ compileGetExp(parent) ~ compileGetExp(inner)
 +      case MethodHandleExp(handle) => f ~ handle.invoke
 +      case ThisExp => f
-+    }
-+  /*exp match {
-     case p@ParentExp(inner,parent) =>{
-       val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
-       f ~ 
-@@ -39,18 +42,18 @@ object Compiler{
-       f ~ 
-         m.invoke
      }
+-    case ThisExp =>
+-      f ~ 
+-        checkcast(retType) // TODO: don't know why we need this, examine it
+-    case e:Exp => {
+-      val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
+-      f ~ 
+-        m.invoke
+-    }
 -  }
-+  }*/
      
 -  def compileFormatElementList[R<:List,LR<:List,T<:java.lang.Object]
 -                 (elements:FormatElementList,cl:Class[T],value:Local[T])
@@ -66,7 +70,7 @@ index 4f93a51..6437f5e 100644
                       (f:F[R**StringBuilder])
                       :F[R**StringBuilder]
      = ele match {
-@@ -58,10 +61,42 @@ object Compiler{
+@@ -58,10 +45,42 @@ object Compiler{
          f ~ ldc(str) ~ invokemethod2(_.append(_))
        case ToStringConversion(e) =>
          f ~ value.load ~
@@ -111,7 +115,7 @@ index 4f93a51..6437f5e 100644
          import Bytecode.RichOperations.foldIterator
            
          val retType = exp.returnType(cl)
-@@ -124,8 +159,8 @@ object Compiler{
+@@ -124,8 +143,8 @@ object Compiler{
          else
            throw new java.lang.Error("can only iterate over "+
                                        "iterables and arrays right now")
@@ -122,7 +126,7 @@ index 4f93a51..6437f5e 100644
          val retType = inner.returnType(cl)
  
          if (retType == java.lang.Boolean.TYPE || 
-@@ -193,14 +228,14 @@ object Compiler{
+@@ -193,14 +212,14 @@ object Compiler{
            ) ~
            invokemethod2(_.format(_)) ~
            invokemethod2(_.append(_))
