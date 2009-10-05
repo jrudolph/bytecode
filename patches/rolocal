@@ -1,0 +1,11 @@
+Bottom: bd6245aa1b80af10ca2865305c750cc1c8c69b50
+Top:    bd6245aa1b80af10ca2865305c750cc1c8c69b50
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-05 22:27:38 +0200
+
+split Local interface in two: ROLocal[+T] with load and Local[T] extends ROLocal[T] with store
+
+
+---
+
+
