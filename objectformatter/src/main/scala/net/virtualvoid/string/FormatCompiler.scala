@@ -27,22 +27,6 @@ object Compiler{
       case MethodHandleExp(handle) => f ~ handle.invoke
       case ThisExp => f
     }
-  /*exp match {
-    case p@ParentExp(inner,parent) =>{
-      val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
-      f ~ 
-        m.invoke ~ 
-        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
-    }
-    case ThisExp =>
-      f ~ 
-        checkcast(retType) // TODO: don't know why we need this, examine it
-    case e:Exp => {
-      val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
-      f ~ 
-        m.invoke
-    }
-  }*/
     
   def compileFormatElementList[R<:List,T<:AnyRef]
                  (elements:FormatElementList[T],value:Local[T])
