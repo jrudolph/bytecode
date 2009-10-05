@@ -3,7 +3,7 @@ Top:    c165f1d3c2775d18024b1d251a99f9540cd557fc
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 12:12:34 +0200
 
-ojf: name tests better, tests for array access
+ojf: better name for tests, tests for array access
 
 
 ---
