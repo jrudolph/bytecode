@@ -7,61 +7,80 @@ object Compiler{
   import net.virtualvoid.bytecode.ASMCompiler
   import Bytecode._
   import Bytecode.Instructions._
-  import Bytecode.Implicits._
 
   val parser = EnhancedStringFormatParser
-  import AST._
-  
-  def elementType(it:java.lang.reflect.Type,of:Class[_])
-  	:Class[_ <: AnyRef] = {
-    TypeHelper.genericInstanceType(it,of,Array()) match{
-      case Some(cl:java.lang.Class[AnyRef]) => cl
-      case _ => throw new java.lang.Error("Can't get element type of "+it)
-    }
-  }
+  import TypedAST._
 
-  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp
-                                            ,cl:Class[T]
-                                            ,retType:Class[Ret])
-                                           (f:F[R**T]):F[R**Ret] = 
-  exp match {
-    case p@ParentExp(inner,parent) =>{
-      val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
-      f ~ 
-        m.invoke ~ 
-        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
+  val append = method2((_:StringBuilder).append(_:String))
+   
+  def compileExp[R<:List,T<:AnyRef,Ret <% NoUnit](exp:Exp[T,Ret])
+                                  :F[R**T] => F[R**Ret] =
+    exp match {
+      case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
+      case MethodHandleExp(method) => _ ~ method
+      case ThisExp => f => f
     }
-    case ThisExp =>
-      f ~ 
-        checkcast(retType) // TODO: don't know why we need this, examine it
-    case e:Exp => {
-      val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
-      f ~ 
-        m.invoke
-    }
-  }
     
-  def compileFormatElementList[R<:List,LR<:List,T<:java.lang.Object]
-                 (elements:FormatElementList,cl:Class[T],value:Local[T])
+  def compileFormatElementList[R<:List,T<:AnyRef]
+                 (elements:FormatElementList[T],value:ROLocal[T])
                  (f:F[R**StringBuilder]):F[R**StringBuilder] =
     elements.elements.foldLeft(f){(frame,element) => 
-      compileElement(element,cl,value)(frame)}
+      compileElement(element,value)(frame)}
 
-  def id[X]:X=>X = x=>x
-  
-  def compileElement[R<:List,LR<:List,T<:java.lang.Object]
-                     (ele:FormatElement,cl:Class[T],value:Local[T])
+  def compileElement[R<:List,T <: AnyRef]
+                     (ele:FormatElement[T],value:ROLocal[T])
                      (f:F[R**StringBuilder])
                      :F[R**StringBuilder]
     = ele match {
       case Literal(str) => 
-        f ~ ldc(str) ~ invokemethod2(_.append(_))
+        f ~ ldc(str) ~ append
       case ToStringConversion(e) =>
         f ~ value.load ~
-          compileGetExp(e,cl,classOf[AnyRef]) ~ 
-          invokemethod1(_.toString) ~ 
-          invokemethod2(_.append(_))
-      case Expand(exp,sep,inner) => {
+          compileExp(e) ~ 
+          method1((_:AnyRef).toString) ~ 
+          append
+      case ExpandArray(exp,sep,inner) => {
+		  import Bytecode.RichOperations.foldArray
+		  
+		  f ~
+		    value.load ~
+		    compileExp(exp) ~
+		    dup ~
+		    withLocal(array =>
+		      _ ~
+			    arraylength ~
+			    bipush(1) ~
+			    isub ~
+			    withLocal(lastIndex =>
+			        foldArray(array)(index =>
+			          _ ~  
+			            withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
+			            lastIndex.load ~
+			            index.load ~
+			            isub ~
+			            ifne2(
+			              _ ~
+			                ldc(sep) ~
+			                append
+			              , nop
+			            )
+			        )
+			    )
+            )
+      }
+      case ConditionalOption(exp,then,elseB) => {
+        f ~
+            value.load ~
+            compileExp(exp) ~
+            dup ~
+            method1((_:Option[AnyRef]).isDefined) ~
+            ifeq2(
+              _ ~ pop /*None*/ ~ compileFormatElementList(elseB,value),
+              _ ~ 
+                method1((_:Option[AnyRef]).get) ~
+                withLocal(newValue => compileFormatElementList(then,newValue)))
+      }
+      /*case Expand(exp,sep,inner) => {
         import Bytecode.RichOperations.foldIterator
           
         val retType = exp.returnType(cl)
@@ -124,8 +143,8 @@ object Compiler{
         else
           throw new java.lang.Error("can only iterate over "+
                                       "iterables and arrays right now")
-      }
-      case Conditional(inner,thens,elses) => {
+      }*/
+      /*case Conditional(inner,thens,elses) => {
         val retType = inner.returnType(cl)
 
         if (retType == java.lang.Boolean.TYPE || 
@@ -193,15 +212,15 @@ object Compiler{
           ) ~
           invokemethod2(_.format(_)) ~
           invokemethod2(_.append(_))
-      }
+      }*/
     }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
-    val elements:FormatElementList = parser.parse(format)
+    val elements:FormatElementList[T] = typed(parser.parse(format),cl)
     ASMCompiler.compile(cl)(value =>
       _ ~ 
         newInstance(classOf[StringBuilder]) ~
-        compileFormatElementList(elements,cl,value) ~
-        invokemethod1(_.toString)
+        compileFormatElementList(elements,value) ~
+        method1((_:StringBuilder).toString)
     )
   }
 }
