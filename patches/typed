@@ -1,5 +1,5 @@
 Bottom: c165f1d3c2775d18024b1d251a99f9540cd557fc
-Top:    90b4b9f86df59bfbee867fff2901df319ec2461d
+Top:    bd6245aa1b80af10ca2865305c750cc1c8c69b50
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 11:44:03 +0200
 
@@ -9,7 +9,7 @@ checkpoint
 ---
 
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
-index 4f93a51..ea95ff8 100644
+index 4f93a51..ef21cde 100644
 --- a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 @@ -10,7 +10,7 @@ object Compiler{
@@ -21,7 +21,7 @@ index 4f93a51..ea95ff8 100644
    
    def elementType(it:java.lang.reflect.Type,of:Class[_])
    	:Class[_ <: AnyRef] = {
-@@ -20,37 +20,24 @@ object Compiler{
+@@ -20,37 +20,22 @@ object Compiler{
      }
    }
  
@@ -61,8 +61,8 @@ index 4f93a51..ea95ff8 100644
 -      compileElement(element,cl,value)(frame)}
 +      compileElement(element,value)(frame)}
  
-   def id[X]:X=>X = x=>x
-   
+-  def id[X]:X=>X = x=>x
+-  
 -  def compileElement[R<:List,LR<:List,T<:java.lang.Object]
 -                     (ele:FormatElement,cl:Class[T],value:Local[T])
 +  def compileElement[R<:List,T<:AnyRef]
@@ -70,7 +70,7 @@ index 4f93a51..ea95ff8 100644
                       (f:F[R**StringBuilder])
                       :F[R**StringBuilder]
      = ele match {
-@@ -58,10 +45,42 @@ object Compiler{
+@@ -58,10 +43,37 @@ object Compiler{
          f ~ ldc(str) ~ invokemethod2(_.append(_))
        case ToStringConversion(e) =>
          f ~ value.load ~
@@ -80,42 +80,37 @@ index 4f93a51..ea95ff8 100644
            invokemethod2(_.append(_))
 -      case Expand(exp,sep,inner) => {
 +      case ExpandArray(exp,sep,inner) => {
-+        /*val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
-+
-+          if (eleType.isPrimitive)
-+            throw new java.lang.Error("can't handle primitive arrays right now");*/
-+
-+          import Bytecode.RichOperations.foldArray
-+          
-+          f ~
-+            value.load ~
-+            compileGetExp(exp) ~
-+            dup ~
-+            arraylength ~
-+            bipush(1) ~
-+            isub ~
-+            withLocal(lastIndex =>
-+              _ ~
-+	            swap() ~
-+	            foldArray(index =>
-+	              _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
-+                    lastIndex.load ~
-+                    index.load ~
-+                    isub ~
-+                    ifne2(
-+                      _ ~
-+                        ldc(sep) ~
-+                        invokemethod2(_.append(_))
-+                      , f=>f
-+                    )
-+	            )
-+            )
++		  import Bytecode.RichOperations.foldArray
++		  
++		  f ~
++		    value.load ~
++		    compileGetExp(exp) ~
++		    dup ~
++		    arraylength ~
++		    bipush(1) ~
++		    isub ~
++		    withLocal(lastIndex =>
++		      _ ~
++		        swap() ~
++		        foldArray(index =>
++		          _ ~ withLocal(innerValue => compileFormatElementList(inner,innerValue)) ~
++		            lastIndex.load ~
++		            index.load ~
++		            isub ~
++		            ifne2(
++		              _ ~
++		                ldc(sep) ~
++		                invokemethod2(_.append(_))
++		              , f=>f
++		            )
++		        )
++		    )
 +      }
 +      /*case Expand(exp,sep,inner) => {
          import Bytecode.RichOperations.foldIterator
            
          val retType = exp.returnType(cl)
-@@ -124,8 +143,8 @@ object Compiler{
+@@ -124,8 +136,8 @@ object Compiler{
          else
            throw new java.lang.Error("can only iterate over "+
                                        "iterables and arrays right now")
@@ -126,7 +121,7 @@ index 4f93a51..ea95ff8 100644
          val retType = inner.returnType(cl)
  
          if (retType == java.lang.Boolean.TYPE || 
-@@ -193,14 +212,14 @@ object Compiler{
+@@ -193,14 +205,14 @@ object Compiler{
            ) ~
            invokemethod2(_.format(_)) ~
            invokemethod2(_.append(_))
