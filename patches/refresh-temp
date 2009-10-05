@@ -1,0 +1,36 @@
+Bottom: 98696897cbd7455e716bae94c697c853ca563ceb
+Top:    90b4b9f86df59bfbee867fff2901df319ec2461d
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-05 12:26:09 +0200
+
+Refresh of typed
+
+---
+
+diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
+index 6437f5e..ea95ff8 100644
+--- a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
++++ b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
+@@ -27,22 +27,6 @@ object Compiler{
+       case MethodHandleExp(handle) => f ~ handle.invoke
+       case ThisExp => f
+     }
+-  /*exp match {
+-    case p@ParentExp(inner,parent) =>{
+-      val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
+-      f ~ 
+-        m.invoke ~ 
+-        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
+-    }
+-    case ThisExp =>
+-      f ~ 
+-        checkcast(retType) // TODO: don't know why we need this, examine it
+-    case e:Exp => {
+-      val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
+-      f ~ 
+-        m.invoke
+-    }
+-  }*/
+     
+   def compileFormatElementList[R<:List,T<:AnyRef]
+                  (elements:FormatElementList[T],value:Local[T])
