@@ -1,5 +1,5 @@
-Bottom: c165f1d3c2775d18024b1d251a99f9540cd557fc
-Top:    e792e8ae0c7afd90464507f99d420b593717ac3a
+Bottom: e41194af49093b601f4af5807f5a73e33fad503f
+Top:    4d28bae2ea61f26635cb90b161161e3f6625af27
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-06 13:08:20 +0200
 
@@ -8,10 +8,10 @@ split Local interface in two: ROLocal[+T] with load and Local[T] extends ROLocal
 ---
 
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
-index e42c5d3..448e039 100644
+index f47e236..b5d3084 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
-@@ -109,8 +109,10 @@ object Bytecode{
+@@ -106,8 +106,10 @@ object Bytecode{
      											  ,thenB:F[R]=>Nothing):F[R]
    }
    
@@ -25,10 +25,10 @@ index e42c5d3..448e039 100644
    }
  
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
-index 2da8c4b..bfc6c17 100644
+index 26f0ab8..7fa8156 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
-@@ -311,7 +311,7 @@ object ASMCompiler extends ByteletCompiler{
+@@ -280,7 +280,7 @@ object ASMCompiler extends ByteletCompiler{
          Type.getType(CodeTools.cleanClass(cl.getName)).getOpcode(opcode)
      def local[T](index:Int,clazz:Class[_]):Local[T] = 
          new Local[T]{
@@ -38,10 +38,10 @@ index 2da8c4b..bfc6c17 100644
              asmF.mv.visitVarInsn(opcode(clazz,ILOAD),index)
              asmF.withStack(asmF.stackClass ** clazz)
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
-index b0a1b4e..f1fe670 100644
+index 5469876..ff88f60 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
-@@ -143,7 +143,7 @@ object Interpreter extends ByteletCompiler {
+@@ -124,7 +124,7 @@ object Interpreter extends ByteletCompiler {
  
      def local[T](initial:T):Local[T] = new Local[T] {
        var value = initial

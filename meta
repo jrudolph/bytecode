@@ -1,9 +1,9 @@
 Version: 1
-Previous: 63714fa3eb7693769b4dcfd9409b36ce560f8558
-Head: d67d64939ef722ab646fbae1512a05e574c94541
+Previous: 82fd087b18f3732d28800414cdc73b121d9f1924
+Head: f18bd4f40c83d31f73ed6348ebe5d9c4c582547f
 Applied:
+  rolocals: bf90185cc68bd489e6008d8961d7584ecb0dcf5e
+  typed: f18bd4f40c83d31f73ed6348ebe5d9c4c582547f
 Unapplied:
-  rolocals: adddd48a43cb9ccceb0fb9ed1bed143c338faab3
-  typed: d8565b65b863ac509d730aaed71aadcaeb0c72dd
   popper-tests: 81a6ec0bdf2b557be25f305ece512ea7b5dbc3ad
 Hidden:
