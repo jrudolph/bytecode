@@ -116,16 +116,22 @@ object Bytecode{
 
   abstract class MethodHandle(val method:Method){
     def numParams:Int
+    
+    protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
+    protected def unitCall[X<:List,Y<:List]:F[X]=>F[Y] = { f => 
+      val nextF = f.invokemethod(this)
+      nextF.pop_unit_int(nextF.stack.rest)
+    }
   }
   trait Method1[-T,+U] extends MethodHandle {
     override val numParams = 1
-    def invoke[R<:List,T1X<:T,UX>:U <% NoUnit]():F[R**T1X] => F[R**UX] = f => f.invokemethod(this)
-    def invokeUnit[R<:List,T1X<:T,UX>:U <% IsUnit]():F[R**T1X] => F[R] = f => f.invokemethod(this) ~ ((x:F[R**UX]) => x.pop_unit_int(x.stack.rest))
+    def invoke[R<:List,T1X<:T,UX>:U <% NoUnit]():F[R**T1X] => F[R**UX] = normalCall
+    def invokeUnit[R<:List,T1X<:T,UX>:U <% IsUnit]():F[R**T1X] => F[R] = unitCall
   }
   trait Method2[-T1,-T2,+U] extends MethodHandle {
     override val numParams = 2
-    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U <% NoUnit]():F[R**T1X**T2X] => F[R**UX] = f => f.invokemethod(this)
-    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = f => f.invokemethod(this) ~ ((x:F[R**UX]) => x.pop_unit_int(x.stack.rest))
+    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U <% NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
+    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = unitCall
   }
   
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
