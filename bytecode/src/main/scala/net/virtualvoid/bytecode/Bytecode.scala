@@ -115,6 +115,25 @@ object Bytecode{
   trait Local[T] extends ROLocal[T]{
     def store[ST<:List]:F[ST**T] => F[ST]
   }
+  
+  trait Popper[U] {
+    type RT[R<:List]<:List
+    def conv[R<:List] (f:F[R**U]) : F[RT[R]]
+  }
+  implicit object PopUnit extends Popper[Unit] {
+    type RT[R<:List] = R
+    def conv[R<:List] (f:F[R**Unit]) : F[RT[R]] = f ~ Instructions.pop_unit
+  }
+  case class NonPopper[U]() extends Popper[U]{
+    type RT[R<:List] = R**U
+    def conv[R<:List] (f:F[R**U]) : F[RT[R]] = f
+  }
+  implicit def dontPopAnyRef[T<:AnyRef]:NonPopper[T] = NonPopper[T] 
+  /*implicit object PopAnyRef extends Popper[AnyRef] {
+    type RT[R<:List] = R**AnyRef
+    def conv[R] (f:F[R**AnyRef]) : F[RT[R]] = f
+  }*/
+  def autopop[R<:List,U]()(implicit p:Popper[U]):F[R**U] => F[Popper[U]#RT[R]] = null
 
   import _root_.java.lang.reflect.Method
   import _root_.scala.reflect.Manifest
