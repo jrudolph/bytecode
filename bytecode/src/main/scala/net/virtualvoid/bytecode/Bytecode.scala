@@ -51,8 +51,8 @@ object Bytecode{
     
     def stack:ST
 
-    def bipush[ST2>:ST](i1:Int):F[ST2**Int]
-    def ldc[ST2>:ST](str:jString):F[ST2**jString]
+    def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int]
+    def ldc[ST2>:ST<:List](str:jString):F[ST2**jString]
 
     def ~[X](f:F[ST]=>X):X = f(this)
     
@@ -82,7 +82,7 @@ object Bytecode{
                                    ,handle:MethodHandle)
                                    :F[R**U]
                                    
-    def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
+    def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
     
     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
@@ -100,7 +100,7 @@ object Bytecode{
     
     def pop_unit_int[R<:List](rest:R):F[R]
 
-    def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T]
+    def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T]
     
     def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
     

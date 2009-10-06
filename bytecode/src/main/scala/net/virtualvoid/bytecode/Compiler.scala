@@ -50,14 +50,14 @@ object ASMCompiler extends ByteletCompiler{
       def withStack[ST2<:List](classes:ClassStack) =
         new ASMFrame[ST2](mv,classes,nextFreeLocal)
       
-      def newStacked[T,ST2>:ST](cl:Class[T]) = 
+      def newStacked[T,ST2>:ST<:List](cl:Class[T]) = 
         withStack(stackClass**cl)
       
-      def bipush[ST2>:ST](i1:Int):F[ST2**Int] = {
+      def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int] = {
         mv.visitIntInsn(BIPUSH, i1)
         newStacked(classOf[Int])
       }
-      def ldc[ST2>:ST](str:jString):F[ST2**jString] = {
+      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString] = {
         mv.visitLdcInsn(str)
         newStacked(classOf[jString])
       }
@@ -139,7 +139,7 @@ object ASMCompiler extends ByteletCompiler{
       }      
       
       
-      def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T] = {
+      def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = {
         val cons = cl.getConstructor()
         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
         mv.visitInsn(DUP)
@@ -189,7 +189,7 @@ object ASMCompiler extends ByteletCompiler{
       def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U] = 
         invokeMethod(methodFromTree(code.tree))
       
-      def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
+      def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
         val field = fieldFromTree(code.tree)
         mv.visitFieldInsn(GETSTATIC
                           ,Type.getInternalName(field.getDeclaringClass)

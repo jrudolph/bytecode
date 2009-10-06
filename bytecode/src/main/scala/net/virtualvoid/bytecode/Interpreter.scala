@@ -11,8 +11,8 @@ object Interpreter extends ByteletCompiler {
       def notImplemented(what:String) = 
         new java.lang.Error(what + " not implemented in Interpreter")
       
-      def bipush[ST2>:ST](i1:Int):F[ST2**Int] = IF(stack ** i1)
-      def ldc[ST2>:ST](str:jString):F[ST2**jString] = IF(stack ** str)
+      def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int] = IF(stack ** i1)
+      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString] = IF(stack ** str)
       /*def target:BackwardTarget[ST,LT] = throw notImplemented("target")
       def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
       
@@ -52,7 +52,7 @@ object Interpreter extends ByteletCompiler {
         IF(rest ** invokeMethod(handle.method,p1,p2).asInstanceOf[U])
 
 
-      def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
+      def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
         IF(stack ** fieldFromTree(code.tree).get(null).asInstanceOf[T])
 
       def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
@@ -107,7 +107,7 @@ object Interpreter extends ByteletCompiler {
         case Cons(r,old:T) => if (i == 0) Cons(r,t) else Cons(store(i-1,r,t),old)
       }
       
-      def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T] = 
+      def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = 
         IF(stack**cl.newInstance)
       
       def tailRecursive_int[ST1>:ST<:List,ST2<:List]
