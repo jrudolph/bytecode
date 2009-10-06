@@ -1,5 +1,5 @@
-Bottom: c30f05667d8db1a54af542eb09f555d96866a3e1
-Top:    ed5ce1ff6a2de0a227abdcca123c5151ed389d19
+Bottom: 89ed84aeddbc56be2c8c3944b4c70a00b20041f7
+Top:    b6e45edecd440d9b9cdd91a42eb41dda0a432dca
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-06 13:06:55 +0200
 
@@ -44,7 +44,7 @@ index 448e039..d4822e9 100644
      def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
      
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
-index 2da8c4b..493840b 100644
+index bfc6c17..c50e331 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 @@ -50,14 +50,14 @@ object ASMCompiler extends ByteletCompiler{
@@ -84,7 +84,7 @@ index 2da8c4b..493840b 100644
          mv.visitFieldInsn(GETSTATIC
                            ,Type.getInternalName(field.getDeclaringClass)
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
-index b0a1b4e..a81d891 100644
+index f1fe670..e5e0caa 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
 @@ -11,8 +11,8 @@ object Interpreter extends ByteletCompiler {
