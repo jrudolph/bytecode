@@ -1,0 +1,50 @@
+Bottom: b9ebbe49848bb40c6d80c27e24fd3090e2e5dafa
+Top:    0c8df5edcfa815a05f619ed4e3a87294e8bed8bb
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-06 13:04:56 +0200
+
+disable some uncompilable bits from Tools for now
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
+index 14d1c3d..dc3c2a5 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
+@@ -21,7 +21,7 @@ object CodeTools{
+     case NamedType(name) => name
+   }
+   
+-  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = try { 
++  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = null/*try { 
+     code.tree match{
+       case Function(List(p1,p2),Apply(Select(Ident(th),Method(method,MethodType(List(param),_))),List(Ident(x)))) if th == p1 && x == p2 =>{
+         val paramClass = extractClass(param)
+@@ -38,7 +38,7 @@ object CodeTools{
+     }
+   }catch{
+     case e:Exception => throw new Error("Error while calling method: "+code.tree,e);
+-  }
++  }*/
+   
+   def forName(clazz:String) = 
+     try {
+@@ -56,7 +56,7 @@ object CodeTools{
+     (method.substring(0,index),method.substring(index+1))
+   }
+   
+-  def methodFromTree(tree:Tree):jMethod = try {
++  def methodFromTree(tree:Tree):jMethod = null/*try {
+         def classNotFound(clazz:String) = new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString) 
+ 	    tree match{
+ 	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
+@@ -100,7 +100,7 @@ object CodeTools{
+   }
+   catch{
+     case e:Exception => throw new Error("Error while calling method: "+tree,e);
+-  }
++  }*/
+   
+   import java.lang.reflect.{Member,Modifier}
+   def static_?(m:Member):Boolean = (m.getModifiers & Modifier.STATIC) == Modifier.STATIC
