@@ -124,7 +124,7 @@ object Interpreter extends ByteletCompiler {
 
     def local[T](initial:T):Local[T] = new Local[T] {
       var value = initial
-      def load[ST<:List]:F[ST] => F[ST**T] = f => IF(f.stack**value)
+      def load[ST<:List,T2>:T]:F[ST] => F[ST**T2] = f => IF(f.stack**value)
       def store[ST<:List]:F[ST**T] => F[ST] = f => {
     	  value = f.stack.top
     	  IF(f.stack.rest)

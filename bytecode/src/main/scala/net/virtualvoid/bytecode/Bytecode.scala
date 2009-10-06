@@ -106,8 +106,10 @@ object Bytecode{
     											  ,thenB:F[R]=>Nothing):F[R]
   }
   
-  trait Local[T]{
-    def load[ST<:List]:F[ST] => F[ST**T]
+  trait ROLocal[+T]{
+    def load[R<:List,T2>:T]:F[R] => F[R**T2]
+  }  
+  trait Local[T] extends ROLocal[T]{
     def store[ST<:List]:F[ST**T] => F[ST]
   }
 
