@@ -33,18 +33,18 @@ object Bytecode{
    * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
    */
   trait Category1
-  implicit val cat1Boolean:Boolean => Category1 = null
-  implicit val cat1Byte:Byte => Category1 = null
-  implicit val cat1Character:Character => Category1 = null
-  implicit val cat1Short:Short => Category1 = null
-  implicit val cat1Int:Int => Category1 = null
-  implicit val cat1Float:Float => Category1 = null
-  implicit val cat1AnyRef:AnyRef => Category1 = null
+  implicit val cat1Boolean  : Boolean   => Category1 = null
+  implicit val cat1Byte     : Byte      => Category1 = null
+  implicit val cat1Character: Character => Category1 = null
+  implicit val cat1Short    : Short     => Category1 = null
+  implicit val cat1Int      : Int       => Category1 = null
+  implicit val cat1Float    : Float     => Category1 = null
+  implicit val cat1AnyRef   : AnyRef    => Category1 = null
   
   trait IsUnit
   trait NoUnit
   implicit val unitIsUnit  : Unit      => IsUnit = null
-  implicit def anyrefNoUnit: AnyRef    => NoUnit = null
+  implicit val anyrefNoUnit: AnyRef    => NoUnit = null
   implicit val boolNoUnit  : Boolean   => NoUnit = null
   implicit val byteNoUnit  : Byte      => NoUnit = null
   implicit val charNoUnit  : Character => NoUnit = null
