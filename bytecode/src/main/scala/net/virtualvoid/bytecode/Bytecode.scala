@@ -41,6 +41,19 @@ object Bytecode{
   implicit val cat1Float:Float => Category1 = null
   implicit val cat1AnyRef:AnyRef => Category1 = null
   
+  trait IsUnit
+  trait NoUnit
+  implicit val unitIsUnit  : Unit      => IsUnit = null
+  implicit def anyrefNoUnit: AnyRef    => NoUnit = null
+  implicit val boolNoUnit  : Boolean   => NoUnit = null
+  implicit val byteNoUnit  : Byte      => NoUnit = null
+  implicit val charNoUnit  : Character => NoUnit = null
+  implicit val shortNoUnit : Short     => NoUnit = null
+  implicit val intNoUnit   : Int       => NoUnit = null
+  implicit val floatNoUnit : Float     => NoUnit = null
+  implicit val doubleNoUnit: Double    => NoUnit = null
+  implicit val longNoUnit  : Long      => NoUnit = null
+  
   trait Target[+ST<:List]{
     def jmp[ST2>:ST<:List]:F[ST2] => Nothing
   }
@@ -63,24 +76,8 @@ object Bytecode{
     def dup_int[R<:List,T](rest:R,top:T):F[R**T**T]
     def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2]
     def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1]
-    def method1_int[R<:List,T,U](rest:R
-                                ,top:T
-                                ,code:scala.reflect.Code[T=>U])
-                                :F[R**U]
-    def method2_int[R<:List,T2,T1,U](rest:R
-                                    ,top2:T2
-                                    ,top1:T1
-                                    ,code:scala.reflect.Code[(T2,T1)=>U])
-                                    :F[R**U]
-    def methodDyn_int[R<:List,T,U](rest:R
-                                   ,top:T
-                                   ,handle:MethodHandle)
-                                   :F[R**U]
-    def methodDyn_int[R<:List,T1,T2,U](rest:R
-                                   ,p1:T1
-                                   ,p2:T2
-                                   ,handle:MethodHandle)
-                                   :F[R**U]
+
+    def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
                                    
     def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
@@ -113,31 +110,22 @@ object Bytecode{
     def load[ST<:List]:F[ST] => F[ST**T]
     def store[ST<:List]:F[ST**T] => F[ST]
   }
-  
-  trait IsUnit[T]
-  trait NoUnit[-T]
-  implicit val unitIsUnit:IsUnit[Unit] = null
-  implicit def anyrefNoUnit:NoUnit[AnyRef] = null
-  implicit val boolNoUnit:NoUnit[Boolean] = null
-  implicit val byteNoUnit:NoUnit[Byte] = null
-  implicit val charNoUnit:NoUnit[Character] = null
-  implicit val shortNoUnit:NoUnit[Short] = null
-  implicit val intNoUnit:NoUnit[Int] = null
-  implicit val floatNoUnit:NoUnit[Float] = null
-  implicit val doubleNoUnit:NoUnit[Double] = null
-  implicit val longNoUnit:NoUnit[Long] = null
 
   import _root_.java.lang.reflect.Method
   import _root_.scala.reflect.Manifest
 
-  abstract class MethodHandle(val method:Method)
+  abstract class MethodHandle(val method:Method){
+    def numParams:Int
+  }
   trait Method1[-T,+U] extends MethodHandle {
-    def invoke[R<:List,T1X<:T,UX>:U]()(implicit x:NoUnit[UX]):F[R**T1X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest,f.stack.top,this)
-    def invokeUnit[R<:List,T1X<:T,UX>:U]()(implicit x:IsUnit[UX]):F[R**T1X] => F[R] = f => f.methodDyn_int(f.stack.rest,f.stack.top,this) ~ Instructions.pop_unit
+    override val numParams = 1
+    def invoke[R<:List,T1X<:T,UX>:U <% NoUnit]():F[R**T1X] => F[R**UX] = f => f.invokemethod(this)
+    def invokeUnit[R<:List,T1X<:T,UX>:U <% IsUnit]():F[R**T1X] => F[R] = f => f.invokemethod(this) ~ Instructions.pop_unit
   }
   trait Method2[-T1,-T2,+U] extends MethodHandle {
-    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U]()(implicit x:NoUnit[UX]):F[R**T1X**T2X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,this)
-    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U]()(implicit x:IsUnit[UX]):F[R**T1X**T2X] => F[R] = f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,this) ~ Instructions.pop_unit
+    override val numParams = 2
+    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U <% NoUnit]():F[R**T1X**T2X] => F[R**UX] = f => f.invokemethod(this)
+    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = f => f.invokemethod(this) ~ Instructions.pop_unit
   }
   
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
@@ -158,16 +146,21 @@ object Bytecode{
   }
   /** checks type information and returns a statically and dynamically safe handle
   */
-  def methodHandle[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
+  def dynMethod[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
     checkMethod(m,r.erasure,p1.erasure)(new MethodHandle(_) with Method1[T,U])
-
-  def methodHandle[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
-    methodHandle[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
+  def dynMethod[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
+    dynMethod[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
   
-  def methodHandle[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
+  def method1[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
+    new MethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
+  
+  def dynMethod[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
     checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new MethodHandle(_) with Method2[T1,T2,U])
-  def methodHandle[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
-    methodHandle[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
+  def dynMethod[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
+    dynMethod[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
+  
+  def method2[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] = 
+    new MethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
   
   object Instructions {
     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
@@ -183,14 +176,7 @@ object Bytecode{
       iop[R](_.imul_int(_,_,_))
     def isub[R<:List] = 
       iop[R](_.isub_int(_,_,_))
-    
-    def invokemethod1[T,U,R<:List](code:scala.reflect.Code[T=>U])
-    	:F[R**T] => F[R**U] = 
-      f => f.method1_int(f.stack.rest,f.stack.top,code)
-    def invokemethod2[T1,T2,U,R<:List](code:scala.reflect.Code[(T1,T2)=>U])
-      :F[R**T1**T2] => F[R**U] = 
-    	  f => f.method2_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,code)
-                                               
+                                    
     def getstatic[R<:List,T](code:scala.reflect.Code[()=>T])
         :F[R] => F[R**T] =
         f => f.getstatic_int(code)
@@ -311,7 +297,7 @@ object Bytecode{
 		    }
 		  }
 	    
-    def foldIterator[R<:List,T,U]
+    def foldIterator[R<:List,T<:AnyRef,U]
                     (func:Local[java.util.Iterator[T]]=>F[R**U**T]=>F[R**U])(implicit mf:scala.reflect.Manifest[T],cat1U:U=>Category1)
           :F[R**java.util.Iterator[T]**U] => F[R**U] =
             _ ~
@@ -320,11 +306,11 @@ object Bytecode{
                   tailRecursive[R**U,R**U]( self =>
                     _ ~
 	                  iterator.load ~
-	                  invokemethod1(_.hasNext) ~
+	                  method1((_:java.util.Iterator[T]).hasNext).invoke() ~
 	                  ifne2(
 	                    _ ~
 	                      iterator.load ~
-	                      invokemethod1(_.next) ~
+	                      method1((_:java.util.Iterator[T]).next).invoke() ~
 	                      checkcast(mf.erasure.asInstanceOf[Class[T]]) ~
 	                      func(iterator) ~
 	                      self
