@@ -1,8 +1,11 @@
 Version: 1
-Previous: 649528f5d05e0688430b34bf31e735716c2d6e1e
+Previous: 2c25beaa313fdc601ef75e5972fbada841f14196
 Head: edf060a996bce24a414b1511bcf46bc7e3f740a7
 Applied:
   rolocal: d90f93438b8623e764af49ec2080fa1c298b7364
   typed: 51abde6be496b7b5c2f4ea31cc0730a8d597048f
+  improve-bounds-of-types-of-som: 962fbc6a43cfb5bf74bc15e87d02c178bf93a5d8
+  popper-tests: 81a6ec0bdf2b557be25f305ece512ea7b5dbc3ad
+  update-local-changes: edf060a996bce24a414b1511bcf46bc7e3f740a7
 Unapplied:
 Hidden:

@@ -1,0 +1,40 @@
+Bottom: ed5ce1ff6a2de0a227abdcca123c5151ed389d19
+Top:    744b733c6f9c10891764a48741b8aeffd93d2263
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-06 13:07:04 +0200
+
+popper tests
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index d4822e9..60db808 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -115,6 +115,25 @@ object Bytecode{
+   trait Local[T] extends ROLocal[T]{
+     def store[ST<:List]:F[ST**T] => F[ST]
+   }
++  
++  trait Popper[U] {
++    type RT[R<:List]<:List
++    def conv[R<:List] (f:F[R**U]) : F[RT[R]]
++  }
++  implicit object PopUnit extends Popper[Unit] {
++    type RT[R<:List] = R
++    def conv[R<:List] (f:F[R**Unit]) : F[RT[R]] = f ~ Instructions.pop_unit
++  }
++  case class NonPopper[U]() extends Popper[U]{
++    type RT[R<:List] = R**U
++    def conv[R<:List] (f:F[R**U]) : F[RT[R]] = f
++  }
++  implicit def dontPopAnyRef[T<:AnyRef]:NonPopper[T] = NonPopper[T] 
++  /*implicit object PopAnyRef extends Popper[AnyRef] {
++    type RT[R<:List] = R**AnyRef
++    def conv[R] (f:F[R**AnyRef]) : F[RT[R]] = f
++  }*/
++  def autopop[R<:List,U]()(implicit p:Popper[U]):F[R**U] => F[Popper[U]#RT[R]] = null
+ 
+   import _root_.java.lang.reflect.Method
+   import _root_.scala.reflect.Manifest

@@ -1,0 +1,118 @@
+Bottom: c30f05667d8db1a54af542eb09f555d96866a3e1
+Top:    ed5ce1ff6a2de0a227abdcca123c5151ed389d19
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-06 13:06:55 +0200
+
+improve bounds of types of some internal methods to enforce subtypes of List
+
+Scala 2.8 will check that correctly
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index 448e039..d4822e9 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -51,8 +51,8 @@ object Bytecode{
+     
+     def stack:ST
+ 
+-    def bipush[ST2>:ST](i1:Int):F[ST2**Int]
+-    def ldc[ST2>:ST](str:jString):F[ST2**jString]
++    def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int]
++    def ldc[ST2>:ST<:List](str:jString):F[ST2**jString]
+ 
+     def ~[X](f:F[ST]=>X):X = f(this)
+     
+@@ -82,7 +82,7 @@ object Bytecode{
+                                    ,handle:MethodHandle)
+                                    :F[R**U]
+                                    
+-    def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
++    def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
+     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
+     
+     def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
+@@ -100,7 +100,7 @@ object Bytecode{
+     
+     def pop_unit_int[R<:List](rest:R):F[R]
+ 
+-    def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T]
++    def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T]
+     
+     def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
+     
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+index 2da8c4b..493840b 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+@@ -50,14 +50,14 @@ object ASMCompiler extends ByteletCompiler{
+       def withStack[ST2<:List](classes:ClassStack) =
+         new ASMFrame[ST2](mv,classes,nextFreeLocal)
+       
+-      def newStacked[T,ST2>:ST](cl:Class[T]) = 
++      def newStacked[T,ST2>:ST<:List](cl:Class[T]) = 
+         withStack(stackClass**cl)
+       
+-      def bipush[ST2>:ST](i1:Int):F[ST2**Int] = {
++      def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int] = {
+         mv.visitIntInsn(BIPUSH, i1)
+         newStacked(classOf[Int])
+       }
+-      def ldc[ST2>:ST](str:jString):F[ST2**jString] = {
++      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString] = {
+         mv.visitLdcInsn(str)
+         newStacked(classOf[jString])
+       }
+@@ -139,7 +139,7 @@ object ASMCompiler extends ByteletCompiler{
+       }      
+       
+       
+-      def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T] = {
++      def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = {
+         val cons = cl.getConstructor()
+         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
+         mv.visitInsn(DUP)
+@@ -189,7 +189,7 @@ object ASMCompiler extends ByteletCompiler{
+       def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U] = 
+         invokeMethod(methodFromTree(code.tree))
+       
+-      def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
++      def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
+         val field = fieldFromTree(code.tree)
+         mv.visitFieldInsn(GETSTATIC
+                           ,Type.getInternalName(field.getDeclaringClass)
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
+index b0a1b4e..a81d891 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
+@@ -11,8 +11,8 @@ object Interpreter extends ByteletCompiler {
+       def notImplemented(what:String) = 
+         new java.lang.Error(what + " not implemented in Interpreter")
+       
+-      def bipush[ST2>:ST](i1:Int):F[ST2**Int] = IF(stack ** i1)
+-      def ldc[ST2>:ST](str:jString):F[ST2**jString] = IF(stack ** str)
++      def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int] = IF(stack ** i1)
++      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString] = IF(stack ** str)
+       /*def target:BackwardTarget[ST,LT] = throw notImplemented("target")
+       def jmp(t:Target[ST,LT]):Nothing = throw notImplemented("jmp")
+       
+@@ -52,7 +52,7 @@ object Interpreter extends ByteletCompiler {
+         IF(rest ** invokeMethod(handle.method,p1,p2).asInstanceOf[U])
+ 
+ 
+-      def getstatic_int[ST2>:ST,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
++      def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
+         IF(stack ** fieldFromTree(code.tree).get(null).asInstanceOf[T])
+ 
+       def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
+@@ -107,7 +107,7 @@ object Interpreter extends ByteletCompiler {
+         case Cons(r,old:T) => if (i == 0) Cons(r,t) else Cons(store(i-1,r,t),old)
+       }
+       
+-      def newInstance[T,ST2>:ST](cl:Class[T]):F[ST2**T] = 
++      def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = 
+         IF(stack**cl.newInstance)
+       
+       def tailRecursive_int[ST1>:ST<:List,ST2<:List]
