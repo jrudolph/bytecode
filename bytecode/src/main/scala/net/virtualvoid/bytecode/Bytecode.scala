@@ -113,16 +113,31 @@ object Bytecode{
     def load[ST<:List]:F[ST] => F[ST**T]
     def store[ST<:List]:F[ST**T] => F[ST]
   }
+  
+  trait IsUnit[T]
+  trait NoUnit[-T]
+  implicit val unitIsUnit:IsUnit[Unit] = null
+  implicit def anyrefNoUnit:NoUnit[AnyRef] = null
+  implicit val boolNoUnit:NoUnit[Boolean] = null
+  implicit val byteNoUnit:NoUnit[Byte] = null
+  implicit val charNoUnit:NoUnit[Character] = null
+  implicit val shortNoUnit:NoUnit[Short] = null
+  implicit val intNoUnit:NoUnit[Int] = null
+  implicit val floatNoUnit:NoUnit[Float] = null
+  implicit val doubleNoUnit:NoUnit[Double] = null
+  implicit val longNoUnit:NoUnit[Long] = null
 
   import _root_.java.lang.reflect.Method
   import _root_.scala.reflect.Manifest
 
   abstract class MethodHandle(val method:Method)
   trait Method1[-T,+U] extends MethodHandle {
-    def invoke[R<:List,T1X<:T,UX>:U]:F[R**T1X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest,f.stack.top,this)
+    def invoke[R<:List,T1X<:T,UX>:U]()(implicit x:NoUnit[UX]):F[R**T1X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest,f.stack.top,this)
+    def invokeUnit[R<:List,T1X<:T,UX>:U]()(implicit x:IsUnit[UX]):F[R**T1X] => F[R] = f => f.methodDyn_int(f.stack.rest,f.stack.top,this) ~ Instructions.pop_unit
   }
   trait Method2[-T1,-T2,+U] extends MethodHandle {
-    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U]:F[R**T1X**T2X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,this)
+    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U]()(implicit x:NoUnit[UX]):F[R**T1X**T2X] => F[R**UX] = f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,this)
+    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U]()(implicit x:IsUnit[UX]):F[R**T1X**T2X] => F[R] = f => f.methodDyn_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top,this) ~ Instructions.pop_unit
   }
   
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
