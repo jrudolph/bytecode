@@ -88,15 +88,6 @@ object Interpreter extends ByteletCompiler {
       
       def pop_unit_int[R<:List](rest:R):F[R] = IF(rest)      
 
-      def get[T](i:Int,l:List):T = l match{
-        case N => throw new Error("not possible")
-        case Cons(r,t:T) => if (i == 0) t else get(i-1,r)
-      }
-      def store[T](i:Int,l:List,t:T):List = l match {
-        case N => if (i == 0) Cons(N,t) else Cons(store(i-1,N,t),N)
-        case Cons(r,old:T) => if (i == 0) Cons(r,t) else Cons(store(i-1,r,t),old)
-      }
-      
       def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = 
         IF(stack**cl.newInstance)
       
