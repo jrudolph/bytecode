@@ -120,12 +120,12 @@ object Bytecode{
   trait Method1[-T,+U] extends MethodHandle {
     override val numParams = 1
     def invoke[R<:List,T1X<:T,UX>:U <% NoUnit]():F[R**T1X] => F[R**UX] = f => f.invokemethod(this)
-    def invokeUnit[R<:List,T1X<:T,UX>:U <% IsUnit]():F[R**T1X] => F[R] = f => f.invokemethod(this) ~ Instructions.pop_unit
+    def invokeUnit[R<:List,T1X<:T,UX>:U <% IsUnit]():F[R**T1X] => F[R] = f => f.invokemethod(this) ~ ((x:F[R**UX]) => x.pop_unit_int(x.stack.rest))
   }
   trait Method2[-T1,-T2,+U] extends MethodHandle {
     override val numParams = 2
     def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U <% NoUnit]():F[R**T1X**T2X] => F[R**UX] = f => f.invokemethod(this)
-    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = f => f.invokemethod(this) ~ Instructions.pop_unit
+    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = f => f.invokemethod(this) ~ ((x:F[R**UX]) => x.pop_unit_int(x.stack.rest))
   }
   
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
@@ -183,9 +183,6 @@ object Bytecode{
     def putstatic[R<:List,T](code:scala.reflect.Code[T=>Unit])
     	:F[R**T] => F[R] =
         f => f.putstatic_int(f.stack.rest,f.stack.top,code)
-    
-    def pop_unit[R<:List]:F[R**Unit] => F[R] =
-      f => f.pop_unit_int(f.stack.rest)
     
     def nop[R<:List]:F[R] => F[R] = f => f
     def pop[R<:List,T]:F[R**T]=>F[R] = f=>f.pop_int(f.stack.rest)
