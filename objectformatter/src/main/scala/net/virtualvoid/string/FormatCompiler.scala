@@ -7,24 +7,17 @@ object Compiler{
   import net.virtualvoid.bytecode.ASMCompiler
   import Bytecode._
   import Bytecode.Instructions._
-  import Bytecode.Implicits._
 
   val parser = EnhancedStringFormatParser
   import TypedAST._
-  
-  def elementType(it:java.lang.reflect.Type,of:Class[_])
-  	:Class[_ <: AnyRef] = {
-    TypeHelper.genericInstanceType(it,of,Array()) match{
-      case Some(cl:java.lang.Class[AnyRef]) => cl
-      case _ => throw new java.lang.Error("Can't get element type of "+it)
-    }
-  }
 
-  def compileExp[R<:List,T<:AnyRef,Ret](exp:Exp[T,Ret])
+  val append = method2((_:StringBuilder).append(_:String))
+   
+  def compileExp[R<:List,T<:AnyRef,Ret <% NoUnit](exp:Exp[T,Ret])
                                   :F[R**T] => F[R**Ret] =
     exp match {
       case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
-      case MethodHandleExp(handle) => _ ~ handle.invoke
+      case MethodHandleExp(method) => _ ~ method
       case ThisExp => f => f
     }
     
@@ -40,12 +33,12 @@ object Compiler{
                      :F[R**StringBuilder]
     = ele match {
       case Literal(str) => 
-        f ~ ldc(str) ~ invokemethod2(_.append(_))
+        f ~ ldc(str) ~ append
       case ToStringConversion(e) =>
         f ~ value.load ~
           compileExp(e) ~ 
-          invokemethod1(_.toString) ~ 
-          invokemethod2(_.append(_))
+          method1((_:AnyRef).toString) ~ 
+          append
       case ExpandArray(exp,sep,inner) => {
 		  import Bytecode.RichOperations.foldArray
 		  
@@ -68,7 +61,7 @@ object Compiler{
 			            ifne2(
 			              _ ~
 			                ldc(sep) ~
-			                invokemethod2(_.append(_))
+			                append
 			              , nop
 			            )
 			        )
@@ -80,11 +73,11 @@ object Compiler{
             value.load ~
             compileExp(exp) ~
             dup ~
-            invokemethod1(_.isDefined) ~
+            method1((_:Option[AnyRef]).isDefined) ~
             ifeq2(
               _ ~ pop /*None*/ ~ compileFormatElementList(elseB,value),
               _ ~ 
-                invokemethod1(_.get) ~
+                method1((_:Option[AnyRef]).get) ~
                 withLocal(newValue => compileFormatElementList(then,newValue)))
       }
       /*case Expand(exp,sep,inner) => {
@@ -227,7 +220,7 @@ object Compiler{
       _ ~ 
         newInstance(classOf[StringBuilder]) ~
         compileFormatElementList(elements,value) ~
-        invokemethod1(_.toString)
+        method1((_:StringBuilder).toString)
     )
   }
 }

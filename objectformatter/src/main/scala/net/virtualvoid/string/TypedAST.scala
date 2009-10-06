@@ -85,7 +85,7 @@ object TypedAST {
    * a typed ParentExp
    */
   def typedParentExp[T<:AnyRef,U<:AnyRef,V](inner:AST.Exp,innerMethod:java.lang.reflect.Method,cl:Class[T],innerType:Class[U],retCl:Class[V]):Exp[T,V] =
-    ParentExp[T,U,V](typedExp(inner,innerType,retCl),MethodHandleExp(methodHandle(innerMethod,cl,innerType)))
+    ParentExp[T,U,V](typedExp(inner,innerType,retCl),MethodHandleExp(dynMethod(innerMethod,cl,innerType)))
   
   def typedExp[T<:AnyRef,U](exp:AST.Exp,cl:Class[T],retClass:Class[U]):Exp[T,U] = exp match {
     case AST.ThisExp => typedThisExp(cl,retClass)
@@ -94,14 +94,17 @@ object TypedAST {
       val innerType:Class[AnyRef] = innerMethod.getReturnType.asInstanceOf[Class[AnyRef]] //TODO: check that here
       typedParentExp(inner,innerMethod,cl,innerType,retClass)
     }
-    case e:AST.Exp => MethodHandleExp(methodHandle[T,U](e.method(cl),cl,retClass))
+    case e:AST.Exp => MethodHandleExp(dynMethod[T,U](e.method(cl),cl,retClass))
   }
   
   def typedExpandArray[T<:AnyRef,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
   		:ExpandArray[T,E]
     = ExpandArray(typedExp(exp,cl,classOfArray(eleClass)),sep,typed(inner,eleClass))
     
-  //def typedConditionalOption
+  def typedConditionalOption[T<:AnyRef,U<:AnyRef](c:AST.Conditional,cl:Class[T],eleClass:Class[U]):ConditionalOption[T,U] = {
+    val AST.Conditional(exp,thenB,elseB) = c
+    ConditionalOption(typedExp(exp,cl,classOf[Option[U]]),typed(thenB,eleClass),typed(elseB,cl))
+  }
   
   def typed[T<:AnyRef](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
     ast.elements.map {
@@ -114,16 +117,25 @@ object TypedAST {
         
         typedExpandArray(exp,sep,inner,cl,eleType)
       }
-      /*case AST.Conditional(exp,then,elseT) => {
-        if (classOf[Option].isAssignableFrom(exp.returnType(cl)))
-          
+      case c@AST.Conditional(exp,_,_) => {
+        if (classOf[Option[_]].isAssignableFrom(exp.returnType(cl))){
+          val eleType = elementType(exp.genericReturnType(cl),classOf[Option[_]])
+          typedConditionalOption(c,cl,eleType)
+        }
         else
           throw new RuntimeException("Only Option conditionals supported")
-      }*/
+      }
     }
   )
   
   def classOfArray[T<:AnyRef](eleClass:Class[T]):Class[Array[T]] = Class.forName("[L"+eleClass.getName+";").asInstanceOf[Class[Array[T]]]
+  def elementType(it:java.lang.reflect.Type,of:Class[_])
+  	:Class[_ <: AnyRef] = {
+    TypeHelper.genericInstanceType(it,of,Array()) match{
+      case Some(cl:java.lang.Class[AnyRef]) => cl
+      case _ => throw new java.lang.Error("Can't get element type of "+it)
+    }
+  }
 }
 case class Person(name:String,town:String)
 object IterableHelper {
