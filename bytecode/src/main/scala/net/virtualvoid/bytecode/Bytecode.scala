@@ -134,6 +134,12 @@ object Bytecode{
     def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = unitCall
   }
   
+  implicit def normalCall1[R<:List,T,U <% NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
+  implicit def unitCall1[R<:List,T](m:Method1[T,Unit]):F[R**T]=>F[R] = m.invokeUnit()
+  
+  implicit def normalCall2[R<:List,T1,T2,U <% NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
+  implicit def unitCall2[R<:List,T1,T2](m:Method2[T1,T2,Unit]):F[R**T1**T2]=>F[R] = m.invokeUnit()
+  
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
     val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
     

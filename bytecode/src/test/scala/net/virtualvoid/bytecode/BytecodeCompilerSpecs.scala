@@ -20,53 +20,53 @@ object BytecodeCompilerSpecs extends Specification{
     val append = method2((_:java.lang.StringBuilder).append(_:CharSequence))
     
     "bipush(20)" in {
-      compiler.compile(classOf[String])(str => _~bipush(20)~boxInt.invoke())
+      compiler.compile(classOf[String])(str => _~bipush(20)~boxInt)
         .apply("Test") must be_==(20)}
     "invokemethod1(_.length)" in {
-      compiler.compile(classOf[String])(str => _~str.load~method1((_:String).length).invoke()~boxInt.invoke())
+      compiler.compile(classOf[String])(str => _~str.load~method1((_:String).length)~boxInt)
         .apply("Test") must be_==(4)}
     "locals + method2" in {
-      compiler.compile(classOf[java.lang.String])(p => _ ~ p.load ~ withLocal{ str => _ ~ str.load ~ str.load ~ concat.invoke()})
+      compiler.compile(classOf[java.lang.String])(p => _ ~ p.load ~ withLocal{ str => _ ~ str.load ~ str.load ~ concat})
       .apply("Test") must be_==("TestTest")}
     "iadd with operations" in {
       compiler.compile(classOf[java.lang.Integer])( i =>
-        _ ~ i.load ~ unboxInt.invoke() ~ dup
+        _ ~ i.load ~ unboxInt ~ dup
         ~ iadd
-        ~ boxInt.invoke()
+        ~ boxInt
       ).apply(12) must be_==(24)
     }
     "iadd" in {
-      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~unboxInt.invoke()~dup~iadd~bipush(3)~iadd~boxInt.invoke())
+      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~unboxInt~dup~iadd~bipush(3)~iadd~boxInt)
       .apply(12) must be_==(27)}
     "store(_) int in locals" in {
-      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~unboxInt.invoke()~dup~withLocal{i=> _ ~ i.load}~iadd~boxInt.invoke())
+      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~unboxInt~dup~withLocal{i=> _ ~ i.load}~iadd~boxInt)
       .apply(12) must be_==(24)}
     "store(_) double in locals" in {
-      compiler.compile(classOf[java.lang.Double])(i => _~i.load~unboxDouble.invoke()~withLocal{d=>d.load}~boxDouble.invoke())
+      compiler.compile(classOf[java.lang.Double])(i => _~i.load~unboxDouble~withLocal{d=>d.load}~boxDouble)
       .apply(12.453) must be_==(12.453)}
     "store(_) double after method2" in {
-      compiler.compile(classOf[java.lang.Double])(i => _~i.load~unboxDouble.invoke()~ldc("test")~dup~concat.invoke()~pop~withLocal{d=>d.load}~boxDouble.invoke())
+      compiler.compile(classOf[java.lang.Double])(i => _~i.load~unboxDouble~ldc("test")~dup~concat~pop~withLocal{d=>d.load}~boxDouble)
       .apply(12.453) must be_==(12.453)}
     "store Int after double" in {
       import java.lang.{Double => jDouble}
       compiler.compile(classOf[java.lang.Double])(dO => 
         _ ~
           dO.load ~
-          unboxDouble.invoke() ~
+          unboxDouble ~
           withLocal(d =>
             _ ~
               bipush(5) ~
               withLocal(i =>
                 _ ~
                   d.load ~
-                  boxDouble.invoke()))
+                  boxDouble))
       ).apply(.753) must be_==(.753)
     }
     "store Int after double, replace double by String, access int" in {
       compiler.compile(classOf[java.lang.Double])(dO =>
         _ ~
           dO.load ~
-          unboxDouble.invoke() ~
+          unboxDouble ~
           withLocal(d =>
             _ ~
               bipush(5) ~
@@ -77,7 +77,7 @@ object BytecodeCompilerSpecs extends Specification{
                   ldc("test") ~ 
                   withLocal(str => f => f) ~
                   i.load)) ~
-          boxInt.invoke()
+          boxInt
       ).apply(.753) must be_==(5)
     } 
     "load element with index 1 from a string array" in {
@@ -89,23 +89,23 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(array("That","is","a","Test")) must be_==("test")
     }
     "save int element to array and load it afterwards" in {
-      compiler.compile(classOf[Array[Int]])(ar=>_~ar.load~dup~bipush(1)~bipush(13)~astore~bipush(1)~aload~dup~iadd~boxInt.invoke())
+      compiler.compile(classOf[Array[Int]])(ar=>_~ar.load~dup~bipush(1)~bipush(13)~astore~bipush(1)~aload~dup~iadd~boxInt)
       .apply(array(1,2,3,4)) must be_==(26)
     }
     "get array length" in {
-      compiler.compile(classOf[Array[String]])(ar=>_~ar.load~arraylength~boxInt.invoke())
+      compiler.compile(classOf[Array[String]])(ar=>_~ar.load~arraylength~boxInt)
       .apply(array("That","is","a","problem")) must be_==(4)
     }
     "isub" in {
-      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~unboxInt.invoke()~bipush(3)~isub~boxInt.invoke())
+      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~unboxInt~bipush(3)~isub~boxInt)
       .apply(12) must be_==(9)
     }
     "dup_x1" in {
-      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~dup~toString.invoke()~swap()~unboxInt.invoke()~dup_x1~swap()~pop~iadd~boxInt.invoke())
+      compiler.compile(classOf[java.lang.Integer])(i => _~i.load~dup~toString~swap()~unboxInt~dup_x1~swap()~pop~iadd~boxInt)
       .apply(12) must be_==(24)
     }
     "create new StringBuilder" in {
-      compiler.compile(classOf[java.lang.String])(str => _~str.load~dup~newInstance(classOf[java.lang.StringBuilder])~swap()~append.invoke()~swap()~append.invoke()~toString.invoke())
+      compiler.compile(classOf[java.lang.String])(str => _~str.load~dup~newInstance(classOf[java.lang.StringBuilder])~swap()~append~swap()~append~toString)
       .apply("test") must be_==("testtest") 
     }
     "store(_) string after void method" in {
@@ -114,7 +114,7 @@ object BytecodeCompilerSpecs extends Specification{
           str.load ~ 
           newInstance(classOf[java.text.SimpleDateFormat]) ~ 
           ldc("yyyy") ~ 
-          method2((_:java.text.SimpleDateFormat).applyPattern(_:java.lang.String)).invokeUnit() ~
+          method2((_:java.text.SimpleDateFormat).applyPattern(_:java.lang.String)) ~
           withLocal{str=>str.load})
       .apply("test") must be_==("test")
     }
@@ -122,8 +122,8 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[Option[java.lang.String]])(str =>
         _ ~
           str.load ~
-          method1((_:Option[java.lang.String]).isDefined).invoke() ~
-          method1(java.lang.Boolean.valueOf(_:Boolean)).invoke()
+          method1((_:Option[java.lang.String]).isDefined) ~
+          method1(java.lang.Boolean.valueOf(_:Boolean))
       )
       .apply(Some("x")) must be_==(true)
     }
@@ -131,8 +131,8 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.StringBuilder])( sb =>
         _ ~
           sb.load ~
-          method1((_:java.lang.StringBuilder).length).invoke() ~
-          boxInt.invoke()
+          method1((_:java.lang.StringBuilder).length) ~
+          boxInt
       )
       .apply(new java.lang.StringBuilder) must be_==(0)
     }
@@ -141,7 +141,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
           sb.load ~
           dup ~
-          append.invoke() // accepts CharSequence
+          append // accepts CharSequence
       )
       .apply(new java.lang.StringBuilder)
     }
@@ -152,7 +152,7 @@ object BytecodeCompilerSpecs extends Specification{
           sb.load ~
           pop ~
           getstatic(() => StaticVariableContainer.x) ~
-          boxInt.invoke()
+          boxInt
       )
       .apply(null) must be_==(3263)
     }
@@ -165,7 +165,7 @@ object BytecodeCompilerSpecs extends Specification{
           putstatic(StaticVariableContainer.x = _) ~
           pop ~
           getstatic(() => StaticVariableContainer.x) ~
-          boxInt.invoke()
+          boxInt
       )
       .apply(null) must be_==(38)
     }
@@ -174,7 +174,7 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.Integer])(input =>
         // sums all integers from 0 to i
         _ ~ input.load ~
-          	unboxInt.invoke() ~
+          	unboxInt ~
           	withLocal(i => _ ~          	
                 bipush(0) ~
                 withLocal(sum => _ ~
@@ -193,7 +193,7 @@ object BytecodeCompilerSpecs extends Specification{
                         start.jmp
                     ) ~
                     sum.load ~
-                    boxInt.invoke()
+                    boxInt
       )))).apply(5) must be_==(15)
     }
     "returning out of branch" in {
@@ -201,7 +201,7 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.Integer],classOf[String])(input => ret =>
         _ ~
           input.load ~
-          unboxInt.invoke() ~
+          unboxInt ~
           ifne(_ ~ ldc(">0") ~ ret.jmp) ~ ldc("==0") ~ ret.jmp
       )
       f(15) must be_==(">0")
@@ -211,7 +211,7 @@ object BytecodeCompilerSpecs extends Specification{
       val f = compiler.compile(classOf[java.lang.Integer])( i => 
         _ ~ 
           i.load ~
-          unboxInt.invoke() ~
+          unboxInt ~
           bipush(5) ~
           isub ~
           ifeq2(
@@ -228,7 +228,7 @@ object BytecodeCompilerSpecs extends Specification{
       val f = compiler.compile(classOf[java.lang.Integer])( i =>
         _ ~ 
           i.load ~
-          unboxInt.invoke() ~
+          unboxInt ~
           bipush(5) ~
           isub ~
           ifne2(
@@ -246,7 +246,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
           bipush(0) ~
           RichOperations.foldArray(array)(index => iadd) ~
-          boxInt.invoke()
+          boxInt
       )
       f(Array(1,2,3,4)) must be_==(10)
       f(Array(5,17,12,3,28)) must be_==(65)
@@ -256,8 +256,8 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
           it.load ~
           newInstance(classOf[java.lang.StringBuilder]) ~
-          RichOperations.foldIterator(it => _ ~ append.invoke()) ~
-          toString.invoke()
+          RichOperations.foldIterator(it => _ ~ append) ~
+          toString
       )
       f(java.util.Arrays.asList("a","b","c").iterator) must be_==("abc")
     }
@@ -269,9 +269,9 @@ object BytecodeCompilerSpecs extends Specification{
             ifnull(
               _ ~ pop ~ ldc("isnull")
              ,_ ~ 
-                toString.invoke() ~
+                toString ~
                	ldc(" isnotnull") ~
-                concat.invoke())
+                concat)
       )
       f(null) must be_==("isnull")
       f("blub") must be_==("blub isnotnull")
@@ -283,9 +283,9 @@ object BytecodeCompilerSpecs extends Specification{
             dup ~
             ifnonnull(
              _ ~ 
-                toString.invoke() ~
+                toString ~
                	ldc(" isnotnull") ~
-                concat.invoke(),
+                concat,
              _ ~ pop ~ ldc("isnull"))
       )
       f(null) must be_==("isnull")
@@ -296,7 +296,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
           str1.load ~
           str2.load ~
-          concat.invoke() ~
+          concat ~
           ret.jmp
       )("String1","String2") must be_==("String1String2")
     }
@@ -306,8 +306,8 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[jInt])(i =>
         _ ~
           i.load ~
-          intValue.invoke() ~
-          method1(jInt.toString(_:Int)).invoke()
+          intValue ~
+          method1(jInt.toString(_:Int))
       ).apply(5) must be_==("5")
     }
     "dynamic binary method invocation" in {
@@ -316,7 +316,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
           str.load ~
           dup ~
-          intValue.invoke()
+          intValue
       ).apply("Test") must be_==("TestTest")
     } 
   }
