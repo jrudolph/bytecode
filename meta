@@ -1,10 +1,7 @@
 Version: 1
-Previous: 180e56d2cbddaa5dfe12a19ab82832a6b9589b65
+Previous: a36969e08204080ccac83ebdb90e9e7870bf02da
 Head: b129d656ece44910a5721764c70d924e29656510
 Applied:
-  split-local-interface-in-two-r: bd661635d9ef3b2731666e8244b9e4144291f7ee
-  checkpoint: 3ba0b2815f500c6d3c61f9106930f877464e3876
-  update-pom-to-use-2-8-0-snapsh: b129d656ece44910a5721764c70d924e29656510
 Unapplied:
   disable-some-uncompilable-bits: 005125917d598adb1bb70277fa47f286d2e30592
 Hidden:
