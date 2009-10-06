@@ -1,10 +1,10 @@
 Version: 1
-Previous: ef8e59cbf3cd499d414a6b95446303011b57f5b2
-Head: adddd48a43cb9ccceb0fb9ed1bed143c338faab3
+Previous: 031a7bbe6213f3ee9bd27ef2dc18bcfa7e073016
+Head: d8565b65b863ac509d730aaed71aadcaeb0c72dd
 Applied:
   rolocals: adddd48a43cb9ccceb0fb9ed1bed143c338faab3
+  typed: d8565b65b863ac509d730aaed71aadcaeb0c72dd
 Unapplied:
-  typed: 51abde6be496b7b5c2f4ea31cc0730a8d597048f
   improve-bounds-of-types-of-som: 962fbc6a43cfb5bf74bc15e87d02c178bf93a5d8
   popper-tests: 81a6ec0bdf2b557be25f305ece512ea7b5dbc3ad
 Hidden:
