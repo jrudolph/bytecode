@@ -1,9 +1,8 @@
 Version: 1
-Previous: 087e5463e24461b6dbb377047aabc9d1d444891f
-Head: 1818f1a1821975bb727b0b9498790333ab346c3f
+Previous: a67beae2b967db71649091a3177b8a755274ccbc
+Head: adddd48a43cb9ccceb0fb9ed1bed143c338faab3
 Applied:
-  rolocal: d90f93438b8623e764af49ec2080fa1c298b7364
-  update-local-changes: 1818f1a1821975bb727b0b9498790333ab346c3f
+  split-local-interface-in-two-r: adddd48a43cb9ccceb0fb9ed1bed143c338faab3
 Unapplied:
   typed: 51abde6be496b7b5c2f4ea31cc0730a8d597048f
   improve-bounds-of-types-of-som: 962fbc6a43cfb5bf74bc15e87d02c178bf93a5d8

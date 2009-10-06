@@ -1,13 +1,29 @@
-Bottom: f9234a41fa65ff1bae1a8647f499ccac4c9317a6
+Bottom: c165f1d3c2775d18024b1d251a99f9540cd557fc
 Top:    e792e8ae0c7afd90464507f99d420b593717ac3a
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
-Date:   2009-10-06 13:07:29 +0200
+Date:   2009-10-06 13:08:20 +0200
 
-update Local changes
-
+split Local interface in two: ROLocal[+T] with load and Local[T] extends ROLocal[T] with store
 
 ---
 
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index e42c5d3..448e039 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -109,8 +109,10 @@ object Bytecode{
+     											  ,thenB:F[R]=>Nothing):F[R]
+   }
+   
+-  trait Local[T]{
+-    def load[ST<:List]:F[ST] => F[ST**T]
++  trait ROLocal[+T]{
++    def load[R<:List,T2>:T]:F[R] => F[R**T2]
++  }  
++  trait Local[T] extends ROLocal[T]{
+     def store[ST<:List]:F[ST**T] => F[ST]
+   }
+ 
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 index 2da8c4b..bfc6c17 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
