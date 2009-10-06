@@ -21,7 +21,7 @@ object CodeTools{
     case NamedType(name) => name
   }
   
-  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = try { 
+  def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = null/*try { 
     code.tree match{
       case Function(List(p1,p2),Apply(Select(Ident(th),Method(method,MethodType(List(param),_))),List(Ident(x)))) if th == p1 && x == p2 =>{
         val paramClass = extractClass(param)
@@ -38,7 +38,7 @@ object CodeTools{
     }
   }catch{
     case e:Exception => throw new Error("Error while calling method: "+code.tree,e);
-  }
+  }*/
   
   def forName(clazz:String) = 
     try {
@@ -56,7 +56,7 @@ object CodeTools{
     (method.substring(0,index),method.substring(index+1))
   }
   
-  def methodFromTree(tree:Tree):jMethod = try {
+  def methodFromTree(tree:Tree):jMethod = null/*try {
         def classNotFound(clazz:String) = new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString) 
 	    tree match{
 	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
@@ -100,7 +100,7 @@ object CodeTools{
   }
   catch{
     case e:Exception => throw new Error("Error while calling method: "+tree,e);
-  }
+  }*/
   
   import java.lang.reflect.{Member,Modifier}
   def static_?(m:Member):Boolean = (m.getModifiers & Modifier.STATIC) == Modifier.STATIC
