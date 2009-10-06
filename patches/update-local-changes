@@ -1,5 +1,5 @@
-Bottom: 744b733c6f9c10891764a48741b8aeffd93d2263
-Top:    098c919dd45c3405cee63c12723910274bca0839
+Bottom: f9234a41fa65ff1bae1a8647f499ccac4c9317a6
+Top:    e792e8ae0c7afd90464507f99d420b593717ac3a
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-06 13:07:29 +0200
 
@@ -9,7 +9,7 @@ update Local changes
 ---
 
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
-index 493840b..c50e331 100644
+index 2da8c4b..bfc6c17 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
 @@ -311,7 +311,7 @@ object ASMCompiler extends ByteletCompiler{
@@ -22,7 +22,7 @@ index 493840b..c50e331 100644
              asmF.mv.visitVarInsn(opcode(clazz,ILOAD),index)
              asmF.withStack(asmF.stackClass ** clazz)
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
-index a81d891..e5e0caa 100644
+index b0a1b4e..f1fe670 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
 @@ -143,7 +143,7 @@ object Interpreter extends ByteletCompiler {
