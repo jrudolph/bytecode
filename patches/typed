@@ -1,5 +1,5 @@
 Bottom: 4d28bae2ea61f26635cb90b161161e3f6625af27
-Top:    973fa5c06552192ab85caeed3f06efd3fcff42e2
+Top:    00f03d9a4a22416c38501fa27623a8d886eaaff5
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2009-10-05 11:44:03 +0200
 
@@ -9,21 +9,26 @@ checkpoint
 ---
 
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
-index 4f93a51..cca4b11 100644
+index 4f93a51..90e58f1 100644
 --- a/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/FormatCompiler.scala
-@@ -10,7 +10,7 @@ object Compiler{
-   import Bytecode.Implicits._
+@@ -7,61 +7,80 @@ object Compiler{
+   import net.virtualvoid.bytecode.ASMCompiler
+   import Bytecode._
+   import Bytecode.Instructions._
+-  import Bytecode.Implicits._
  
    val parser = EnhancedStringFormatParser
 -  import AST._
+-  
+-  def elementType(it:java.lang.reflect.Type,of:Class[_])
+-  	:Class[_ <: AnyRef] = {
+-    TypeHelper.genericInstanceType(it,of,Array()) match{
+-      case Some(cl:java.lang.Class[AnyRef]) => cl
+-      case _ => throw new java.lang.Error("Can't get element type of "+it)
+-    }
+-  }
 +  import TypedAST._
-   
-   def elementType(it:java.lang.reflect.Type,of:Class[_])
-   	:Class[_ <: AnyRef] = {
-@@ -20,37 +20,22 @@ object Compiler{
-     }
-   }
  
 -  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp
 -                                            ,cl:Class[T]
@@ -35,11 +40,13 @@ index 4f93a51..cca4b11 100644
 -      f ~ 
 -        m.invoke ~ 
 -        compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
-+  def compileExp[R<:List,T<:AnyRef,Ret](exp:Exp[T,Ret])
++  val append = method2((_:StringBuilder).append(_:String))
++   
++  def compileExp[R<:List,T<:AnyRef,Ret <% NoUnit](exp:Exp[T,Ret])
 +                                  :F[R**T] => F[R**Ret] =
 +    exp match {
 +      case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
-+      case MethodHandleExp(handle) => _ ~ handle.invoke
++      case MethodHandleExp(method) => _ ~ method
 +      case ThisExp => f => f
      }
 -    case ThisExp =>
@@ -70,15 +77,18 @@ index 4f93a51..cca4b11 100644
                       (f:F[R**StringBuilder])
                       :F[R**StringBuilder]
      = ele match {
-@@ -58,10 +43,51 @@ object Compiler{
-         f ~ ldc(str) ~ invokemethod2(_.append(_))
+       case Literal(str) => 
+-        f ~ ldc(str) ~ invokemethod2(_.append(_))
++        f ~ ldc(str) ~ append
        case ToStringConversion(e) =>
          f ~ value.load ~
 -          compileGetExp(e,cl,classOf[AnyRef]) ~ 
-+          compileExp(e) ~ 
-           invokemethod1(_.toString) ~ 
-           invokemethod2(_.append(_))
+-          invokemethod1(_.toString) ~ 
+-          invokemethod2(_.append(_))
 -      case Expand(exp,sep,inner) => {
++          compileExp(e) ~ 
++          method1((_:AnyRef).toString) ~ 
++          append
 +      case ExpandArray(exp,sep,inner) => {
 +		  import Bytecode.RichOperations.foldArray
 +		  
@@ -101,7 +111,7 @@ index 4f93a51..cca4b11 100644
 +			            ifne2(
 +			              _ ~
 +			                ldc(sep) ~
-+			                invokemethod2(_.append(_))
++			                append
 +			              , nop
 +			            )
 +			        )
@@ -113,18 +123,18 @@ index 4f93a51..cca4b11 100644
 +            value.load ~
 +            compileExp(exp) ~
 +            dup ~
-+            invokemethod1(_.isDefined) ~
++            method1((_:Option[AnyRef]).isDefined) ~
 +            ifeq2(
 +              _ ~ pop /*None*/ ~ compileFormatElementList(elseB,value),
 +              _ ~ 
-+                invokemethod1(_.get) ~
++                method1((_:Option[AnyRef]).get) ~
 +                withLocal(newValue => compileFormatElementList(then,newValue)))
 +      }
 +      /*case Expand(exp,sep,inner) => {
          import Bytecode.RichOperations.foldIterator
            
          val retType = exp.returnType(cl)
-@@ -124,8 +150,8 @@ object Compiler{
+@@ -124,8 +143,8 @@ object Compiler{
          else
            throw new java.lang.Error("can only iterate over "+
                                        "iterables and arrays right now")
@@ -135,7 +145,7 @@ index 4f93a51..cca4b11 100644
          val retType = inner.returnType(cl)
  
          if (retType == java.lang.Boolean.TYPE || 
-@@ -193,14 +219,14 @@ object Compiler{
+@@ -193,15 +212,15 @@ object Compiler{
            ) ~
            invokemethod2(_.format(_)) ~
            invokemethod2(_.append(_))
@@ -149,16 +159,18 @@ index 4f93a51..cca4b11 100644
        _ ~ 
          newInstance(classOf[StringBuilder]) ~
 -        compileFormatElementList(elements,cl,value) ~
+-        invokemethod1(_.toString)
 +        compileFormatElementList(elements,value) ~
-         invokemethod1(_.toString)
++        method1((_:StringBuilder).toString)
      )
    }
+ }
 diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala b/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala
 new file mode 100644
-index 0000000..48ab382
+index 0000000..db161af
 --- /dev/null
 +++ b/objectformatter/src/main/scala/net/virtualvoid/string/TypedAST.scala
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,156 @@
 +package net.virtualvoid.string
 +
 +import _root_.net.virtualvoid.bytecode.Bytecode._
@@ -246,7 +258,7 @@ index 0000000..48ab382
 +   * a typed ParentExp
 +   */
 +  def typedParentExp[T<:AnyRef,U<:AnyRef,V](inner:AST.Exp,innerMethod:java.lang.reflect.Method,cl:Class[T],innerType:Class[U],retCl:Class[V]):Exp[T,V] =
-+    ParentExp[T,U,V](typedExp(inner,innerType,retCl),MethodHandleExp(methodHandle(innerMethod,cl,innerType)))
++    ParentExp[T,U,V](typedExp(inner,innerType,retCl),MethodHandleExp(dynMethod(innerMethod,cl,innerType)))
 +  
 +  def typedExp[T<:AnyRef,U](exp:AST.Exp,cl:Class[T],retClass:Class[U]):Exp[T,U] = exp match {
 +    case AST.ThisExp => typedThisExp(cl,retClass)
@@ -255,14 +267,17 @@ index 0000000..48ab382
 +      val innerType:Class[AnyRef] = innerMethod.getReturnType.asInstanceOf[Class[AnyRef]] //TODO: check that here
 +      typedParentExp(inner,innerMethod,cl,innerType,retClass)
 +    }
-+    case e:AST.Exp => MethodHandleExp(methodHandle[T,U](e.method(cl),cl,retClass))
++    case e:AST.Exp => MethodHandleExp(dynMethod[T,U](e.method(cl),cl,retClass))
 +  }
 +  
 +  def typedExpandArray[T<:AnyRef,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
 +  		:ExpandArray[T,E]
 +    = ExpandArray(typedExp(exp,cl,classOfArray(eleClass)),sep,typed(inner,eleClass))
 +    
-+  //def typedConditionalOption
++  def typedConditionalOption[T<:AnyRef,U<:AnyRef](c:AST.Conditional,cl:Class[T],eleClass:Class[U]):ConditionalOption[T,U] = {
++    val AST.Conditional(exp,thenB,elseB) = c
++    ConditionalOption(typedExp(exp,cl,classOf[Option[U]]),typed(thenB,eleClass),typed(elseB,cl))
++  }
 +  
 +  def typed[T<:AnyRef](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
 +    ast.elements.map {
@@ -275,16 +290,25 @@ index 0000000..48ab382
 +        
 +        typedExpandArray(exp,sep,inner,cl,eleType)
 +      }
-+      /*case AST.Conditional(exp,then,elseT) => {
-+        if (classOf[Option].isAssignableFrom(exp.returnType(cl)))
-+          
++      case c@AST.Conditional(exp,_,_) => {
++        if (classOf[Option[_]].isAssignableFrom(exp.returnType(cl))){
++          val eleType = elementType(exp.genericReturnType(cl),classOf[Option[_]])
++          typedConditionalOption(c,cl,eleType)
++        }
 +        else
 +          throw new RuntimeException("Only Option conditionals supported")
-+      }*/
++      }
 +    }
 +  )
 +  
 +  def classOfArray[T<:AnyRef](eleClass:Class[T]):Class[Array[T]] = Class.forName("[L"+eleClass.getName+";").asInstanceOf[Class[Array[T]]]
++  def elementType(it:java.lang.reflect.Type,of:Class[_])
++  	:Class[_ <: AnyRef] = {
++    TypeHelper.genericInstanceType(it,of,Array()) match{
++      case Some(cl:java.lang.Class[AnyRef]) => cl
++      case _ => throw new java.lang.Error("Can't get element type of "+it)
++    }
++  }
 +}
 +case class Person(name:String,town:String)
 +object IterableHelper {
