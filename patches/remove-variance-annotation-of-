@@ -1,0 +1,28 @@
+Bottom: 00f03d9a4a22416c38501fa27623a8d886eaaff5
+Top:    7f291b12deaf956cd8634f8bf05eec4ed0d397b8
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2009-10-07 11:09:13 +0200
+
+remove variance annotation of Target, since it is much less strict than needed
+
+However, jumping to supertype frame states works nevertheless because
+of the declared variances of the frame state type F itself.
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index b5d3084..6eed240 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -54,8 +54,8 @@ object Bytecode{
+   implicit val doubleNoUnit: Double    => NoUnit = null
+   implicit val longNoUnit  : Long      => NoUnit = null
+   
+-  trait Target[+ST<:List]{
+-    def jmp[ST2>:ST<:List]:F[ST2] => Nothing
++  trait Target[ST<:List]{
++    def jmp:F[ST] => Nothing
+   }
+   
+   trait F[+ST<:List]{
