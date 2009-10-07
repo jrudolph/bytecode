@@ -54,8 +54,8 @@ object Bytecode{
   implicit val doubleNoUnit: Double    => NoUnit = null
   implicit val longNoUnit  : Long      => NoUnit = null
   
-  trait Target[+ST<:List]{
-    def jmp[ST2>:ST<:List]:F[ST2] => Nothing
+  trait Target[ST<:List]{
+    def jmp:F[ST] => Nothing
   }
   
   trait F[+ST<:List]{
