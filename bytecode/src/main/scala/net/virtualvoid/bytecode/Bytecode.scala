@@ -54,8 +54,8 @@ object Bytecode{
   implicit val doubleNoUnit: Double    => NoUnit = null
   implicit val longNoUnit  : Long      => NoUnit = null
   
-  trait Target[+ST<:List]{
-    def jmp[ST2>:ST<:List]:F[ST2] => Nothing
+  trait Target[ST<:List]{
+    def jmp:F[ST] => Nothing
   }
   
   trait F[+ST<:List]{
@@ -101,7 +101,7 @@ object Bytecode{
     
     def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
     
-    def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X
+    def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X
     def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
     											  ,thenB:F[R]=>Nothing):F[R]
   }
