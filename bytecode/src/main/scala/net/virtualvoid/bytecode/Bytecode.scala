@@ -126,12 +126,12 @@ object Bytecode{
   trait Method1[-T,+U] extends MethodHandle {
     override val numParams = 1
     def invoke[R<:List,T1X<:T,UX>:U <% NoUnit]():F[R**T1X] => F[R**UX] = normalCall
-    def invokeUnit[R<:List,T1X<:T,UX>:U <% IsUnit]():F[R**T1X] => F[R] = unitCall
+    def invokeUnit[R<:List,T1X<:T]()(implicit x:U => IsUnit):F[R**T1X] => F[R] = unitCall
   }
   trait Method2[-T1,-T2,+U] extends MethodHandle {
     override val numParams = 2
     def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U <% NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
-    def invokeUnit[R<:List,T1X<:T1,T2X<:T2,UX>:U <% IsUnit]():F[R**T1X**T2X] => F[R] = unitCall
+    def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x:U => IsUnit):F[R**T1X**T2X] => F[R] = unitCall
   }
   
   implicit def normalCall1[R<:List,T,U <% NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
