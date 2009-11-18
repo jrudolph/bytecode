@@ -252,12 +252,11 @@ object ASMCompiler extends ByteletCompiler{
         
         new ASMFrame[ST2](mv,afterBlock.stackClass,nextFreeLocal)
       }
-      def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X = {
+      def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X = {
         val label = new Label
         mv.visitLabel(label)
-        code(new Target[ST]{
-          def jmp[ST2>:ST<:List]:F[ST2] => Nothing = {_ => mv.visitJumpInsn(GOTO,label); throw JmpException}
-                                               
+        code(new Target[ST2]{
+          def jmp:F[ST2] => Nothing = {_ => mv.visitJumpInsn(GOTO,label); throw JmpException}                                               
         })(this)
       }
       def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T

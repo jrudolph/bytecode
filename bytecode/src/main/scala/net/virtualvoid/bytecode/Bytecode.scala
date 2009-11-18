@@ -102,6 +102,7 @@ object Bytecode{
     def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
     
     def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X
+    
     def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
     											  ,thenB:F[R]=>Nothing):F[R]
   }

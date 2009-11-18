@@ -177,7 +177,7 @@ object BytecodeCompilerSpecs extends Specification{
           	unboxInt ~
           	withLocal(i => _ ~          	
                 bipush(0) ~
-                withLocal(sum => _ ~
+                withLocal(sum => _ ~ nop ~
                   withTargetHere(start => _ ~ 
                     i.load ~ 
                     ifne(

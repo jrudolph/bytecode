@@ -100,9 +100,9 @@ object Interpreter extends ByteletCompiler {
       def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] =
         code(local(top))(IF(rest))
       
-      def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X = 
-        code(new Target[ST]{
-          def jmp[ST2>:ST<:List]:F[ST2] => Nothing = f => throw ResultException(code(this)(f.asInstanceOf[F[ST]]))
+      def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X = 
+        code(new Target[ST2]{
+          def jmp:F[ST2] => Nothing = f => throw ResultException(code(this)(f.asInstanceOf[F[ST]]))
         })(this)
       
       case class ResultException(res:Any) extends RuntimeException
