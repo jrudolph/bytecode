@@ -71,19 +71,19 @@ object BytecodeCompilerSpecs extends Specification{
     } 
     "load element with index 1 from a string array" in {
       compiler.compile(classOf[Array[String]])(ar => _~ar.load~bipush(1)~aload)
-      .apply(array("That","is","a","Test")) must be_==("is")
+      .apply(Array("That","is","a","Test")) must be_==("is")
     }
     "save string element to array and load it afterwards" in {
       compiler.compile(classOf[Array[String]])(ar => _~ar.load~dup~bipush(1)~ldc("test")~astore~bipush(1)~aload)
-      .apply(array("That","is","a","Test")) must be_==("test")
+      .apply(Array("That","is","a","Test")) must be_==("test")
     }
     "save int element to array and load it afterwards" in {
       compiler.compile(classOf[Array[Int]])(ar=>_~ar.load~dup~bipush(1)~bipush(13)~astore~bipush(1)~aload~dup~iadd~invokemethod1(Integer.valueOf(_)))
-      .apply(array(1,2,3,4)) must be_==(26)
+      .apply(Array(1,2,3,4)) must be_==(26)
     }
     "get array length" in {
       compiler.compile(classOf[Array[String]])(ar=>_~ar.load~arraylength~invokemethod1(Integer.valueOf(_)))
-      .apply(array("That","is","a","problem")) must be_==(4)
+      .apply(Array("That","is","a","problem")) must be_==(4)
     }
     "isub" in {
       compiler.compile(classOf[java.lang.Integer])(i => _~i.load~invokemethod1(_.intValue)~bipush(3)~isub~invokemethod1(Integer.valueOf(_)))
@@ -303,8 +303,6 @@ object BytecodeCompilerSpecs extends Specification{
       ).apply("Test") must be_==("TestTest")
     } 
   }
-  def array(els:Int*):Array[Int] = Array(els:_*)
-  def array(els:String*):Array[String] = Array(els:_*)
   
   "Compiler" should {
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.ASMCompiler)
