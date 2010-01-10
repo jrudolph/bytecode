@@ -106,19 +106,17 @@ object Compiler{
             isub ~
             withLocal(lastIndex =>
               _ ~
-	            swap() ~
-	            foldArray(index =>
-	              _ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
-                    lastIndex.load ~
-                    index.load ~
-                    isub ~
-                    ifne2(
-                      _ ~
-                        ldc(sep) ~
-                        invokemethod2(_.append(_))
-                      , f=>f
-                    )
-	            )
+	            withLocal(array => 
+	              foldArray(array)(index =>
+	               	_ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
+	               	  lastIndex.load ~
+	               	  index.load ~
+	               	  isub ~
+	               	  ifne2(
+                        _ ~
+                          ldc(sep) ~
+                          invokemethod2(_.append(_))
+                        , f=>f)))	              
             )
         }
         else
