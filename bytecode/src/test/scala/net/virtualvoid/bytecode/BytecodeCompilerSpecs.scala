@@ -120,13 +120,15 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(new java.lang.StringBuilder) must be_==(0)
     }
     "method2 call to method which accepts superclass" in {
+      val sb = new java.lang.StringBuilder
+      sb.append("test")
       compiler.compile(classOf[java.lang.StringBuilder])( sb =>
         _ ~
           sb.load ~
           dup ~
           invokemethod2(_.append(_)) // accepts CharSequence
       )
-      .apply(new java.lang.StringBuilder)
+      .apply(sb).toString must be_==("testtest")
     }
     "getstatic StaticVariableContainer.x" in {
       StaticVariableContainer.x = 3263
@@ -313,13 +315,13 @@ object BytecodeCompilerSpecs extends Specification{
   "Dynamic method type checking" should {
     import Bytecode.methodHandle
     "work with static methods" in {
-      methodHandle[Int,java.lang.Integer](classOf[Integer].getMethod("valueOf",classOf[Int]))
+      methodHandle[Int,java.lang.Integer](classOf[Integer].getMethod("valueOf",classOf[Int])).method.getName must be_==("valueOf")
     }
     "work with instance methods" in {
-      methodHandle[java.lang.Integer,String](classOf[Integer].getMethod("toString"))
+      methodHandle[java.lang.Integer,String](classOf[Integer].getMethod("toString")).method.getName must be_==("toString")
     }
     "comply with subtyping rules" in {
-      methodHandle[java.lang.Integer,String](classOf[Number].getMethod("toString"))
+      methodHandle[java.lang.Integer,String](classOf[Number].getMethod("toString")).method.getName must be_==("toString")
       methodHandle[Number,String](classOf[java.lang.Integer].getMethod("toString")) must throwA[RuntimeException]
     }
     "throw if parameter count doesn't match" in {
@@ -327,10 +329,10 @@ object BytecodeCompilerSpecs extends Specification{
       methodHandle[String,java.lang.Integer](classOf[Runtime].getMethod("getRuntime")) must throwA[RuntimeException]
     }
     "work for binary static methods" in {
-      methodHandle[Int,Int,String](classOf[java.lang.Integer].getMethod("toString",classOf[Int],classOf[Int]))
+      methodHandle[Int,Int,String](classOf[java.lang.Integer].getMethod("toString",classOf[Int],classOf[Int])).method.getName must be_==("toString")
     }
     "work for binary instance methods" in {
-      methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String]))
+      methodHandle[String,String,String](classOf[String].getMethod("concat",classOf[String])).method.getName must be_==("concat")
     }
   }
 }
