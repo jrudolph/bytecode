@@ -22,9 +22,10 @@ object CodeTools{
   }
   
   def methodFromCode[T1,T2,U](code:Code[(T1,T2)=>U]) = try { 
-    code.tree match{/*
-      case Function(List(p1,p2),Apply(Select(Ident(th),Method(method,MethodType(List(param),_))),List(Ident(x)))) if th == p1 && x == p2 =>{
-        val paramClass = extractClass(param)
+    code.tree match{
+      // functions like _.call(_)
+      case Function(List(p1,p2),Apply(Select(Ident(th),Method(method,MethodType(List(LocalValue(_,_,paramTpe)),_))),List(Ident(x)))) if th == p1 && x == p2 =>{
+        val paramClass = extractClass(paramTpe)
       
         val i = method.lastIndexOf(".")
         val clName = method.substring(0,i)
@@ -33,7 +34,7 @@ object CodeTools{
         val cl2 = java.lang.Class.forName(paramClass)
         val m = cl.getMethod(methodName,cl2)
         m
-      }	*/
+      }
       case _ => throw new Error("Can't match this "+code.tree)
     }
   }catch{
@@ -68,7 +69,7 @@ object CodeTools{
             val (clazz,methodName) = splitFullMethodName(method)
             val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             cl.getMethod(methodName)
-          }
+          }*/
           // scala method call to method defined without parameter list
           case Function(List(x@LocalValue(_,_,tpe)),Select(Ident(x1),Method(method,_))) if x==x1 => {
             val clazz = extractClass(tpe)
@@ -86,15 +87,15 @@ object CodeTools{
             m
           }
 	      // static method call with variable first parameter 'Integer.valueOf(_)'
-          case Function(List(x),Apply(Select(qual,Method(method,MethodType(List(PrefixedType(_,Class(argClazz))),_))),List(Ident(x1)))) if x==x1 => {
+          case Function(List(x@LocalValue(_,_,argClazz)),Apply(Select(qual,Method(method,MethodType(List(LocalValue(_,_,paramTpe)),_))),List(Ident(x1)))) if x==x1 => {
             val clazz = extractClass(typeOfQualifier(qual))
             val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             val methodName = method.substring(method.lastIndexOf(".")+1)
-            val argCl = cleanClass(argClazz)
+            val argCl = cleanClass(extractClass(paramTpe))
             val m = cl.getMethod(methodName,argCl)
             assert ((m.getModifiers & java.lang.reflect.Modifier.STATIC) != 0)
             m
-          }*/
+          }
           case _ => throw new Error("Can't match this "+tree)
 	    }
   }
