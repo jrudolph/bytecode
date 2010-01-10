@@ -20,7 +20,7 @@ class EnhancedStringsPlugin(val global: Global) extends Plugin {
 	   import global.definitions._
 
 	   val global = EnhancedStringsPlugin.this.global
-	   val runsAfter = "typer"
+	   override val runsAfter = List("typer")
 	  /** The phase name of the compiler plugin
 	   *  @todo Adapt to specific plugin.
 	   */
@@ -79,6 +79,7 @@ class EnhancedStringsPlugin(val global: Global) extends Plugin {
 	          //localTyper.typed(atPos(tree.pos){compile(EnhancedStringFormatParser.parse(str))})
 	        } catch {
 	          case p:ParseException => error(p.getMessage);tree
+	          case e:TypeError => error(e.getMessage);tree
 	        }
 	      case _ => tree
 	    }
