@@ -133,8 +133,8 @@ object Compiler{
             (if (retType == java.lang.Boolean.TYPE)
                compileGetExp(inner,cl,classOf[Boolean])
              else 
-               compileGetExp(inner,cl,classOf[java.lang.Boolean]) _ 
-             ~ invokemethod1(_.booleanValue)
+               _ ~ compileGetExp(inner,cl,classOf[java.lang.Boolean]) 
+                 ~ invokemethod1(_.booleanValue)
             ) ~
             ifeq2(
               compileFormatElementList(elses,cl,value),
