@@ -7,30 +7,21 @@ object ASMCompiler extends ByteletCompiler{
     import _root_.org.objectweb.asm._
     import Opcodes._
 
-    case class ClassStack(mrest:ClassStack,mtop:Class[_]) 
-    	extends Cons[ClassStack,Class[_]](mrest,mtop){
-      def **(cl:Class[_]) = ClassStack(this,cl)
-      
-      def get(i:Int):Class[_] = if (i>0) rest.get(i-1) else top
-      def set(i:Int,cl:Class[_]):ClassStack = 
-        if (i>0) ClassStack(rest.set(i-1,cl),top) else ClassStack(rest,cl)
-      def unset(i:Int):ClassStack = 
-        if (i>0) ClassStack(rest.unset(i-1),top) else UnsetClassStack(rest)
-      
-      def firstUnset:Int =
-        rest.firstUnset + 1
+    trait ClassStack {
+      def **(cl:Class[_]) = ConsClassStack(this,cl)
+      def rest:ClassStack
+      def top:Class[_]
+      def popN(n:Int):ClassStack = if (n > 0) rest.popN(n-1) else this
     }
-    case class UnsetClassStack(lrest:ClassStack) extends ClassStack(lrest,null){
-      override def get(i:Int):Class[_] = 
-        if (i==0) 
-          throw new Error("tried to get local which never was saved") 
-        else super.get(i)
-      override def set(i:Int,cl:Class[_]):ClassStack = 
-        if (i>0) UnsetClassStack(set(i-1,cl)) else ClassStack(this,cl)
-      
-      override def firstUnset:Int = 0
+    case class ConsClassStack(mrest:ClassStack,mtop:Class[_]) 
+    	extends ClassStack {
+      def top:Class[_] = mtop
+      def rest:ClassStack = mrest
     }
-    case object EmptyClassStack extends UnsetClassStack(null)
+    case object EmptyClassStack extends ClassStack{
+      def top:Class[_] = throw new Error("Tried to get top element of EmptyStack")
+      def rest:ClassStack = throw new Error("Tried to pop class from empty class stack, this is a bug.")
+    }
     
     object JmpException extends RuntimeException 
     
@@ -156,39 +147,17 @@ object ASMCompiler extends ByteletCompiler{
         else
           INVOKEVIRTUAL
 
-      def method2_int[R<:List,T2,T1,U](rest:R,top2:T2,top1:T1
-                                       ,code:scala.reflect.Code[(T2,T1)=>U]):F[R**U] = 
-        invokeMethod2(methodFromCode(code))
-      
-      def methodDyn_int[R<:List,T,U](rest:R
-                                   ,top:T
-                                   ,handle:MethodHandle)
-                                   :F[R**U] = 
-        invokeMethod(handle.method)
-                                   
-      def methodDyn_int[R<:List,T1,T2,U](rest:R
-                                   ,p1:T1
-                                   ,p2:T2
-                                   ,handle:MethodHandle)
-                                   :F[R**U] =
-        invokeMethod2(handle.method)                                     
-                                   
-
-      def invokeMethodX[R<:List,U](rest:ClassStack,m:java.lang.reflect.Method) = {
+      def invokemethod[R<:List,U](handle:MethodHandle)
+                                   :F[R**U] = {
+        val m = handle.method                                     
         val cl = m.getDeclaringClass
-        mv.visitMethodInsn(getInvokeInsn(m),Type.getInternalName(cl)
-                           ,m.getName
-                           ,Type.getMethodDescriptor(m))
-        withStack(rest ** m.getReturnType)
+        mv.visitMethodInsn(getInvokeInsn(m)
+                          ,Type.getInternalName(cl)
+                          ,m.getName
+                          ,Type.getMethodDescriptor(m))
+        withStack(stackClass.popN(handle.numParams) ** m.getReturnType)
       }
-      def invokeMethod[R<:List,U](m:java.lang.reflect.Method) = 
-        invokeMethodX[R,U](stackClass.rest,m)
-      def invokeMethod2[R<:List,U](m:java.lang.reflect.Method) = 
-        invokeMethodX[R,U](stackClass.rest.rest,m)
-      
-      def method1_int[R<:List,T,U](rest:R,top:T,code:scala.reflect.Code[T=>U]):F[R**U] = 
-        invokeMethod(methodFromTree(code.tree))
-      
+                                   
       def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
         val field = fieldFromTree(code.tree)
         mv.visitFieldInsn(GETSTATIC
@@ -283,12 +252,11 @@ object ASMCompiler extends ByteletCompiler{
         
         new ASMFrame[ST2](mv,afterBlock.stackClass,nextFreeLocal)
       }
-      def withTargetHere_int[X](code:Target[ST] => F[ST] => X):X = {
+      def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X = {
         val label = new Label
         mv.visitLabel(label)
-        code(new Target[ST]{
-          def jmp[ST2>:ST<:List]:F[ST2] => Nothing = {_ => mv.visitJumpInsn(GOTO,label); throw JmpException}
-                                               
+        code(new Target[ST2]{
+          def jmp:F[ST2] => Nothing = {_ => mv.visitJumpInsn(GOTO,label); throw JmpException}                                               
         })(this)
       }
       def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
