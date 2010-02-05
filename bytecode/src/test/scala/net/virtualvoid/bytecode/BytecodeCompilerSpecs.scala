@@ -89,7 +89,7 @@ object BytecodeCompilerSpecs extends Specification{
       .apply(Array("That","is","a","Test")) must be_==("test")
     }
     "save int element to array and load it afterwards" in {
-      compiler.compile(classOf[Array[Int]])(ar=>_~ar.load~dup~bipush(1)~bipush(13)~astore~bipush(1)~aload~dup~iadd~invokemethod1(Integer.valueOf(_)))
+      compiler.compile(classOf[Array[Int]])(ar=>_~ar.load~dup~bipush(1)~bipush(13)~astore~bipush(1)~aload~dup~iadd~boxInt)
       .apply(Array(1,2,3,4)) must be_==(26)
     }
     "get array length" in {
