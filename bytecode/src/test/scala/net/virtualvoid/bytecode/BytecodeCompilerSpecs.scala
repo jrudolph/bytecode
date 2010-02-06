@@ -171,33 +171,6 @@ object BytecodeCompilerSpecs extends Specification{
       )
       .apply(null) must be_==(38)
     }
-    "ifne and jmp" in {
-      //	if (compiler != Interpreter)
-      compiler.compile(classOf[java.lang.Integer])(input =>
-        // sums all integers from 0 to i
-        _ ~ input.load ~
-          	unboxInt ~
-          	withLocal(i => _ ~          	
-                bipush(0) ~
-                withLocal(sum => _ ~ nop ~
-                  withTargetHere(start => _ ~ 
-                    i.load ~ 
-                    ifne(
-                      _ ~ 
-                        i.load ~
-                        dup ~
-                        bipush(1) ~
-                        isub ~
-                        i.store ~
-                        sum.load ~
-                        iadd ~
-                        sum.store ~
-                        start.jmp
-                    ) ~
-                    sum.load ~
-                    boxInt
-      )))).apply(5) must be_==(15)
-    }
     "returning out of branch" in {
       val f:java.lang.Integer => String = 
       compiler.compile(classOf[java.lang.Integer],classOf[String])(input => ret =>
