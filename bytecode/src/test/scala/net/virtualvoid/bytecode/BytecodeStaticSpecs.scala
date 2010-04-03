@@ -94,6 +94,9 @@ import Bytecode.Implicits._
     "swap on Boolean**Character" in {Stack("Nil**Boolean**Character") must haveOp("swap()")}
     "swap on Int**Short" in {Stack("Nil**Int**Short") must haveOp("swap()")}
     "swap on Float**Object" in {Stack("Nil**Float**Object") must haveOp("swap()")}
+
+    "pop on String" in {Stack("Nil**String") must haveOp("pop")}
+    "dup on String" in {Stack("Nil**String") must haveOp("dup")}
   }
   
   "implicits" should {
@@ -106,6 +109,8 @@ import Bytecode.Implicits._
     "swap on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("swap()")}
     "swap on Long**String" in {Stack("Nil**Long**String") mustNot haveOp("swap()")}
     "swap on Long**Double" in {Stack("Nil**Long**Double") mustNot haveOp("swap()")}
+    "dup on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("dup")}
+    "pop on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("pop")}
     
     "putstatic must respect element on the stack vs variable type" in {Stack("Nil**String") mustNot haveOp("putstatic(net.virtualvoid.bytecode.StaticVariableContainer.x = _)")}
   }
