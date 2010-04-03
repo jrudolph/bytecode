@@ -13,6 +13,14 @@ object BytecodeStaticSpecs extends Specification {
   def asFile(url:java.net.URL):java.io.File =
       new java.io.File(url.toURI)
 
+  def printClassLoaders(cl: ClassLoader) {
+    if (cl != null)
+      { 
+	val urls = if (cl.isInstanceOf[java.net.URLClassLoader]) cl.asInstanceOf[java.net.URLClassLoader].getURLs.mkString(", ") else ""
+        println(cl.toString+": "+urls); 
+        
+        printClassLoaders(cl.getParent);}
+  }
   def inflateClassPath(jarfile: java.io.File): Seq[java.io.File] =
     jarfile +: new java.util.jar.JarFile(jarfile).getManifest.getMainAttributes.getValue("Class-Path").split("\\s+").map(new java.io.File(_))
 
@@ -33,6 +41,8 @@ object BytecodeStaticSpecs extends Specification {
     }
     override def newCompiler(se:Settings,reporter:Reporter) = {
       se.classpath.value = outerClassLoader.getURLs flatMap(url => inflateClassPath(asFile(url))) map (_.getAbsolutePath) mkString(java.io.File.pathSeparator)
+      printClassLoaders(outerClassLoader)
+      println(se.classpath.value)
       super.newCompiler(se,myReporter)
     }
   }
