@@ -13,6 +13,9 @@ object BytecodeStaticSpecs extends Specification {
   def asFile(url:java.net.URL):java.io.File =
       new java.io.File(url.toURI)
 
+  def inflateClassPath(jarfile: java.io.File): Seq[java.io.File] =
+    jarfile +: new java.util.jar.JarFile(jarfile).getManifest.getMainAttributes.getValue("Class-Path").split("\\s+").map(new java.io.File(_))
+
   object interpreter extends _root_.scala.tools.nsc.Interpreter(mySettings){
     var writer = new java.io.StringWriter
     var pWriter = newWriter
@@ -29,7 +32,7 @@ object BytecodeStaticSpecs extends Specification {
       }
     }
     override def newCompiler(se:Settings,reporter:Reporter) = {
-      se.classpath.value = classLoader.getURLs map(asFile(_).getAbsolutePath) mkString(java.io.File.pathSeparator)
+      se.classpath.value = classLoader.getURLs flatMap(url => inflateClassPath(asFile(url))) map (_.getAbsolutePath) mkString(java.io.File.pathSeparator)
       super.newCompiler(se,myReporter)
     }
   }
