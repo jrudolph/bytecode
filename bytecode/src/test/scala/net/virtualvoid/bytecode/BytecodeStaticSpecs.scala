@@ -7,7 +7,7 @@ import _root_.scala.tools.nsc.Settings
 object BytecodeStaticSpecs extends Specification {
   import _root_.scala.tools.nsc.reporters._
 
-  val classLoader = getClass.getClassLoader.asInstanceOf[java.net.URLClassLoader]
+  val outerClassLoader = getClass.getClassLoader.asInstanceOf[java.net.URLClassLoader]
   val mySettings = new Settings
   
   def asFile(url:java.net.URL):java.io.File =
@@ -32,7 +32,7 @@ object BytecodeStaticSpecs extends Specification {
       }
     }
     override def newCompiler(se:Settings,reporter:Reporter) = {
-      se.classpath.value = classLoader.getURLs flatMap(url => inflateClassPath(asFile(url))) map (_.getAbsolutePath) mkString(java.io.File.pathSeparator)
+      se.classpath.value = outerClassLoader.getURLs flatMap(url => inflateClassPath(asFile(url))) map (_.getAbsolutePath) mkString(java.io.File.pathSeparator)
       super.newCompiler(se,myReporter)
     }
   }
