@@ -51,7 +51,9 @@ object BytecodeStaticSpecs extends Specification {
   def compilePrefixed(prefix:String,suffix:String) = new Matcher[String]{
     def apply(str: =>String) = 
       {
-        interpreter.myReporter.reset
+        try {
+         interpreter.myReporter.reset
+        } catch {case t: Throwable => t.printStackTrace; throw t}
         interpreter.compileString(
           """object Test {
 import _root_.net.virtualvoid.bytecode.Bytecode
@@ -129,6 +131,6 @@ import Bytecode.Implicits._
   }
 }
 
-import org.specs.runner.JUnit4
+//import org.specs.runner.JUnit4
 
-class MyStaticSpecTest extends JUnit4(BytecodeStaticSpecs)
+//class MyStaticSpecTest extends JUnit4(BytecodeStaticSpecs)

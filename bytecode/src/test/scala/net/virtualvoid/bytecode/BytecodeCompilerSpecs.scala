@@ -327,6 +327,6 @@ object BytecodeCompilerSpecs extends Specification{
   }
 }
 
-import org.specs.runner.JUnit4
+//import org.specs.runner.JUnit4
 
-class MyCompilerSpecTest extends JUnit4(BytecodeCompilerSpecs)
+//class MyCompilerSpecTest extends JUnit4(BytecodeCompilerSpecs)

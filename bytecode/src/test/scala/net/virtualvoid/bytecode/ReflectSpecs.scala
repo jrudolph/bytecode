@@ -33,4 +33,4 @@ object ReflectSpecs extends Specification {
 	  }
 	}
 }
-class ReflectSpecsTest extends runner.JUnit4(ReflectSpecs)
+//class ReflectSpecsTest extends runner.JUnit4(ReflectSpecs)
