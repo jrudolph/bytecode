@@ -1,6 +1,6 @@
 Version: 1
-Previous: 7938a4d72e3f5a74cc248533ac5c053e32d244e3
-Head: 35425c2473d28bdb2592763abef5f5094d08da77
+Previous: be85bccdfde2eda839f005cff07ff08514489225
+Head: b325de31386f721acb86bc5b7c15c96a3e41b69c
 Applied:
   update-to-scala-2-8-0-rc3: af3e57419e67f44ed4c3cfeaffc80b1d60793394
   add-positional-attributes-to-e: bd6fb0457ea3d6a57e2245f3b65bf4771ce58c04
