@@ -1,0 +1,29 @@
+Bottom: f8ed0056a30733328719d514d1c06de875638561
+Top:    85c57d00c348d30ca0c1a362e879b33c469552e2
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-05-31 10:23:33 +0200
+
+better error message when no matching method is found
+
+
+---
+
+diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/ESParser.scala b/objectformatter/src/main/scala/net/virtualvoid/string/ESParser.scala
+index 2b9db8b..6cfe6e2 100644
+--- a/objectformatter/src/main/scala/net/virtualvoid/string/ESParser.scala
++++ b/objectformatter/src/main/scala/net/virtualvoid/string/ESParser.scala
+@@ -67,12 +67,12 @@ object AST{
+        res.setAccessible(true)
+        Some(res)
+      }catch{
+-     case _:NoSuchMethodException => None
++     case e:NoSuchMethodException => None
+      }
+     def realmethod(cl:Class[_]):Method = 
+       Array("get"+capitalize(identifier),identifier)
+         .flatMap(findMethod(cl,_).toList).firstOption
+-        .getOrElse(throw new java.lang.Error("couldn't find method " + identifier + " in class "+cl.getName))
++        .getOrElse(throw new java.lang.Error("couldn't find method " + identifier + " in class "+cl.getName+" methods: "+cl.getMethods.map(_.getName).mkString(", ")))
+     var m:Method = null
+     def method(cl:Class[_]) = {
+       if (m == null){
