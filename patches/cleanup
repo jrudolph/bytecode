@@ -1,0 +1,31 @@
+Bottom: 88367aa8e4009f03a32ebac3444408f99e3b2b43
+Top:    5c8c6836f7817af307133656721d5a7186c5d167
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-05-29 16:14:49 +0200
+
+cleanup
+
+
+---
+
+diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala b/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
+index 79035ab..38d1c9c 100644
+--- a/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
++++ b/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
+@@ -30,6 +30,7 @@ class EnhancedStringsPlugin(val global: Global) extends Plugin {
+     
+     class ESTransformer(unit: CompilationUnit) extends TypingTransformer(unit) {
+         localTyper = analyzer.newTyper(analyzer.rootContext(unit, EmptyTree, false))
++    
+ 		val it = ValDef(Modifiers(Flags.PARAM), "it", TypeTree(), EmptyTree)
+       
+ 	    /** When using <code>preTransform</code>, each node is
+@@ -58,7 +59,7 @@ class EnhancedStringsPlugin(val global: Global) extends Plugin {
+ 	      case AST.ToStringConversion(exp) => Select(compileExpression(exp),"toString")
+ 	      case AST.Expand(exp,sep,inner) => Apply(
+ 	    		  							   Select(
+-	    		  							     Apply(Select(compileExpression(exp),"map")
++	    		  							     Apply(Select(compileExpression(exp), "map")
+ 	    		  							    		 ,List(Function(List(it),compile(inner)))),"mkString")
+                                                ,List(Literal(Constant(sep))))
+ 	      case AST.Conditional(cond,thenEls,elseEls) =>

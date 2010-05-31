@@ -1,0 +1,23 @@
+Bottom: 5c8c6836f7817af307133656721d5a7186c5d167
+Top:    84fb0a16f48d947932fc1ab05566c68dc9a41904
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-05-29 16:15:14 +0200
+
+run directly after the parser
+
+
+---
+
+diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala b/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
+index 38d1c9c..642ae55 100644
+--- a/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
++++ b/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
+@@ -20,7 +20,7 @@ class EnhancedStringsPlugin(val global: Global) extends Plugin {
+ 	   import global.definitions._
+ 
+ 	   val global = EnhancedStringsPlugin.this.global
+-	   override val runsAfter = List("typer")
++	   override val runsAfter = List("parser")
+ 	  /** The phase name of the compiler plugin
+ 	   *  @todo Adapt to specific plugin.
+ 	   */

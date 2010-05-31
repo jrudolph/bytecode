@@ -1,6 +1,13 @@
 Version: 1
-Previous: 5fc135faaa1797a2fab7244e9170bfa4ad641301
+Previous: 80bf052b65a9247d510643c54e2e36f1c58bfee4
 Head: edc384075defa9f3a7c4b86d21292f3aaec43e6c
 Applied:
+  not-working-crap: 69e258ae0f65e321e6187ac7b0706a93642cd30d
+  update-to-scala-2-8-0-rc3: 9b0ed9331fba9cdaf2ac8b73074ecd3d4f43ee2b
+  add-positional-attributes-to-e: a4724a934aac2d255584598a5f2eedf43a1a2f7e
+  sprinkle-some-position-informa: dfef930eeebaaaa6d2238192397caf21a7ce8e2a
+  cleanup: 2c03f8b453ae51ec175b138b7582c1577576051a
+  run-directly-after-the-parser: 5b5eb8f9811023549c4daa6a0917daf49fe8ebd2
+  conditionals-now-work-on-boole: edc384075defa9f3a7c4b86d21292f3aaec43e6c
 Unapplied:
 Hidden:

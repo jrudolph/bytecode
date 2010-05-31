@@ -1,0 +1,27 @@
+Bottom: 84fb0a16f48d947932fc1ab05566c68dc9a41904
+Top:    03fd839b99e259cee47289b001930283b9dc3bcb
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-05-29 16:15:36 +0200
+
+conditionals now work on booleans and Options
+
+
+---
+
+diff --git a/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala b/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
+index 642ae55..df3c72d 100644
+--- a/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
++++ b/objectformatter/src/main/scala/net/virtualvoid/string/EnhancedStringsPlugin.scala
+@@ -63,9 +63,11 @@ class EnhancedStringsPlugin(val global: Global) extends Plugin {
+ 	    		  							    		 ,List(Function(List(it),compile(inner)))),"mkString")
+                                                ,List(Literal(Constant(sep))))
+ 	      case AST.Conditional(cond,thenEls,elseEls) =>
+-	        Match(compileExpression(cond),List(
++	        Match(Typed(compileExpression(cond), Ident("Any".toTypeName)),List(
+ 	          CaseDef(Apply(Ident("Some"),List(Bind("it",Ident("_")))),compile(thenEls)),
+-	          CaseDef(Ident("None"),compile(elseEls))
++	          CaseDef(Ident("None"),compile(elseEls)),
++	          CaseDef(Bind("it", Literal(Constant(true))), compile(thenEls)),
++	          CaseDef(Literal(Constant(false)), compile(elseEls))
+ 	        ))
+ 	    }
