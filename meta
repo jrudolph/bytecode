@@ -1,17 +1,6 @@
 Version: 1
-Previous: e4f69ff61de42278d2c2647285a47eb82fbe933f
+Previous: 4031290e9057a354f8dbe730d4f1a2e4fce72fd3
 Head: b325de31386f721acb86bc5b7c15c96a3e41b69c
 Applied:
-  update-to-scala-2-8-0-rc3: af3e57419e67f44ed4c3cfeaffc80b1d60793394
-  add-positional-attributes-to-e: bd6fb0457ea3d6a57e2245f3b65bf4771ce58c04
-  sprinkle-some-position-informa: 5237d1d77739de89caa362093dd5859549f2d84a
-  cleanup: 8856d265e770e8add932ef904d612362d0a36655
-  run-directly-after-the-parser: 55b37d32f94aaeb537af224cfe007d51ca985f67
-  conditionals-now-work-on-boole: 35425c2473d28bdb2592763abef5f5094d08da77
-  update-to-specs-1-6-5-snapshot: 87987acf54fc8a00c617946d3cca74e870783c97
-  fix-array-access: 25457e76282c452a478db91e7a05f348efc1459d
-  remove-formatcompiler-tests: 88264b09f678e84316078763b35bd629d70b7b14
-  fix-method-dispatch-changed-va: bad4981062da2c4dd8618bb9148de0a565853074
-  better-error-message-when-no-m: b325de31386f721acb86bc5b7c15c96a3e41b69c
 Unapplied:
 Hidden:
