@@ -198,8 +198,8 @@ object Bytecode{
         f => f.putstatic_int(f.stack.rest,f.stack.top,code)
     
     def nop[R<:List]:F[R] => F[R] = f => f
-    def pop[R<:List,T]:F[R**T]=>F[R] = f=>f.pop_int(f.stack.rest)
-    def dup[R<:List,T]:F[R**T]=>F[R**T**T] = 
+    def pop[R <: List, T]: F[R**T] => F[R] = f => f.pop_int(f.stack.rest)
+    def dup[R <: List, T]: F[R**T] => F[R**T**T] = 
       f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:List,T2,T1]:F[R**T2**T1] => F[R**T1**T2**T1] = 
       f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)

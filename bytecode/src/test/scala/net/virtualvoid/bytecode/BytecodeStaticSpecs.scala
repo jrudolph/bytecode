@@ -149,7 +149,7 @@ object BytecodeStaticSpecs extends Specification {
     "dup on String" in {Stack("Nil**String") must haveOp("dup")}
   }
   
-  "implicits" should {
+  "No implicits" should {
     "dup on empty Stack" in {Stack("Nil") mustNot haveOp("dup")}
     "pop on empty Stack" in {Stack("Nil") mustNot haveOp("pop")}
     "dup_x1 on one Stack" in {Stack("Nil**String") mustNot haveOp("dup_x1")}
@@ -159,8 +159,10 @@ object BytecodeStaticSpecs extends Specification {
     "swap on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("swap()")}
     "swap on Long**String" in {Stack("Nil**Long**String") mustNot haveOp("swap()")}
     "swap on Long**Double" in {Stack("Nil**Long**Double") mustNot haveOp("swap()")}
-    "dup on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("dup")}
-    "pop on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("pop")}
+
+    // This is allowed, since we handle this transparent on the compiler side
+    //"dup on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("dup")}
+    //"pop on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("pop")}
     
     "putstatic must respect element on the stack vs variable type" in {
       Stack("Nil**String") mustNot haveOp("putstatic(net.virtualvoid.bytecode.StaticVariableContainer.x = _)")
