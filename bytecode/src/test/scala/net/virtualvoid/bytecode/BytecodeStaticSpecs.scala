@@ -1,11 +1,14 @@
 package net.virtualvoid.bytecode
 
-import _root_.org.specs._
-
-import _root_.scala.tools.nsc.Settings
+import org.specs._
+import scala.tools.nsc.Settings
 
 object BytecodeStaticSpecs extends Specification {
-  import _root_.scala.tools.nsc.reporters._
+  def debug(str: String) {
+    //println(str)
+  }
+
+  import scala.tools.nsc.reporters._
 
   val outerClassLoader = getClass.getClassLoader.asInstanceOf[java.net.URLClassLoader]
   val mySettings = new Settings
@@ -14,62 +17,94 @@ object BytecodeStaticSpecs extends Specification {
       new java.io.File(url.toURI)
 
   def printClassLoaders(cl: ClassLoader) {
-    if (cl != null)
-      { 
-	val urls = if (cl.isInstanceOf[java.net.URLClassLoader]) cl.asInstanceOf[java.net.URLClassLoader].getURLs.mkString(", ") else ""
-        println(cl.toString+": "+urls); 
-        
-        printClassLoaders(cl.getParent);}
+    if (cl != null) { 
+      val urls = 
+        if (cl.isInstanceOf[java.net.URLClassLoader])
+	      cl.asInstanceOf[java.net.URLClassLoader].getURLs.mkString(", ")
+	    else ""
+    
+      debug(cl.toString+": "+urls);      
+      printClassLoaders(cl.getParent);
+    }
   }
-  def inflateClassPath(jarfile: java.io.File): Seq[java.io.File] =
-    jarfile +: new java.util.jar.JarFile(jarfile).getManifest.getMainAttributes.getValue("Class-Path").split("\\s+").map(new java.io.File(_))
 
-  object interpreter extends _root_.scala.tools.nsc.Interpreter(mySettings){
+  import java.io.{ File, IOException }
+  import java.util.jar.JarFile
+  def openAsJarFile(file: File): Option[JarFile] =
+    try {
+      Some(new JarFile(file))
+    } catch {
+      case e: IOException =>
+        debug("Can't open "+file+" as jarfile")
+        None
+    }   
+
+  def classPathFromManifest(jarfile: File): Option[String] = 
+    openAsJarFile(jarfile).flatMap( f =>
+      Option(f.getManifest
+              .getMainAttributes
+              .getValue("Class-Path")))
+                 
+  def inflateClassPath(jarfile: File): Seq[File] =
+    classPathFromManifest(jarfile) match {
+      case Some(path) => jarfile +: path.split("\\s+").map(new File(_))
+      case None => List(jarfile)
+    }
+
+  object interpreter extends scala.tools.nsc.Interpreter(mySettings) {
     var writer = new java.io.StringWriter
     var pWriter = newWriter
     def newWriter = new java.io.PrintWriter(writer)
     
     def lastError = writer.toString
     
-    object myReporter extends ConsoleReporter(mySettings,null,null){
+    lazy val myReporter = new ConsoleReporter(mySettings, null, null) {
       override def printMessage(msg: String) { pWriter.print(msg + "\n"); pWriter.flush() }
-      override def reset{
+      override def reset {
         writer = new java.io.StringWriter
         pWriter = newWriter
         super.reset
       }
     }
     override def newCompiler(se:Settings,reporter:Reporter) = {
-      se.classpath.value = outerClassLoader.getURLs flatMap(url => inflateClassPath(asFile(url))) map (_.getAbsolutePath) mkString(java.io.File.pathSeparator)
+      se.classpath.value =
+        outerClassLoader.getURLs.
+          flatMap(url => inflateClassPath(asFile(url))).
+          map(_.getAbsolutePath).
+          mkString(java.io.File.pathSeparator)
+
       printClassLoaders(outerClassLoader)
-      println(se.classpath.value)
-      super.newCompiler(se,myReporter)
+      debug(se.classpath.value)
+      super.newCompiler(se, myReporter)
     }
   }
   
+  def makeCode(prefix: String, code: String, suffix: String): String =
+    """object Test {
+      |import _root_.net.virtualvoid.bytecode.Bytecode
+      |import Bytecode._
+      |import Bytecode.Instructions._
+      |import Bytecode.Implicits._
+      |""".stripMargin + prefix + code + suffix + "}"
+  
   import org.specs.matcher.Matcher
-  def compilePrefixed(prefix:String,suffix:String) = new Matcher[String]{
-    def apply(str: =>String) = 
-      {
-        try {
-         interpreter.myReporter.reset
-        } catch {case t: Throwable => t.printStackTrace; throw t}
-        interpreter.compileString(
-          """object Test {
-import _root_.net.virtualvoid.bytecode.Bytecode
-import Bytecode._
-import Bytecode.Instructions._
-import Bytecode.Implicits._
-"""+prefix+str+suffix+"}")
-        (!interpreter.myReporter.hasErrors,"compiled","did not compile with error: "+interpreter.lastError)
-      }      
+  def compilePrefixed(prefix: String, suffix: String) = new Matcher[String] {
+    def apply(str: =>String) = {
+      interpreter.myReporter.reset
+
+      val code = makeCode(prefix, str, suffix)
+      debug("Compiling code: "+code)
+      interpreter.compileString(code)
+
+      (!interpreter.myReporter.hasErrors,"compiled","did not compile with error: "+interpreter.lastError)
+    }      
   }
   def compile = compilePrefixed("","")
   def compileWithStack(stack:String) = compilePrefixed("(null:F["+stack+",Nil]).","")
   
   case class Stack(types:String)
   
-  def haveOp(op:String) = new Matcher[Stack]{
+  def haveOp(op:String) = new Matcher[Stack] {
     val inner = compilePrefixed("(null:F[","]) ~ "+op)
     def apply(f: =>Stack) = inner(f.types) 
   }  
@@ -127,10 +162,9 @@ import Bytecode.Implicits._
     "dup on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("dup")}
     "pop on String**Double" in {Stack("Nil**String**Double") mustNot haveOp("pop")}
     
-    "putstatic must respect element on the stack vs variable type" in {Stack("Nil**String") mustNot haveOp("putstatic(net.virtualvoid.bytecode.StaticVariableContainer.x = _)")}
+    "putstatic must respect element on the stack vs variable type" in {
+      Stack("Nil**String") mustNot haveOp("putstatic(net.virtualvoid.bytecode.StaticVariableContainer.x = _)")
+    }
   }
 }
 
-//import org.specs.runner.JUnit4
-
-//class MyStaticSpecTest extends JUnit4(BytecodeStaticSpecs)
