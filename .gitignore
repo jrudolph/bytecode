@@ -1,1 +1,4 @@
 /build.properties
+target
+boot
+lib_managed
