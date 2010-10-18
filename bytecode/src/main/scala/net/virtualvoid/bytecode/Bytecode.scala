@@ -306,7 +306,7 @@ object Bytecode{
 		  }
 	    
     def foldIterator[R <: List, T <:AnyRef: Manifest, U: Category1]
-                    (func: Local[java.util.Iterator[T]] => F[R**U**T] => F[R**U])//(implicit mf: scala.reflect.Manifest[T], cat1U: Category1[U])
+                    (func: Local[java.util.Iterator[T]] => F[R**U**T] => F[R**U])
           : F[R**java.util.Iterator[T]**U] => F[R**U] = {
             val mf = implicitly[Manifest[T]]
             _ ~
