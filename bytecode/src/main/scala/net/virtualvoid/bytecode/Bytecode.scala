@@ -32,27 +32,27 @@ object Bytecode{
    * See §3.11.1 of the JVM specs
    * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
    */
-  trait Category1
-  implicit val cat1Boolean  : Boolean   => Category1 = null
-  implicit val cat1Byte     : Byte      => Category1 = null
-  implicit val cat1Character: Character => Category1 = null
-  implicit val cat1Short    : Short     => Category1 = null
-  implicit val cat1Int      : Int       => Category1 = null
-  implicit val cat1Float    : Float     => Category1 = null
-  implicit val cat1AnyRef   : AnyRef    => Category1 = null
+  trait Category1[-T]
+  implicit val cat1Boolean  : Category1[Boolean] = null
+  implicit val cat1Byte     : Category1[Byte] = null
+  implicit val cat1Character: Category1[Character] = null
+  implicit val cat1Short    : Category1[Short] = null
+  implicit val cat1Int      : Category1[Int] = null
+  implicit val cat1Float    : Category1[Float] = null
+  implicit def cat1AnyRef   : Category1[AnyRef] = null
   
-  trait IsUnit
-  trait NoUnit
-  implicit val unitIsUnit  : Unit      => IsUnit = null
-  implicit val anyrefNoUnit: AnyRef    => NoUnit = null
-  implicit val boolNoUnit  : Boolean   => NoUnit = null
-  implicit val byteNoUnit  : Byte      => NoUnit = null
-  implicit val charNoUnit  : Character => NoUnit = null
-  implicit val shortNoUnit : Short     => NoUnit = null
-  implicit val intNoUnit   : Int       => NoUnit = null
-  implicit val floatNoUnit : Float     => NoUnit = null
-  implicit val doubleNoUnit: Double    => NoUnit = null
-  implicit val longNoUnit  : Long      => NoUnit = null
+  trait IsUnit[-T]
+  trait NoUnit[-T]
+  implicit val unitIsUnit  : IsUnit[Unit] = null
+  implicit val anyrefNoUnit: NoUnit[AnyRef] = null
+  implicit val boolNoUnit  : NoUnit[Boolean] = null
+  implicit val byteNoUnit  : NoUnit[Byte] = null
+  implicit val charNoUnit  : NoUnit[Character] = null
+  implicit val shortNoUnit : NoUnit[Short] = null
+  implicit val intNoUnit   : NoUnit[Int] = null
+  implicit val floatNoUnit : NoUnit[Float] = null
+  implicit val doubleNoUnit: NoUnit[Double] = null
+  implicit val longNoUnit  : NoUnit[Long] = null
   
   trait Target[ST<:List]{
     def jmp:F[ST] => Nothing
@@ -126,19 +126,19 @@ object Bytecode{
   }
   trait Method1[-T,+U] extends MethodHandle {
     override val numParams = 1
-    def invoke[R<:List,T1X<:T,UX>:U <% NoUnit]():F[R**T1X] => F[R**UX] = normalCall
-    def invokeUnit[R<:List,T1X<:T]()(implicit x:U => IsUnit):F[R**T1X] => F[R] = unitCall
+    def invoke[R <: List, T1X <: T,UX >: U: NoUnit]():F[R**T1X] => F[R**UX] = normalCall
+    def invokeUnit[R <: List, T1X <: T]()(implicit x: IsUnit[U]):F[R**T1X] => F[R] = unitCall
   }
   trait Method2[-T1,-T2,+U] extends MethodHandle {
     override val numParams = 2
-    def invoke[R<:List,T1X<:T1,T2X<:T2,UX>:U <% NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
-    def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x:U => IsUnit):F[R**T1X**T2X] => F[R] = unitCall
+    def invoke[R <: List, T1X <: T1, T2X <: T2,UX >: U: NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
+    def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x: IsUnit[U]):F[R**T1X**T2X] => F[R] = unitCall
   }
   
-  implicit def normalCall1[R<:List,T,U <% NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
+  implicit def normalCall1[R<:List, T, U: NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
   implicit def unitCall1[R<:List,T](m:Method1[T,Unit]):F[R**T]=>F[R] = m.invokeUnit()
   
-  implicit def normalCall2[R<:List,T1,T2,U <% NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
+  implicit def normalCall2[R <: List, T1, T2, U: NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
   implicit def unitCall2[R<:List,T1,T2](m:Method2[T1,T2,Unit]):F[R**T1**T2]=>F[R] = m.invokeUnit()
   
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
@@ -203,7 +203,7 @@ object Bytecode{
       f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:List,T2,T1]:F[R**T2**T1] => F[R**T1**T2**T1] = 
       f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-    def swap[R<:List,T2<%Category1,T1<%Category1]():F[R**T2**T1] => F[R**T1**T2] = 
+    def swap[R <: List, T2: Category1, T1: Category1](): F[R**T2**T1] => F[R**T1**T2] = 
       f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
     def checkcast[T,U,R<:List](cl:Class[U]):F[R**T]=>F[R**U] = 
@@ -305,9 +305,10 @@ object Bytecode{
 		    }
 		  }
 	    
-    def foldIterator[R<:List,T<:AnyRef,U]
-                    (func:Local[java.util.Iterator[T]]=>F[R**U**T]=>F[R**U])(implicit mf:scala.reflect.Manifest[T],cat1U:U=>Category1)
-          :F[R**java.util.Iterator[T]**U] => F[R**U] =
+    def foldIterator[R <: List, T <:AnyRef: Manifest, U: Category1]
+                    (func: Local[java.util.Iterator[T]] => F[R**U**T] => F[R**U])//(implicit mf: scala.reflect.Manifest[T], cat1U: Category1[U])
+          : F[R**java.util.Iterator[T]**U] => F[R**U] = {
+            val mf = implicitly[Manifest[T]]
             _ ~
               swap() ~
               withLocal( iterator =>
@@ -326,6 +327,7 @@ object Bytecode{
 	                  )
                    )
               )
+          }
   }
 
   trait Return[T]{
