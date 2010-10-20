@@ -35,7 +35,7 @@ object Bytecode{
   trait Category1[-T]
   implicit val cat1Boolean  : Category1[Boolean] = null
   implicit val cat1Byte     : Category1[Byte] = null
-  implicit val cat1Character: Category1[Character] = null
+  implicit val cat1Char     : Category1[Char] = null
   implicit val cat1Short    : Category1[Short] = null
   implicit val cat1Int      : Category1[Int] = null
   implicit val cat1Float    : Category1[Float] = null
@@ -47,7 +47,7 @@ object Bytecode{
   implicit val anyrefNoUnit: NoUnit[AnyRef] = null
   implicit val boolNoUnit  : NoUnit[Boolean] = null
   implicit val byteNoUnit  : NoUnit[Byte] = null
-  implicit val charNoUnit  : NoUnit[Character] = null
+  implicit val charNoUnit  : NoUnit[Char] = null
   implicit val shortNoUnit : NoUnit[Short] = null
   implicit val intNoUnit   : NoUnit[Int] = null
   implicit val floatNoUnit : NoUnit[Float] = null
