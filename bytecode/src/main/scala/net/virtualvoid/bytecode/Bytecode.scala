@@ -58,7 +58,7 @@ object Bytecode{
     def jmp:F[ST] => Nothing
   }
   
-  trait F[+ST<:List]{
+  trait F[+ST<:List] {
     def depth = -1
     def frame = this
     

@@ -1,6 +1,6 @@
 package net.virtualvoid.bytecode
 
-import _root_.org.specs._
+import org.specs._
 
 object BytecodeCompilerSpecs extends Specification{
   def compiledTests(compiler:net.virtualvoid.bytecode.Bytecode.ByteletCompiler){
@@ -326,7 +326,3 @@ object BytecodeCompilerSpecs extends Specification{
     }
   }
 }
-
-//import org.specs.runner.JUnit4
-
-//class MyCompilerSpecTest extends JUnit4(BytecodeCompilerSpecs)
