@@ -8,11 +8,11 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode.Implicits._
     import Bytecode.Instructions._
     
-    val boxInt:Method1[Int,java.lang.Integer] = method1(Integer.valueOf(_:Int))
-    val unboxInt:Method1[java.lang.Integer,Int] = method1((_:java.lang.Integer).intValue)
+    val boxInt:Method[Func[Int,Res[java.lang.Integer]]] = method1(Integer.valueOf(_:Int))
+    val unboxInt:Method[Func[java.lang.Integer,Res[Int]]] = method1((_:java.lang.Integer).intValue)
     
-    val boxDouble:Method1[Double,java.lang.Double] = method1(java.lang.Double.valueOf(_:Double))
-    val unboxDouble:Method1[java.lang.Double,Double] = method1((_:java.lang.Double).doubleValue)
+    val boxDouble:Method[Func[Double,Res[java.lang.Double]]] = method1(java.lang.Double.valueOf(_:Double))
+    val unboxDouble:Method[Func[java.lang.Double,Res[Double]]] = method1((_:java.lang.Double).doubleValue)
     
     val concat = method2((s1:String,s2:String)=> s1.concat(s2))
     
