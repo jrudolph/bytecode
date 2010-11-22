@@ -1,8 +1,10 @@
 Version: 1
-Previous: a11a1dd2829ce17c7cef1cccb71a69df803d8a49
+Previous: 46bee554592222de631a4a283b0d50a2b6b806fa
 Head: 05ef00188b8220ab7e75d8bebd9f48ffb38b0c73
 Applied:
   method-calls: dc0737ef634503be87db9f0d5e3214985de046bd
   workspace: 5dd0d7b71a82cb6b9af9a43b6393188c979498a5
+  ignore-backups: 2cfcf47116eb3493981bb3fa397e3a8b10449769
+  don-t-rely-on-maven-any-more: 05ef00188b8220ab7e75d8bebd9f48ffb38b0c73
 Unapplied:
 Hidden:
