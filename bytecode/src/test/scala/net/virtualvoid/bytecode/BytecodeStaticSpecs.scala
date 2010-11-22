@@ -149,7 +149,7 @@ object BytecodeStaticSpecs extends Specification {
     "dup on String" in {Stack("Nil**String") must haveOp("dup")}
 
     "invoke unit method" in {
-      Stack("Nil**java.lang.StringBuffer**Int") must haveOp("method2((_: java.lang.StringBuffer).setLength((_: Int)))")
+      Stack("Nil**java.lang.StringBuffer**Int") must haveOp("method2((_: java.lang.StringBuffer).setLength((_: Int)))()")
     }
   }
   
