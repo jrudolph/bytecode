@@ -1,9 +1,8 @@
 package net.virtualvoid.bytecode
 
 object Bytecode{
-  import java.lang.{String => jString,
-                    Boolean => jBoolean
-  }
+  import java.lang.{ String  => jString,
+                     Boolean => jBoolean }
 
   trait List
   trait Nil extends List
