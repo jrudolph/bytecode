@@ -1,7 +1,7 @@
 Version: 1
-Previous: e0de07b0099a1c28c9260237bab6b79f5318bedf
+Previous: 1da6ffbf537dce9136d5a52f794aaa2de2d011d4
 Head: dc0737ef634503be87db9f0d5e3214985de046bd
 Applied:
-  new-method-calling-syntax-stub: dc0737ef634503be87db9f0d5e3214985de046bd
+  method-calls: dc0737ef634503be87db9f0d5e3214985de046bd
 Unapplied:
 Hidden:
