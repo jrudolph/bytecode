@@ -1,5 +1,5 @@
-Bottom: bf84a8880291b0b2d04aed3562712337925e19ca
-Top:    9d9699b35cdd60a546b85bc1e194a7961ec7d95f
+Bottom: 9b5de82a294ef58a9487e6619ab91db59c69d7f6
+Top:    6fb9dfd985f0736aa6bbc0852f584533aff46745
 Author: Johannes Rudolph <johannes_rudolph@gmx.de>
 Date:   2010-11-22 08:14:34 +0100
 
@@ -9,10 +9,10 @@ new method calling syntax stub
 ---
 
 diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
-index 3369661..5d9e0c8 100644
+index 58e9239..254366f 100644
 --- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
 +++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
-@@ -68,6 +68,7 @@ object Bytecode{
+@@ -67,6 +67,7 @@ object Bytecode{
      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString]
  
      def ~[X](f:F[ST]=>X):X = f(this)
@@ -20,7 +20,7 @@ index 3369661..5d9e0c8 100644
      
      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
-@@ -112,10 +113,10 @@ object Bytecode{
+@@ -111,10 +112,10 @@ object Bytecode{
      def store[ST<:List]:F[ST**T] => F[ST]
    }
  
@@ -34,7 +34,7 @@ index 3369661..5d9e0c8 100644
      def numParams:Int
      
      protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
-@@ -124,7 +125,34 @@ object Bytecode{
+@@ -123,7 +124,34 @@ object Bytecode{
        nextF.pop_unit_int(nextF.stack.rest)
      }
    }
@@ -70,7 +70,7 @@ index 3369661..5d9e0c8 100644
      override val numParams = 1
      def invoke[R <: List, T1X <: T,UX >: U: NoUnit]():F[R**T1X] => F[R**UX] = normalCall
      def invokeUnit[R <: List, T1X <: T]()(implicit x: IsUnit[U]):F[R**T1X] => F[R] = unitCall
-@@ -133,15 +161,16 @@ object Bytecode{
+@@ -132,15 +160,16 @@ object Bytecode{
      override val numParams = 2
      def invoke[R <: List, T1X <: T1, T2X <: T2,UX >: U: NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
      def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x: IsUnit[U]):F[R**T1X**T2X] => F[R] = unitCall
@@ -93,7 +93,7 @@ index 3369661..5d9e0c8 100644
      val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
      
      def check(assertMsg:String)(condition:Boolean) = {
-@@ -159,21 +188,67 @@ object Bytecode{
+@@ -158,21 +187,67 @@ object Bytecode{
    }
    /** checks type information and returns a statically and dynamically safe handle
    */
@@ -171,7 +171,7 @@ index 3369661..5d9e0c8 100644
    
    object Instructions {
      def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
-@@ -314,12 +389,12 @@ object Bytecode{
+@@ -313,12 +388,12 @@ object Bytecode{
                withLocal( iterator =>
                    tailRecursive[R**U,R**U]( self =>
                      _ ~
