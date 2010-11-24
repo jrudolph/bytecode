@@ -1,9 +1,10 @@
 package net.virtualvoid.bytecode
+package backend
 
 import Bytecode._
 import java.lang.{String=>jString}
 
-object ASMCompiler extends ByteletCompiler{
+object ASM extends ByteletCompiler{
     import _root_.org.objectweb.asm._
     import Opcodes._
 
@@ -325,7 +326,7 @@ object ASMCompiler extends ByteletCompiler{
     }
     def classStub[T](params:Class[_]*)(body: MethodVisitor => Unit) :T = {
       val numParams = params.length
-      val superClass = "net/virtualvoid/bytecode/AbstractFunction"+numParams
+      val superClass = "scala/runtime/AbstractFunction"+numParams
       val signature = "("+"Ljava/lang/Object;"*numParams+")Ljava/lang/Object;"
       
       i+=1

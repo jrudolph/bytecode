@@ -297,10 +297,10 @@ object BytecodeCompilerSpecs extends Specification{
   }
   
   "Compiler" should {
-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.ASMCompiler)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.backend.ASM)
   }
   "Interpreter" should {
-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.Interpreter)
+    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.backend.Interpreter)
   }
   "Dynamic method type checking" should {
     import Bytecode.dynMethod
