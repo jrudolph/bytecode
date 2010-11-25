@@ -3,7 +3,7 @@ package net.virtualvoid.bytecode
 import org.specs._
 
 object BytecodeCompilerSpecs extends Specification{
-  def compiledTests(compiler:net.virtualvoid.bytecode.Bytecode.ByteletCompiler){
+  def compiledTests(compiler: net.virtualvoid.bytecode.backend.ByteletCompiler) {
     import Bytecode._
     import Bytecode.Implicits._
     import Bytecode.Instructions._

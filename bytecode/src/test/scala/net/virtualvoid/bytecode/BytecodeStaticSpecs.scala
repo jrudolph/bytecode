@@ -81,7 +81,7 @@ object BytecodeStaticSpecs extends Specification {
   
   def makeCode(prefix: String, code: String, suffix: String): String =
     """object Test {
-      |import _root_.net.virtualvoid.bytecode.Bytecode
+      |import net.virtualvoid.bytecode._
       |import Bytecode._
       |import Bytecode.Instructions._
       |import Bytecode.Implicits._
