@@ -4,22 +4,6 @@ object Bytecode{
   import java.lang.{ String  => jString,
                      Boolean => jBoolean }
 
-  trait List
-  trait Nil extends List
-  object N extends Nil
-  
-  case class Cons[+R<:List,+T](rest:R,top:T) extends List
-  
-  // define an infix operator shortcut for the cons type
-  type ** [x<:List,y] = Cons[x,y]
-
-  // define the same for values
-  trait Consable[T<:List]{
-    def **[U](next:U): T**U
-  }
-  implicit def conser[T<:List](t:T) = new Consable[T]{
-    def **[U](next:U): T**U = Cons(t,next)
-  }
   
   case class JVMInt(v:Int){
     override def equals(o:Any) = v.equals(o)
@@ -53,68 +37,10 @@ object Bytecode{
   implicit val doubleNoUnit: NoUnit[Double] = null
   implicit val longNoUnit  : NoUnit[Long] = null
   
-  trait Target[ST<:List]{
-    def jmp:F[ST] => Nothing
-  }
-  
-  trait F[+ST<:List] {
-    def depth = -1
-    def frame = this
-    
-    def stack:ST
-
-    def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int]
-    def ldc[ST2>:ST<:List](str:jString):F[ST2**jString]
-
-    def ~[X](f:F[ST]=>X):X = f(this)
-    
-    def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
-    def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
-    def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
-    def pop_int[R<:List](rest:R):F[R]
-    def dup_int[R<:List,T](rest:R,top:T):F[R**T**T]
-    def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2]
-    def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1]
-
-    def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
-                                   
-    def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
-    def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
-    
-    def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
-    def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
-    									,thenB:F[R]=>F[ST2]
-    									,elseB:F[R]=>F[ST2]):F[ST2]
-
-    def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T]
-    def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R]
-    def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int]
-    
-    def tailRecursive_int[ST1>:ST<:List,ST2<:List]
-        (func: (F[ST1] => F[ST2]) => (F[ST1]=>F[ST2]))
-        	(fr:F[ST1]):F[ST2]
-    
-    def pop_unit_int[R<:List](rest:R):F[R]
-
-    def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T]
-    
-    def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
-    
-    def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X
-    
-    def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
-    											  ,thenB:F[R]=>Nothing):F[R]
-  }
-  
-  trait Local[T]{
-    def load[ST<:List]:F[ST] => F[ST**T]
-    def store[ST<:List]:F[ST**T] => F[ST]
-  }
-
   import _root_.java.lang.reflect.Method
   import _root_.scala.reflect.Manifest
 
-  abstract class MethodHandle(val method:Method){
+  abstract class AbstractMethodHandle(val method:Method) extends MethodHandle {
     def numParams:Int
     
     protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
@@ -159,20 +85,20 @@ object Bytecode{
   /** checks type information and returns a statically and dynamically safe handle
   */
   def dynMethod[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
-    checkMethod(m,r.erasure,p1.erasure)(new MethodHandle(_) with Method1[T,U])
+    checkMethod(m,r.erasure,p1.erasure)(new AbstractMethodHandle(_) with Method1[T,U])
   def dynMethod[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
     dynMethod[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
   
   def method1[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
-    new MethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
+    new AbstractMethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
   
   def dynMethod[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
-    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new MethodHandle(_) with Method2[T1,T2,U])
+    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new AbstractMethodHandle(_) with Method2[T1,T2,U])
   def dynMethod[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
     dynMethod[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
   
   def method2[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] = 
-    new MethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
+    new AbstractMethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
   
   object Instructions {
     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
@@ -328,23 +254,7 @@ object Bytecode{
               )
           }
   }
-
-  trait Return[T]{
-    def jmp:F[Nil**T] => Nothing
-  }
   
-  trait ByteletCompiler{
-	  def compile[T1<:AnyRef,R<:AnyRef](cl:Class[T1])(
-                       code: Local[T1] => F[Nil] => F[Nil**R]   
-	  )(implicit mf:scala.reflect.Manifest[R]): T1 => R = 
-		compile(cl,mf.erasure.asInstanceOf[Class[R]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
-	  def compile[T1<:AnyRef,R<:AnyRef]
-	    (par1Cl:Class[T1],retCl:Class[R])
-	    (code: Local[T1] => Return[R] => F[Nil] => Nothing): T1 => R	  
-     def compile[T1<:AnyRef,T2<:AnyRef,R<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[R])(
-	    code: (Local[T1],Local[T2]) => Return[R] => F[Nil] => Nothing
-	  ): (T1,T2) => R
-  }
   trait RichFunc[ST1<:List,ST2<:List] 
       extends (F[ST1] => F[ST2]){ first =>
     def ~[ST3<:List](second:F[ST2]=>F[ST3])
