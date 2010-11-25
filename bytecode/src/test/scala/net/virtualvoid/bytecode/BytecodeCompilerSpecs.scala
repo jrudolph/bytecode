@@ -7,6 +7,7 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode._
     import Bytecode.Implicits._
     import Bytecode.Instructions._
+    import Methods._
     
     val boxInt:Method1[Int,java.lang.Integer] = method1(Integer.valueOf(_:Int))
     val unboxInt:Method1[java.lang.Integer,Int] = method1((_:java.lang.Integer).intValue)
@@ -303,7 +304,7 @@ object BytecodeCompilerSpecs extends Specification{
     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.backend.Interpreter)
   }
   "Dynamic method type checking" should {
-    import Bytecode.dynMethod
+    import Methods.dynMethod
     "work with static methods" in {
       dynMethod[Int,java.lang.Integer](classOf[Integer].getMethod("valueOf",classOf[Int])).method.getName must be_==("valueOf")
     }

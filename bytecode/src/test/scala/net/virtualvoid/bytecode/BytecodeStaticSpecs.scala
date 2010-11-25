@@ -85,6 +85,7 @@ object BytecodeStaticSpecs extends Specification {
       |import Bytecode._
       |import Bytecode.Instructions._
       |import Bytecode.Implicits._
+      |import Methods._
       |""".stripMargin + prefix + code + suffix + "}"
   
   import org.specs.matcher.Matcher
