@@ -3,6 +3,9 @@ package net.virtualvoid.bytecode
 object CodeTools{
   import _root_.scala.reflect._
   import _root_.java.lang.reflect.{Method=>jMethod, Constructor}
+
+  def arrayClass(cl: java.lang.Class[_]): String =
+    java.lang.reflect.Array.newInstance(cl, 0).getClass.getName
   
   def cleanClass(name:String):java.lang.Class[_] = name match{
     case "int" => Integer.TYPE
@@ -16,6 +19,7 @@ object CodeTools{
   
   def extractClass(tpe:Type):String = tpe match {
     case PrefixedType(_,Class(name)) => name
+    case AppliedType(PrefixedType(_, Class("scala.Array")), List(PrefixedType(_, Class(name)))) => arrayClass(cleanClass(name))
     case AppliedType(tp2,_) => extractClass(tp2)
     case PrefixedType(_,TypeField(_,tp2:PrefixedType)) => extractClass(tp2)
     case NamedType(name) => name
