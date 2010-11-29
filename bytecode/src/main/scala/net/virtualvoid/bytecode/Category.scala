@@ -6,6 +6,8 @@ package net.virtualvoid.bytecode
  * See §3.11.1 of the JVM specs
  * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
  */
+// FIXME: Produces a problem in the static tests with the interpreter
+//@scala.annotation.implicitNotFound("${T} is no category 1 type.")
 trait Category1[-T]
 
 trait Category1TypeClassInstances {
