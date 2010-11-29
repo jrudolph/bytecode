@@ -1,0 +1,298 @@
+Bottom: 1b5134253acff051dcb31bd23e7d401d38e6ec2d
+Top:    06d18ba1e34e991e5180ca7ad0934dfbe44d247c
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-25 17:50:27 +0100
+
+more refactoring
+
+ * put typeclasses for Is/NoUnit and Category1 into their own files
+ * put Method-specific stuff into MethodInvocation.scala
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index 4c8b840..5617e12 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -8,97 +8,6 @@ object Bytecode{
+   case class JVMInt(v:Int){
+     override def equals(o:Any) = v.equals(o)
+   }
+- 
+-  /*
+-   * Define type and implicits for so-called Category 1 data types:
+-   * types which are of 32-bit size.
+-   * See §3.11.1 of the JVM specs
+-   * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
+-   */
+-  trait Category1[-T]
+-  implicit val cat1Boolean  : Category1[Boolean] = null
+-  implicit val cat1Byte     : Category1[Byte] = null
+-  implicit val cat1Char     : Category1[Char] = null
+-  implicit val cat1Short    : Category1[Short] = null
+-  implicit val cat1Int      : Category1[Int] = null
+-  implicit val cat1Float    : Category1[Float] = null
+-  implicit def cat1AnyRef   : Category1[AnyRef] = null
+-  
+-  trait IsUnit[-T]
+-  trait NoUnit[-T]
+-  implicit val unitIsUnit  : IsUnit[Unit] = null
+-  implicit val anyrefNoUnit: NoUnit[AnyRef] = null
+-  implicit val boolNoUnit  : NoUnit[Boolean] = null
+-  implicit val byteNoUnit  : NoUnit[Byte] = null
+-  implicit val charNoUnit  : NoUnit[Char] = null
+-  implicit val shortNoUnit : NoUnit[Short] = null
+-  implicit val intNoUnit   : NoUnit[Int] = null
+-  implicit val floatNoUnit : NoUnit[Float] = null
+-  implicit val doubleNoUnit: NoUnit[Double] = null
+-  implicit val longNoUnit  : NoUnit[Long] = null
+-  
+-  import _root_.java.lang.reflect.Method
+-  import _root_.scala.reflect.Manifest
+-
+-  abstract class AbstractMethodHandle(val method:Method) extends MethodHandle {
+-    def numParams:Int
+-    
+-    protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
+-    protected def unitCall[X<:List,Y<:List]:F[X]=>F[Y] = { f => 
+-      val nextF = f.invokemethod(this)
+-      nextF.pop_unit_int(nextF.stack.rest)
+-    }
+-  }
+-  trait Method1[-T,+U] extends MethodHandle {
+-    override val numParams = 1
+-    def invoke[R <: List, T1X <: T,UX >: U: NoUnit]():F[R**T1X] => F[R**UX] = normalCall
+-    def invokeUnit[R <: List, T1X <: T]()(implicit x: IsUnit[U]):F[R**T1X] => F[R] = unitCall
+-  }
+-  trait Method2[-T1,-T2,+U] extends MethodHandle {
+-    override val numParams = 2
+-    def invoke[R <: List, T1X <: T1, T2X <: T2,UX >: U: NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
+-    def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x: IsUnit[U]):F[R**T1X**T2X] => F[R] = unitCall
+-  }
+-  
+-  implicit def normalCall1[R<:List, T, U: NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
+-  implicit def unitCall1[R<:List,T](m:Method1[T,Unit]):F[R**T]=>F[R] = m.invokeUnit()
+-  
+-  implicit def normalCall2[R <: List, T1, T2, U: NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
+-  implicit def unitCall2[R<:List,T1,T2](m:Method2[T1,T2,Unit]):F[R**T1**T2]=>F[R] = m.invokeUnit()
+-  
+-  private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
+-    val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
+-    
+-    def check(assertMsg:String)(condition:Boolean) = {
+-      if (!condition)
+-        throw new RuntimeException(assertMsg+"("+m.toString+")")
+-    }
+-    
+-    check("Method must have exactly "+paramClasses.length+" parameter")(params.length == paramClasses.length)
+-    check("Method's return type must be a subtype of "+retClazz)(retClazz.isAssignableFrom(m.getReturnType))
+-    for (i <- 0 until paramClasses.length)
+-    	check("Method's "+i+". parameter must be a supertype of "+paramClasses(i))(
+-              params(i).isAssignableFrom(paramClasses(i)))
+-    
+-    f(m)
+-  }
+-  /** checks type information and returns a statically and dynamically safe handle
+-  */
+-  def dynMethod[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
+-    checkMethod(m,r.erasure,p1.erasure)(new AbstractMethodHandle(_) with Method1[T,U])
+-  def dynMethod[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
+-    dynMethod[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
+-  
+-  def method1[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
+-    new AbstractMethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
+-  
+-  def dynMethod[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
+-    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new AbstractMethodHandle(_) with Method2[T1,T2,U])
+-  def dynMethod[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
+-    dynMethod[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
+-  
+-  def method2[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] = 
+-    new AbstractMethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
+   
+   object Instructions {
+     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
+@@ -191,6 +100,7 @@ object Bytecode{
+       def apply(f:F[ST1]):F[ST2] = func(f)
+     }
+   }
++  
+   object RichOperations{
+     import Instructions._
+     import Implicits._
+@@ -233,6 +143,7 @@ object Bytecode{
+     def foldIterator[R <: List, T <:AnyRef: Manifest, U: Category1]
+                     (func: Local[java.util.Iterator[T]] => F[R**U**T] => F[R**U])
+           : F[R**java.util.Iterator[T]**U] => F[R**U] = {
++            import Methods.method1
+             val mf = implicitly[Manifest[T]]
+             _ ~
+               swap() ~
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala
+new file mode 100644
+index 0000000..4d97a45
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala
+@@ -0,0 +1,19 @@
++package net.virtualvoid.bytecode
++
++/*
++ * Define type and implicits for so-called Category 1 data types:
++ * types which are of 32-bit size.
++ * See §3.11.1 of the JVM specs
++ * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
++ */
++trait Category1[-T]
++
++trait Category1TypeClassInstances {
++  implicit val cat1Boolean  : Category1[Boolean] = null
++  implicit val cat1Byte     : Category1[Byte] = null
++  implicit val cat1Char     : Category1[Char] = null
++  implicit val cat1Short    : Category1[Short] = null
++  implicit val cat1Int      : Category1[Int] = null
++  implicit val cat1Float    : Category1[Float] = null
++  implicit def cat1AnyRef   : Category1[AnyRef] = null
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/MethodInvocation.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/MethodInvocation.scala
+new file mode 100644
+index 0000000..4fdcf44
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/MethodInvocation.scala
+@@ -0,0 +1,69 @@
++package net.virtualvoid.bytecode
++
++import _root_.java.lang.reflect.Method
++import _root_.scala.reflect.Manifest
++
++abstract class AbstractMethodHandle(val method:Method) extends MethodHandle {
++  def numParams:Int
++    
++  protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
++  protected def unitCall[X<:List,Y<:List]:F[X]=>F[Y] = { f => 
++    val nextF = f.invokemethod(this)
++    nextF.pop_unit_int(nextF.stack.rest)
++  }
++}
++trait Method1[-T,+U] extends MethodHandle {
++  override val numParams = 1
++  def invoke[R <: List, T1X <: T,UX >: U: NoUnit]():F[R**T1X] => F[R**UX] = normalCall
++  def invokeUnit[R <: List, T1X <: T]()(implicit x: IsUnit[U]):F[R**T1X] => F[R] = unitCall
++}
++trait Method2[-T1,-T2,+U] extends MethodHandle {
++  override val numParams = 2
++  def invoke[R <: List, T1X <: T1, T2X <: T2,UX >: U: NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
++  def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x: IsUnit[U]):F[R**T1X**T2X] => F[R] = unitCall
++}
++
++object Methods {
++  /** checks type information and returns a statically and dynamically safe handle
++  */
++  def dynMethod[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
++    checkMethod(m,r.erasure,p1.erasure)(new AbstractMethodHandle(_) with Method1[T,U])
++  def dynMethod[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
++    dynMethod[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
++  
++  def method1[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
++    new AbstractMethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
++  
++  def dynMethod[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
++    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new AbstractMethodHandle(_) with Method2[T1,T2,U])
++  def dynMethod[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
++    dynMethod[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
++  
++  def method2[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] = 
++    new AbstractMethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
++
++  private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
++    val params = if (CodeTools.static_?(m)) m.getParameterTypes() else (Array(m.getDeclaringClass) ++ m.getParameterTypes)
++      
++    def check(assertMsg:String)(condition:Boolean) = {
++      if (!condition)
++        throw new RuntimeException(assertMsg+"("+m.toString+")")
++    }
++  
++    check("Method must have exactly "+paramClasses.length+" parameter")(params.length == paramClasses.length)
++    check("Method's return type must be a subtype of "+retClazz)(retClazz.isAssignableFrom(m.getReturnType))
++    for (i <- 0 until paramClasses.length)
++      check("Method's "+i+". parameter must be a supertype of "+paramClasses(i))(
++        params(i).isAssignableFrom(paramClasses(i)))
++  
++    f(m)
++  }
++}
++
++trait MethodImplicits {
++  implicit def normalCall1[R<:List, T, U: NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
++  implicit def unitCall1[R<:List,T](m:Method1[T,Unit]):F[R**T]=>F[R] = m.invokeUnit()
++  
++  implicit def normalCall2[R <: List, T1, T2, U: NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
++  implicit def unitCall2[R<:List,T1,T2](m:Method2[T1,T2,Unit]):F[R**T1**T2]=>F[R] = m.invokeUnit()
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Unit.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Unit.scala
+new file mode 100644
+index 0000000..715f008
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Unit.scala
+@@ -0,0 +1,17 @@
++package net.virtualvoid.bytecode
++
++trait IsUnit[-T]
++trait NoUnit[-T]
++
++trait UnitTypeClassInstances {
++  implicit val unitIsUnit  : IsUnit[Unit] = null
++  implicit val anyrefNoUnit: NoUnit[AnyRef] = null
++  implicit val boolNoUnit  : NoUnit[Boolean] = null
++  implicit val byteNoUnit  : NoUnit[Byte] = null
++  implicit val charNoUnit  : NoUnit[Char] = null
++  implicit val shortNoUnit : NoUnit[Short] = null
++  implicit val intNoUnit   : NoUnit[Int] = null
++  implicit val floatNoUnit : NoUnit[Float] = null
++  implicit val doubleNoUnit: NoUnit[Double] = null
++  implicit val longNoUnit  : NoUnit[Long] = null
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala
+index e7ac6e0..5d8bac9 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala
+@@ -2,3 +2,6 @@ package net.virtualvoid
+ 
+ package object bytecode
+   extends bytecode.ListShortcuts
++  with bytecode.MethodImplicits
++  with bytecode.UnitTypeClassInstances
++  with bytecode.Category1TypeClassInstances
+diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
+index 3bf3604..27544c6 100644
+--- a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
++++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
+@@ -7,6 +7,7 @@ object BytecodeCompilerSpecs extends Specification{
+     import Bytecode._
+     import Bytecode.Implicits._
+     import Bytecode.Instructions._
++    import Methods._
+     
+     val boxInt:Method1[Int,java.lang.Integer] = method1(Integer.valueOf(_:Int))
+     val unboxInt:Method1[java.lang.Integer,Int] = method1((_:java.lang.Integer).intValue)
+@@ -303,7 +304,7 @@ object BytecodeCompilerSpecs extends Specification{
+     "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.backend.Interpreter)
+   }
+   "Dynamic method type checking" should {
+-    import Bytecode.dynMethod
++    import Methods.dynMethod
+     "work with static methods" in {
+       dynMethod[Int,java.lang.Integer](classOf[Integer].getMethod("valueOf",classOf[Int])).method.getName must be_==("valueOf")
+     }
+diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala
+index 91b4b3b..f195099 100644
+--- a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala
++++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala
+@@ -85,6 +85,7 @@ object BytecodeStaticSpecs extends Specification {
+       |import Bytecode._
+       |import Bytecode.Instructions._
+       |import Bytecode.Implicits._
++      |import Methods._
+       |""".stripMargin + prefix + code + suffix + "}"
+   
+   import org.specs.matcher.Matcher

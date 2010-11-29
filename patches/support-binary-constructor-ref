@@ -1,0 +1,59 @@
+Bottom: 860b79721290ed291f891ef5682996eed9b5ba6e
+Top:    9fea82288cdf11e1e375cd07077495e2135c0b6b
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-29 10:46:56 +0100
+
+support binary constructor reflection
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
+index 18e3713..10f1e03 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
+@@ -110,14 +110,25 @@ object CodeTools{
+   }
+ 
+   def constructorFromTree(tree: Tree) = tree match {
+-    case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(New(Ident(Class(clazz))),Method(method, _)),List(Ident(x1)))) if x == x1 => 
++    case Function(List(x1@LocalValue(_,_,tpe1)),Apply(Select(New(Ident(Class(clazz))),Method(method, _)),List(Ident(param1)))) if x1 == param1 => 
+       //val clazz = extractClass(typeOfQualifier(qual))
+       val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
+       val methodName = method.substring(method.lastIndexOf(".")+1)
+-      val argCl = cleanClass(extractClass(tpe))
++      val argCl = cleanClass(extractClass(tpe1))
+       val c = cl.getConstructor(argCl)
+       assert (!static_?(c))
+       c
++    case Function(List(x1@LocalValue(_,_,tpe1), x2@LocalValue(_,_,tpe2)), 
++                  Apply(Select(New(Ident(Class(clazz))),Method(method, _)), 
++                        List(Ident(param1), Ident(param2))))
++        if x1 == param1 && x2 == param2 => 
++      val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
++      val methodName = method.substring(method.lastIndexOf(".")+1)
++      val argCl1 = cleanClass(extractClass(tpe1))
++      val argCl2 = cleanClass(extractClass(tpe2))
++      val c = cl.getConstructor(argCl1, argCl2)
++      assert (!static_?(c))
++      c
+   }
+   
+   import java.lang.reflect.{Member,Modifier}
+diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/ReflectSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/ReflectSpecs.scala
+index 9e8f631..3fbca17 100644
+--- a/bytecode/src/test/scala/net/virtualvoid/bytecode/ReflectSpecs.scala
++++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/ReflectSpecs.scala
+@@ -39,6 +39,11 @@ object ReflectSpecs extends Specification {
+ 	    c.getParameterTypes.length must be_==(1)
+             c.newInstance("bla").asInstanceOf[java.lang.StringBuilder].toString must be_==("bla")
+ 	  }
++          "binary constructors" in {
++	    val c = constructorFromTree(lift(new java.lang.String(_: Array[Byte], _: java.nio.charset.Charset)).tree)
++	    c.getName must be_==("java.lang.String")
++	    c.getParameterTypes.length must be_==(2)
++            c.newInstance("bla".getBytes, java.nio.charset.Charset.defaultCharset) must be_==("bla")
++	  }          
+         }
+ }
+-//class ReflectSpecsTest extends runner.JUnit4(ReflectSpecs)

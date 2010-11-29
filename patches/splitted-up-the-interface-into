@@ -1,0 +1,309 @@
+Bottom: 669f600e71da35daa226e4614a0c169ad41fc529
+Top:    1b5134253acff051dcb31bd23e7d401d38e6ec2d
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-25 17:34:54 +0100
+
+splitted up the interface into more files:
+ * basic type declarations into Frame.scala
+ * ByteletCompiler into a backend file
+ * internal methods of F into BackendSupport
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+index 58e9239..4c8b840 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Bytecode.scala
+@@ -4,22 +4,6 @@ object Bytecode{
+   import java.lang.{ String  => jString,
+                      Boolean => jBoolean }
+ 
+-  trait List
+-  trait Nil extends List
+-  object N extends Nil
+-  
+-  case class Cons[+R<:List,+T](rest:R,top:T) extends List
+-  
+-  // define an infix operator shortcut for the cons type
+-  type ** [x<:List,y] = Cons[x,y]
+-
+-  // define the same for values
+-  trait Consable[T<:List]{
+-    def **[U](next:U): T**U
+-  }
+-  implicit def conser[T<:List](t:T) = new Consable[T]{
+-    def **[U](next:U): T**U = Cons(t,next)
+-  }
+   
+   case class JVMInt(v:Int){
+     override def equals(o:Any) = v.equals(o)
+@@ -53,68 +37,10 @@ object Bytecode{
+   implicit val doubleNoUnit: NoUnit[Double] = null
+   implicit val longNoUnit  : NoUnit[Long] = null
+   
+-  trait Target[ST<:List]{
+-    def jmp:F[ST] => Nothing
+-  }
+-  
+-  trait F[+ST<:List] {
+-    def depth = -1
+-    def frame = this
+-    
+-    def stack:ST
+-
+-    def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int]
+-    def ldc[ST2>:ST<:List](str:jString):F[ST2**jString]
+-
+-    def ~[X](f:F[ST]=>X):X = f(this)
+-    
+-    def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
+-    def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
+-    def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
+-    def pop_int[R<:List](rest:R):F[R]
+-    def dup_int[R<:List,T](rest:R,top:T):F[R**T**T]
+-    def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2]
+-    def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1]
+-
+-    def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
+-                                   
+-    def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
+-    def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
+-    
+-    def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
+-    def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+-    									,thenB:F[R]=>F[ST2]
+-    									,elseB:F[R]=>F[ST2]):F[ST2]
+-
+-    def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T]
+-    def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R]
+-    def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int]
+-    
+-    def tailRecursive_int[ST1>:ST<:List,ST2<:List]
+-        (func: (F[ST1] => F[ST2]) => (F[ST1]=>F[ST2]))
+-        	(fr:F[ST1]):F[ST2]
+-    
+-    def pop_unit_int[R<:List](rest:R):F[R]
+-
+-    def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T]
+-    
+-    def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
+-    
+-    def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X
+-    
+-    def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+-    											  ,thenB:F[R]=>Nothing):F[R]
+-  }
+-  
+-  trait Local[T]{
+-    def load[ST<:List]:F[ST] => F[ST**T]
+-    def store[ST<:List]:F[ST**T] => F[ST]
+-  }
+-
+   import _root_.java.lang.reflect.Method
+   import _root_.scala.reflect.Manifest
+ 
+-  abstract class MethodHandle(val method:Method){
++  abstract class AbstractMethodHandle(val method:Method) extends MethodHandle {
+     def numParams:Int
+     
+     protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
+@@ -159,20 +85,20 @@ object Bytecode{
+   /** checks type information and returns a statically and dynamically safe handle
+   */
+   def dynMethod[T,U](m:Method)(implicit p1:Manifest[T],r:Manifest[U]):Method1[T,U] =
+-    checkMethod(m,r.erasure,p1.erasure)(new MethodHandle(_) with Method1[T,U])
++    checkMethod(m,r.erasure,p1.erasure)(new AbstractMethodHandle(_) with Method1[T,U])
+   def dynMethod[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
+     dynMethod[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
+   
+   def method1[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
+-    new MethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
++    new AbstractMethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
+   
+   def dynMethod[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
+-    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new MethodHandle(_) with Method2[T1,T2,U])
++    checkMethod(m,r.erasure,p1.erasure,p2.erasure)(new AbstractMethodHandle(_) with Method2[T1,T2,U])
+   def dynMethod[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
+     dynMethod[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
+   
+   def method2[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] = 
+-    new MethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
++    new AbstractMethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
+   
+   object Instructions {
+     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
+@@ -328,23 +254,7 @@ object Bytecode{
+               )
+           }
+   }
+-
+-  trait Return[T]{
+-    def jmp:F[Nil**T] => Nothing
+-  }
+   
+-  trait ByteletCompiler{
+-	  def compile[T1<:AnyRef,R<:AnyRef](cl:Class[T1])(
+-                       code: Local[T1] => F[Nil] => F[Nil**R]   
+-	  )(implicit mf:scala.reflect.Manifest[R]): T1 => R = 
+-		compile(cl,mf.erasure.asInstanceOf[Class[R]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
+-	  def compile[T1<:AnyRef,R<:AnyRef]
+-	    (par1Cl:Class[T1],retCl:Class[R])
+-	    (code: Local[T1] => Return[R] => F[Nil] => Nothing): T1 => R	  
+-     def compile[T1<:AnyRef,T2<:AnyRef,R<:AnyRef](cl1:Class[T1],cl2:Class[T2],retCl:Class[R])(
+-	    code: (Local[T1],Local[T2]) => Return[R] => F[Nil] => Nothing
+-	  ): (T1,T2) => R
+-  }
+   trait RichFunc[ST1<:List,ST2<:List] 
+       extends (F[ST1] => F[ST2]){ first =>
+     def ~[ST3<:List](second:F[ST2]=>F[ST3])
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Frame.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Frame.scala
+new file mode 100644
+index 0000000..43553dc
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Frame.scala
+@@ -0,0 +1,23 @@
++package net.virtualvoid.bytecode
++
++trait F[+ST<:List] extends backend.BackendSupport[ST] {
++  def ~[X](f:F[ST]=>X):X = f(this)
++}
++
++trait Target[ST<:List]{
++  def jmp:F[ST] => Nothing
++}
++  
++trait Local[T]{
++  def load[ST<:List]:F[ST] => F[ST**T]
++  def store[ST<:List]:F[ST**T] => F[ST]
++}
++
++trait MethodHandle {
++  import java.lang.reflect.Method
++  
++  def method: Method
++  def numParams: Int
++  protected def normalCall[X <: List, R <: List, U]: F[X] => F[R**U]
++  protected def   unitCall[X <: List, Y <: List   ]: F[X] => F[Y] 
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala
+new file mode 100644
+index 0000000..bccf672
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala
+@@ -0,0 +1,54 @@
++package net.virtualvoid.bytecode
++package backend
++
++import java.lang.{ String => jString }
++
++/** This trait contains the methods which form the contract between Mnemonic's
++ *  instructions and the backend implementations. Each backend has to implement
++ *  its own frame type which gets called by the instruction implementation.
++ */
++trait BackendSupport[+ST <: List] {
++    def depth = -1
++    def frame = this
++    
++    def stack:ST
++
++    def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int]
++    def ldc[ST2>:ST<:List](str:jString):F[ST2**jString]
++    
++    def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
++    def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
++    def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int]
++    def pop_int[R<:List](rest:R):F[R]
++    def dup_int[R<:List,T](rest:R,top:T):F[R**T**T]
++    def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2]
++    def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1]
++
++    def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
++                                   
++    def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
++    def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
++    
++    def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U]
++    def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
++    									,thenB:F[R]=>F[ST2]
++    									,elseB:F[R]=>F[ST2]):F[ST2]
++
++    def aload_int[R<:List,T](rest:R,array:AnyRef/*Array[T]*/,i:Int):F[R**T]
++    def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R]
++    def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int]
++    
++    def tailRecursive_int[ST1>:ST<:List,ST2<:List]
++        (func: (F[ST1] => F[ST2]) => (F[ST1]=>F[ST2]))
++        	(fr:F[ST1]):F[ST2]
++    
++    def pop_unit_int[R<:List](rest:R):F[R]
++
++    def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T]
++    
++    def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
++    
++    def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X
++    
++    def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T,thenB:F[R]=>Nothing):F[R]
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ByteletCompiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ByteletCompiler.scala
+new file mode 100644
+index 0000000..21737c6
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ByteletCompiler.scala
+@@ -0,0 +1,29 @@
++package net.virtualvoid.bytecode
++package backend
++
++/** The main entry point into bytecode generation
++ *
++ *  Every backend has to implement these methods.
++ */
++trait ByteletCompiler {
++
++  def compile[T1 <: AnyRef, R <: AnyRef](par1Cl: Class[T1], retCl: Class[R])
++                                        (code: Local[T1] => Return[R] => F[Nil] => Nothing)
++      : T1 => R	  
++  def compile[T1 <: AnyRef, T2 <: AnyRef, R <: AnyRef](cl1:Class[T1], cl2:Class[T2], retCl:Class[R])
++                                                      (code: (Local[T1],Local[T2]) => Return[R] => F[Nil] => Nothing)
++      : (T1, T2) => R
++
++
++  /** A shortcut which infers the runtime return Class from the parameters */
++  def compile[T1 <: AnyRef, R <: AnyRef](cl: Class[T1])
++                                        (code: Local[T1] => F[Nil] => F[Nil**R])
++                                        (implicit mf: scala.reflect.Manifest[R])
++      : T1 => R = 
++    compile(cl, mf.erasure.asInstanceOf[Class[R]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
++}
++
++/** A token which is used to return a value from the function */
++trait Return[T] {
++  def jmp: F[Nil**T] => Nothing
++}
+diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
+index 38d5c09..3bf3604 100644
+--- a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
++++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
+@@ -3,7 +3,7 @@ package net.virtualvoid.bytecode
+ import org.specs._
+ 
+ object BytecodeCompilerSpecs extends Specification{
+-  def compiledTests(compiler:net.virtualvoid.bytecode.Bytecode.ByteletCompiler){
++  def compiledTests(compiler: net.virtualvoid.bytecode.backend.ByteletCompiler) {
+     import Bytecode._
+     import Bytecode.Implicits._
+     import Bytecode.Instructions._
+diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala
+index cdefbbd..91b4b3b 100644
+--- a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala
++++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeStaticSpecs.scala
+@@ -81,7 +81,7 @@ object BytecodeStaticSpecs extends Specification {
+   
+   def makeCode(prefix: String, code: String, suffix: String): String =
+     """object Test {
+-      |import _root_.net.virtualvoid.bytecode.Bytecode
++      |import net.virtualvoid.bytecode._
+       |import Bytecode._
+       |import Bytecode.Instructions._
+       |import Bytecode.Implicits._

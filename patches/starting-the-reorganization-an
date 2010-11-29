@@ -1,0 +1,123 @@
+Bottom: 2072e598d99ffe93eee5ba5ef6eeadc02386dcc6
+Top:    8742c6bba0aa861108fbe83bbb093c0513d4d911
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-24 16:55:28 +0100
+
+starting the reorganization and split up into several files
+
+ * moved backends into their own package
+ * List classes now in their own file
+ * introduced package object to hold definitions
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala
+new file mode 100644
+index 0000000..7d6ab2a
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala
+@@ -0,0 +1,21 @@
++package net.virtualvoid.bytecode
++
++trait List
++trait Nil extends List
++object N extends Nil
++
++case class Cons[+R<:List,+T](rest:R,top:T) extends List
++
++// define the same for values
++trait Consable[T<:List]{
++  def **[U](next:U): T**U
++}
++
++trait ListShortcuts {
++  // define an infix operator shortcut for the cons type
++  type ** [x<:List,y] = Cons[x,y]
++  
++  implicit def conser[T<:List](t:T) = new Consable[T]{
++    def **[U](next:U): T**U = Cons(t,next)
++  }
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala
+similarity index 99%
+rename from bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
+rename to bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala
+index a135d97..143fc9b 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Compiler.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala
+@@ -1,9 +1,10 @@
+ package net.virtualvoid.bytecode
++package backend
+ 
+ import Bytecode._
+ import java.lang.{String=>jString}
+ 
+-object ASMCompiler extends ByteletCompiler{
++object ASM extends ByteletCompiler{
+     import _root_.org.objectweb.asm._
+     import Opcodes._
+ 
+@@ -325,7 +326,7 @@ object ASMCompiler extends ByteletCompiler{
+     }
+     def classStub[T](params:Class[_]*)(body: MethodVisitor => Unit) :T = {
+       val numParams = params.length
+-      val superClass = "net/virtualvoid/bytecode/AbstractFunction"+numParams
++      val superClass = "scala/runtime/AbstractFunction"+numParams
+       val signature = "("+"Ljava/lang/Object;"*numParams+")Ljava/lang/Object;"
+       
+       i+=1
+@@ -379,4 +380,4 @@ object ASMCompiler extends ByteletCompiler{
+   }
+ 
+ abstract class AbstractFunction1[T,U] extends Function1[T,U]
+-abstract class AbstractFunction2[T1,T2,U] extends Function2[T1,T2,U]
+\ No newline at end of file
++abstract class AbstractFunction2[T1,T2,U] extends Function2[T1,T2,U]
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala
+similarity index 99%
+rename from bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
+rename to bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala
+index 7ea5201..6e1fd8e 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Interpreter.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala
+@@ -1,4 +1,5 @@
+ package net.virtualvoid.bytecode
++package backend
+ 
+ import Bytecode._
+ 
+@@ -150,4 +151,4 @@ object Interpreter extends ByteletCompiler {
+ 	    code: (Local[T1],Local[T2]) => Return[U] => F[Nil] => Nothing
+ 	  )(t1:T1,t2:T2):U = 
+         code(local(t1),local(t2))(ret(f => return f.stack.top))(IF(N))
+-}
+\ No newline at end of file
++}
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala
+new file mode 100644
+index 0000000..e7ac6e0
+--- /dev/null
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/package.scala
+@@ -0,0 +1,4 @@
++package net.virtualvoid
++
++package object bytecode
++  extends bytecode.ListShortcuts
+diff --git a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
+index 71c2fcb..38d5c09 100644
+--- a/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
++++ b/bytecode/src/test/scala/net/virtualvoid/bytecode/BytecodeCompilerSpecs.scala
+@@ -297,10 +297,10 @@ object BytecodeCompilerSpecs extends Specification{
+   }
+   
+   "Compiler" should {
+-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.ASMCompiler)
++    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.backend.ASM)
+   }
+   "Interpreter" should {
+-    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.Interpreter)
++    "succeed in generic Tests" in compiledTests(net.virtualvoid.bytecode.backend.Interpreter)
+   }
+   "Dynamic method type checking" should {
+     import Bytecode.dynMethod

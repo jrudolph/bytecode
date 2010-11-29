@@ -1,0 +1,22 @@
+Bottom: 763c446149ce80d3eb78f095fa3e3a04971c64af
+Top:    860b79721290ed291f891ef5682996eed9b5ba6e
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-29 10:44:33 +0100
+
+more primitive types cleanup
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
+index 9ca3c1b..18e3713 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Tools.scala
+@@ -14,6 +14,8 @@ object CodeTools{
+     case "scala.Boolean" => java.lang.Boolean.TYPE
+     case "double" => java.lang.Double.TYPE
+     case "scala.Double" => java.lang.Double.TYPE
++    case "byte" => java.lang.Byte.TYPE
++    case "scala.Byte" => java.lang.Byte.TYPE
+     case _ => java.lang.Class.forName(name)
+   }

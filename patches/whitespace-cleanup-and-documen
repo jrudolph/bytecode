@@ -1,0 +1,50 @@
+Bottom: 8742c6bba0aa861108fbe83bbb093c0513d4d911
+Top:    669f600e71da35daa226e4614a0c169ad41fc529
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-24 17:28:58 +0100
+
+whitespace cleanup and documentation
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala
+index 7d6ab2a..339a598 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/List.scala
+@@ -1,21 +1,25 @@
+ package net.virtualvoid.bytecode
+ 
++// our heterogenous list type
+ trait List
++// a list is either an empty list Nil...
+ trait Nil extends List
+-object N extends Nil
+-
+-case class Cons[+R<:List,+T](rest:R,top:T) extends List
++// or constructed from a rest-list with type R and a top element of type T
++case class Cons[+R <: List, +T](rest: R,top: T) extends List
+ 
+ // define the same for values
+-trait Consable[T<:List]{
+-  def **[U](next:U): T**U
+-}
++object N extends Nil
+ 
+ trait ListShortcuts {
+   // define an infix operator shortcut for the cons type
+-  type ** [x<:List,y] = Cons[x,y]
+-  
+-  implicit def conser[T<:List](t:T) = new Consable[T]{
+-    def **[U](next:U): T**U = Cons(t,next)
++  type ** [x <: List, y] = Cons[x, y]
++
++  trait Consable[T <: List] {
++    def **[U](next: U): T**U
++  }
++
++  // make every type consable into a heterogenous list 
++  implicit def conser[T <: List](t: T) = new Consable[T] {
++    def **[U](next: U): T**U = Cons(t, next)
+   }
+ }

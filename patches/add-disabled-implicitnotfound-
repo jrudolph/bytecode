@@ -1,0 +1,32 @@
+Bottom: 615e6ad29dc796afa77c24e575a9e66a18876b50
+Top:    7eca2cbade0d437eb3c272de0b67853dee2a736b
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-11-29 14:46:00 +0100
+
+add (disabled) implicitNotFound annotation for better error messages
+
+This won't work in many cases, e.g. swap() because Scala's type inferer
+starts to infer some arbitrary type and then tries to parse this into F.~.
+Or, another case where it forgets its expected type from F.~, it emits a
+ambiguous implicit error when it tries to find an implicit for the arbitrary
+(i.e. not expected) type.
+
+Currently disabled, because first test of BytecodeStaticTests fails with it
+enabled (probably due to some initialization order problems)
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala
+index 4d97a45..763fa69 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Category.scala
+@@ -6,6 +6,8 @@ package net.virtualvoid.bytecode
+  * See §3.11.1 of the JVM specs
+  * http://java.sun.com/docs/books/jvms/second_edition/html/Overview.doc.html#37906
+  */
++// FIXME: Produces a problem in the static tests with the interpreter
++//@scala.annotation.implicitNotFound("${T} is no category 1 type.")
+ trait Category1[-T]
+ 
+ trait Category1TypeClassInstances {
