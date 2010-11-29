@@ -110,12 +110,23 @@ object CodeTools{
   }
 
   def constructorFromTree(tree: Tree) = tree match {
-    case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(New(Ident(Class(clazz))),Method(method, _)),List(Ident(x1)))) if x == x1 => 
+    case Function(List(x1@LocalValue(_,_,tpe1)),Apply(Select(New(Ident(Class(clazz))),Method(method, _)),List(Ident(param1)))) if x1 == param1 => 
       //val clazz = extractClass(typeOfQualifier(qual))
       val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
       val methodName = method.substring(method.lastIndexOf(".")+1)
-      val argCl = cleanClass(extractClass(tpe))
+      val argCl = cleanClass(extractClass(tpe1))
       val c = cl.getConstructor(argCl)
+      assert (!static_?(c))
+      c
+    case Function(List(x1@LocalValue(_,_,tpe1), x2@LocalValue(_,_,tpe2)), 
+                  Apply(Select(New(Ident(Class(clazz))),Method(method, _)), 
+                        List(Ident(param1), Ident(param2))))
+        if x1 == param1 && x2 == param2 => 
+      val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
+      val methodName = method.substring(method.lastIndexOf(".")+1)
+      val argCl1 = cleanClass(extractClass(tpe1))
+      val argCl2 = cleanClass(extractClass(tpe2))
+      val c = cl.getConstructor(argCl1, argCl2)
       assert (!static_?(c))
       c
   }
