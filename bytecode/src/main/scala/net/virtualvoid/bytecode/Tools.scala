@@ -2,7 +2,7 @@ package net.virtualvoid.bytecode
 
 object CodeTools{
   import _root_.scala.reflect._
-  import _root_.java.lang.reflect.{Method=>jMethod}
+  import _root_.java.lang.reflect.{Method=>jMethod, Constructor}
   
   def cleanClass(name:String):java.lang.Class[_] = name match{
     case "int" => Integer.TYPE
@@ -56,9 +56,9 @@ object CodeTools{
     val index = method.lastIndexOf(".")
     (method.substring(0,index),method.substring(index+1))
   }
-  
+  def classNotFound(clazz:String) = new java.lang.Error("clazz missing: " +clazz)//+" in " + tree.toString) 
   def methodFromTree(tree:Tree):jMethod = try {
-        def classNotFound(clazz:String) = new java.lang.Error("clazz missing: " +clazz+" in " + tree.toString) 
+
 	    tree match {/*
 	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
 	      // like [T,It<:Iterable[T]] (it:It) => it.iterator
@@ -101,6 +101,17 @@ object CodeTools{
   }
   catch{
     case e:Exception => throw new Error("Error while calling method: "+tree,e);
+  }
+
+  def constructorFromTree(tree: Tree) = tree match {
+    case Function(List(x@LocalValue(_,_,tpe)),Apply(Select(New(Ident(Class(clazz))),Method(method, _)),List(Ident(x1)))) if x == x1 => 
+      //val clazz = extractClass(typeOfQualifier(qual))
+      val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
+      val methodName = method.substring(method.lastIndexOf(".")+1)
+      val argCl = cleanClass(extractClass(tpe))
+      val c = cl.getConstructor(argCl)
+      assert (!static_?(c))
+      c
   }
   
   import java.lang.reflect.{Member,Modifier}

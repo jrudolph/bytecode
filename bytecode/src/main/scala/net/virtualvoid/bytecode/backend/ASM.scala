@@ -158,6 +158,19 @@ object ASM extends ByteletCompiler{
                           ,Type.getMethodDescriptor(m))
         withStack(stackClass.popN(handle.numParams) ** m.getReturnType)
       }
+      def invokeconstructor[R<:List,U](cons: Constructor)
+                                   :F[R**U] = {
+        val cl = cons.constructor.getDeclaringClass
+        mv.visitMethodInsn(INVOKESPECIAL
+                          ,Type.getInternalName(cl)
+                          ,"<init>"
+                          ,Type.getConstructorDescriptor(cons.constructor))
+        withStack(stackClass.popN(cons.numParams) ** cl)
+      }
+      def new_int[R <: List, U](cl: Class[U]): F[R**U] = {
+        mv.visitTypeInsn(NEW,Type.getInternalName(cl))
+        withStack(stackClass ** cl)
+      }
                                    
       def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
         val field = fieldFromTree(code.tree)

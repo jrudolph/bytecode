@@ -32,5 +32,13 @@ object ReflectSpecs extends Specification {
 	    m.getParameterTypes.length must be_==(1)
 	  }
 	}
+        "Constructors should be correctly inferred from scala.reflect.Code tree" in {
+          "unary constructors" in {
+	    val c = constructorFromTree(lift(new java.lang.StringBuilder(_: String)).tree)
+	    c.getName must be_==("java.lang.StringBuilder")
+	    c.getParameterTypes.length must be_==(1)
+            c.newInstance("bla").asInstanceOf[java.lang.StringBuilder].toString must be_==("bla")
+	  }
+        }
 }
 //class ReflectSpecsTest extends runner.JUnit4(ReflectSpecs)

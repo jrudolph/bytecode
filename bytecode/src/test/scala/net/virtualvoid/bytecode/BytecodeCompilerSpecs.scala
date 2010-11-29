@@ -109,6 +109,12 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.String])(str => _~str.load~dup~newInstance(classOf[java.lang.StringBuilder])~swap()~append~swap()~append~toString)
       .apply("test") must be_==("testtest") 
     }
+    "create new StringBuilder with parameter" in {
+      val ctor = ctor1(new java.lang.StringBuilder(_: String))
+
+      compiler.compile(classOf[java.lang.String])(str => _~str.load~ctor()~toString)
+      .apply("test") must be_==("test") 
+    }
     "store(_) string after void method" in {
       compiler.compile(classOf[java.lang.String])(str => 
         _ ~ 
