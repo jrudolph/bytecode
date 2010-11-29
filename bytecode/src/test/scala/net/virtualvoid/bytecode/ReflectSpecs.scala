@@ -39,6 +39,11 @@ object ReflectSpecs extends Specification {
 	    c.getParameterTypes.length must be_==(1)
             c.newInstance("bla").asInstanceOf[java.lang.StringBuilder].toString must be_==("bla")
 	  }
+          "binary constructors" in {
+	    val c = constructorFromTree(lift(new java.lang.String(_: Array[Byte], _: java.nio.charset.Charset)).tree)
+	    c.getName must be_==("java.lang.String")
+	    c.getParameterTypes.length must be_==(2)
+            c.newInstance("bla".getBytes, java.nio.charset.Charset.defaultCharset) must be_==("bla")
+	  }          
         }
 }
-//class ReflectSpecsTest extends runner.JUnit4(ReflectSpecs)
