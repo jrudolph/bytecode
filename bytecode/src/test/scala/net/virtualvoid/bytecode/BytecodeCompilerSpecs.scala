@@ -115,6 +115,21 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.String])(str => _~str.load~ctor()~toString)
       .apply("test") must be_==("test") 
     }
+    "call binary constructor" in {
+      import java.nio.charset.Charset
+      val testCharset = "UTF-8"
+      val stringCtor = ctor2(new java.lang.String(_: Array[Byte], _: Charset))
+      val charsetForName = method1(Charset.forName(_: String))
+
+      compiler.compile(classOf[Array[Byte]])(bytes => 
+        _ ~ 
+        bytes.load ~
+        ldc(testCharset) ~
+        charsetForName ~
+        stringCtor() ~
+        toString)
+      .apply("test".getBytes(testCharset)) must be_==("test") 
+    }
     "store(_) string after void method" in {
       compiler.compile(classOf[java.lang.String])(str => 
         _ ~ 
