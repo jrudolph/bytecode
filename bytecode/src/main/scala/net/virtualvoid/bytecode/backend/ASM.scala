@@ -167,7 +167,7 @@ object ASM extends ByteletCompiler{
                           ,Type.getConstructorDescriptor(cons.constructor))
         withStack(stackClass.popN(cons.numParams) ** cl)
       }
-      def new_int[R <: List, U](cl: Class[U]): F[R**U] = {
+      def new_int[ST2 >: ST <: List, U <: AnyRef](cl: Class[U]): F[ST2**Uninitialized[U]] = {
         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
         withStack(stackClass ** cl)
       }

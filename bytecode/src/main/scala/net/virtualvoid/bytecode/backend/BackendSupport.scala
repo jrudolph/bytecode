@@ -26,7 +26,7 @@ trait BackendSupport[+ST <: List] {
 
     def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
     def invokeconstructor[R<:List,U](cons: Constructor): F[R**U]
-    def new_int[R <: List, U](cl: Class[U]): F[R**U]
+    def new_int[ST2 >: ST <: List, U <: AnyRef](cl: Class[U]): F[ST2**Uninitialized[U]]
                                    
     def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
@@ -46,8 +46,6 @@ trait BackendSupport[+ST <: List] {
     
     def pop_unit_int[R<:List](rest:R):F[R]
 
-    def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T]
-    
     def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2]
     
     def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X

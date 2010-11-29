@@ -59,9 +59,6 @@ object Bytecode{
     implicit def int2JVMInt(i:Int) = JVMInt(i)
     implicit def bool2JVMInt(b:Boolean) = JVMInt(if (b) 1 else 0)
            
-    def newInstance[ST<:List,T](cl:Class[T]) = 
-      (f:F[ST]) => f.newInstance(cl)
-
     import org.objectweb.asm.Opcodes._
     def ifne2[R<:List,ST2<:List,T]
               (thenB:F[R]=>F[ST2]
