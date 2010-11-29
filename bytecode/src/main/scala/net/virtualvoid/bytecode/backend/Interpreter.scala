@@ -6,6 +6,8 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object Interpreter extends ByteletCompiler {
+    case object UninitializedObject
+
     case class IF[+ST<:List](stack:ST) extends F[ST]{
       import CodeTools._
       
@@ -42,6 +44,19 @@ object Interpreter extends ByteletCompiler {
         val (args,rest) = popN(handle.numParams)
         IF(rest.asInstanceOf[R] ** invokeMethod(handle.method,args:_*).asInstanceOf[U])
       }
+      /* Try to mimic the normal JVM behaviour here:
+       * new_int pushes a dummy object on the stack, which then should
+       * be DUPlicated by the calling method (otherwise the newly generated object
+       * would be lost instantly).
+       * invokeconstructor then dismisses both instances of UninitializedObject before
+       * using reflection to call the constructor.
+       */
+      override def new_int[R <: List, U](cl: Class[U]): F[R**U] = IF(stack.asInstanceOf[R] ** UninitializedObject.asInstanceOf[U]) // noop
+      override def invokeconstructor[R<:List,U](cons: Constructor): F[R**U] =
+        popN(cons.numParams) match {
+           case (args, Cons(Cons(rest, UninitializedObject), UninitializedObject)) =>
+             IF(rest.asInstanceOf[R] ** cons.constructor.newInstance(args: _*).asInstanceOf[U])
+        }
 
       def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
         IF(stack ** fieldFromTree(code.tree).get(null).asInstanceOf[T])

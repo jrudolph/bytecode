@@ -25,6 +25,8 @@ trait BackendSupport[+ST <: List] {
     def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1]
 
     def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
+    def invokeconstructor[R<:List,U](cons: Constructor): F[R**U]
+    def new_int[R <: List, U](cl: Class[U]): F[R**U]
                                    
     def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
