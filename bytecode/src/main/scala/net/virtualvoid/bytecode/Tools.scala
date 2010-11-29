@@ -14,6 +14,8 @@ object CodeTools{
     case "scala.Boolean" => java.lang.Boolean.TYPE
     case "double" => java.lang.Double.TYPE
     case "scala.Double" => java.lang.Double.TYPE
+    case "byte" => java.lang.Byte.TYPE
+    case "scala.Byte" => java.lang.Byte.TYPE
     case _ => java.lang.Class.forName(name)
   }
   
