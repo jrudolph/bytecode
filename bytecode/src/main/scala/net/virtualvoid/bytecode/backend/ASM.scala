@@ -289,6 +289,28 @@ object ASM extends ByteletCompiler{
     	afterCondition
       }
       def lookupSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] = {
+        // TODO: emit warnings/errors if mapping doesn't include all the candidates
+        val map = mapping(withStack(stackClass.rest))
+
+        // the label to jump to after executing the branch, where the control
+        // flow is joined again
+        val afterLabel = new Label
+
+        def emitBranch(cond: Option[Int], branchLabel: Label): F[ST2] = {
+          mv.visitLabel(branchLabel)
+          val res = map(cond)
+          mv.visitJumpInsn(GOTO, afterLabel)
+          res
+        }
+
+        val candsAndLabels = candidates.map(i => (Some(i), new Label))
+        val dfltLabel = new Label
+
+        mv.visitLookupSwitchInsn(dfltLabel, candidates.toArray, candsAndLabels.map(_._2).toArray)
+        candsAndLabels.view.unzip.zipped foreach emitBranch
+        val res = emitBranch(None, dfltLabel)
+        mv.visitLabel(afterLabel)
+        res
       }
     }
 
