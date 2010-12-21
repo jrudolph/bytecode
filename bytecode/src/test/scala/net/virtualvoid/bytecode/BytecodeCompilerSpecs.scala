@@ -315,7 +315,22 @@ object BytecodeCompilerSpecs extends Specification{
           dup ~
           intValue
       ).apply("Test") must be_==("TestTest")
-    } 
+    }
+    "tableSwitch" in {
+      val f = compiler.compile(classOf[java.lang.Integer])(i =>
+        _ ~
+          i.load ~
+          unboxInt ~
+          tableSwitch(1, 5)(f => {
+            case Some(1) => f ~ ldc("eins")
+            case Some(5) => f ~ ldc("fuenf")
+            case None => f ~ ldc("unbekannte Zahl")
+          })
+      )
+      f(12) must be_==("unbekannte Zahl")
+      f(1) must be_==("eins")
+      f(5) must be_==("fuenf")
+    }
   }
   
   "Compiler" should {

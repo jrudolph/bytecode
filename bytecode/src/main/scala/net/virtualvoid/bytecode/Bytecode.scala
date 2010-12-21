@@ -9,7 +9,8 @@ object Bytecode{
     override def equals(o:Any) = v.equals(o)
   }
   
-  object Instructions extends InstantiationInstructions {
+  object Instructions extends InstantiationInstructions 
+                         with BranchingInstructions {
     def withLocal[T,ST<:List,ST2<:List](code:Local[T]=>F[ST]=>F[ST2]):F[ST**T]=>F[ST2] = 
       f => f.withLocal_int[T,ST,ST2](f.stack.top,f.stack.rest,code)
     
