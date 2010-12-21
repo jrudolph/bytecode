@@ -288,7 +288,9 @@ object ASM extends ByteletCompiler{
     	mv.visitLabel(after)
     	afterCondition
       }
+      def tableSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] = null
     }
+
     def opcode(cl:Class[_],opcode:Int) = 
         Type.getType(CodeTools.cleanClass(cl.getName)).getOpcode(opcode)
     def local[T](index:Int,clazz:Class[_]):Local[T] = 

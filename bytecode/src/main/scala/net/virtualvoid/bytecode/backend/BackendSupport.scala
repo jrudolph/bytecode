@@ -53,4 +53,6 @@ trait BackendSupport[+ST <: List] {
     def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X
     
     def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T,thenB:F[R]=>Nothing):F[R]
+
+    def tableSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2]
 }

@@ -14,7 +14,8 @@ trait BranchingInstructions {
    *     case None => f ~ ldc("unbekannte Zahl")
    *   })
    */
-  def tableSwitch[R <: List, ST2 <: List](candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[R**Int] => F[ST2] = null
+  def tableSwitch[R <: List, ST2 <: List](candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[R**Int] => F[ST2] =
+    f => f.tableSwitch(f.stack.top, f.stack.rest)(candidates: _*)(mapping)
 
   /*
    * Here is an alternative signature which uses Tuples instead of PartialFunctions:

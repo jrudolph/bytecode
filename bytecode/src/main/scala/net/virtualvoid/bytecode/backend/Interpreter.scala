@@ -136,6 +136,9 @@ object Interpreter extends ByteletCompiler {
           executeAndExtract(() => thenB(IF(rest))).asInstanceOf[F[R]]
         else
           IF(rest)
+
+      def tableSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] =
+        mapping(IF(rest))(candidates.find(cond == _))
     }
 
     def local[T](initial:T):Local[T] = new Local[T] {
