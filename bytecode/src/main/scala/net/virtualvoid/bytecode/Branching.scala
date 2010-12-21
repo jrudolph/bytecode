@@ -8,14 +8,14 @@ trait BranchingInstructions {
    * branch.
    *
    * Example:
-   *   tableSwitch(1, 5)(f => {
+   *   lookupSwitch(1, 5)(f => {
    *     case Some(1) => f ~ ldc("eins")
    *     case Some(5) => f ~ ldc("fuenf")
    *     case None => f ~ ldc("unbekannte Zahl")
    *   })
    */
-  def tableSwitch[R <: List, ST2 <: List](candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[R**Int] => F[ST2] =
-    f => f.tableSwitch(f.stack.top, f.stack.rest)(candidates: _*)(mapping)
+  def lookupSwitch[R <: List, ST2 <: List](candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[R**Int] => F[ST2] =
+    f => f.lookupSwitch(f.stack.top, f.stack.rest)(candidates: _*)(mapping)
 
   /*
    * Here is an alternative signature which uses Tuples instead of PartialFunctions:

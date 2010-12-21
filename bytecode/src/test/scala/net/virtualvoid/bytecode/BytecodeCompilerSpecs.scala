@@ -316,12 +316,12 @@ object BytecodeCompilerSpecs extends Specification{
           intValue
       ).apply("Test") must be_==("TestTest")
     }
-    "tableSwitch" in {
+    "lookupSwitch" in {
       val f = compiler.compile(classOf[java.lang.Integer])(i =>
         _ ~
           i.load ~
           unboxInt ~
-          tableSwitch(1, 5)(f => {
+          lookupSwitch(1, 5)(f => {
             case Some(1) => f ~ ldc("eins")
             case Some(5) => f ~ ldc("fuenf")
             case None => f ~ ldc("unbekannte Zahl")

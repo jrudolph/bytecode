@@ -288,7 +288,8 @@ object ASM extends ByteletCompiler{
     	mv.visitLabel(after)
     	afterCondition
       }
-      def tableSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] = null
+      def lookupSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] = {
+      }
     }
 
     def opcode(cl:Class[_],opcode:Int) = 
