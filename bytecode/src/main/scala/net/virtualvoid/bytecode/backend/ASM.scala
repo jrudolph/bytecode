@@ -318,7 +318,7 @@ object ASM extends ByteletCompiler{
         Type.getType(CodeTools.cleanClass(cl.getName)).getOpcode(opcode)
     def local[T](index:Int,clazz:Class[_]):Local[T] = 
         new Local[T]{
-          def load[ST<:List]:F[ST] => F[ST**T] = f => {
+          def load[ST<:List, T2 >: T]:F[ST] => F[ST**T2] = f => {
             val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
             asmF.mv.visitVarInsn(opcode(clazz,ILOAD),index)
             asmF.withStack(asmF.stackClass ** clazz)

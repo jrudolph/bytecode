@@ -7,9 +7,11 @@ trait F[+ST<:List] extends backend.BackendSupport[ST] {
 trait Target[ST<:List]{
   def jmp:F[ST] => Nothing
 }
-  
-trait Local[T]{
-  def load[ST<:List]:F[ST] => F[ST**T]
+
+trait ROLocal[+T] {
+  def load[ST<:List, T2 >: T]:F[ST] => F[ST**T2]
+}
+trait Local[T] extends ROLocal[T] {
   def store[ST<:List]:F[ST**T] => F[ST]
 }
 
