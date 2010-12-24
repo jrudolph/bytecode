@@ -69,4 +69,3 @@ object ParserSpecs extends Specification {
   */
 }
 
-class ParserSpecsTest extends runner.JUnit4(ParserSpecs)
