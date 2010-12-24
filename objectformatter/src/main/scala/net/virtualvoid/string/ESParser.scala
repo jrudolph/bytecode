@@ -53,6 +53,7 @@ object AST{
       // array or collection or similar
     case l : java.lang.Iterable[AnyRef] => realEval(l)
     case l : Seq[AnyRef] => realEval(l)
+    case l : Array[AnyRef] => realEval(l)
     }
   }
   

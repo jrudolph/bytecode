@@ -81,4 +81,3 @@ object FormatAccountsExample{
   }
 }
 
-class EvaluateSpecsTest extends runner.JUnit4(EvaluateSpecs)

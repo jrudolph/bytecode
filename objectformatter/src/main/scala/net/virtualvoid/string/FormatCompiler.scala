@@ -3,8 +3,8 @@ package net.virtualvoid.string
 import java.lang.{StringBuilder,String=>jString}
 
 object Compiler{
-  import net.virtualvoid.bytecode.Bytecode
-  import net.virtualvoid.bytecode.ASMCompiler
+  import net.virtualvoid.bytecode._
+  import net.virtualvoid.bytecode.backend.ASM
   import Bytecode._
   import Bytecode.Instructions._
   import Bytecode.Implicits._
@@ -20,24 +20,23 @@ object Compiler{
     }
   }
 
-  def compileGetExp[R<:List,LR<:List,T,Ret](exp:Exp
+  def compileGetExp[R<:List,LR<:List,T,Ret: NoUnit](exp:Exp
                                             ,cl:Class[T]
                                             ,retType:Class[Ret])
                                            (f:F[R**T]):F[R**Ret] = 
   exp match {
     case p@ParentExp(inner,parent) =>{
-      val m = Bytecode.methodHandle[T,Object](p.method(cl),cl,classOf[Object])
+      val m = Methods.dynMethod[T,Object](p.method(cl),cl,classOf[Object])
       f ~ 
-        m.invoke ~ 
+        m ~ 
         compileGetExp(inner,m.method.getReturnType.asInstanceOf[Class[Object]],retType)
     }
     case ThisExp =>
       f ~ 
         checkcast(retType) // TODO: don't know why we need this, examine it
     case e:Exp => {
-      val m = Bytecode.methodHandle[T,Ret](e.method(cl),cl,retType)
-      f ~ 
-        m.invoke
+      val m = Methods.dynMethod[T,Ret](e.method(cl),cl,retType)
+      f ~ m
     }
   }
     
@@ -48,6 +47,9 @@ object Compiler{
       compileElement(element,cl,value)(frame)}
 
   def id[X]:X=>X = x=>x
+
+  lazy val appendM = Methods.method2[StringBuilder, String, StringBuilder](_.append(_))
+  lazy val toStringM = Methods.method1[AnyRef, String](_.toString)
   
   def compileElement[R<:List,LR<:List,T<:java.lang.Object]
                      (ele:FormatElement,cl:Class[T],value:Local[T])
@@ -55,12 +57,12 @@ object Compiler{
                      :F[R**StringBuilder]
     = ele match {
       case Literal(str) => 
-        f ~ ldc(str) ~ invokemethod2(_.append(_))
+        f ~ ldc(str) ~ appendM
       case ToStringConversion(e) =>
         f ~ value.load ~
           compileGetExp(e,cl,classOf[AnyRef]) ~ 
-          invokemethod1(_.toString) ~ 
-          invokemethod2(_.append(_))
+          toStringM ~ 
+          appendM
       case Expand(exp,sep,inner) => {
         import Bytecode.RichOperations.foldIterator
           
@@ -74,17 +76,17 @@ object Compiler{
           f ~
             value.load ~
             compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
-            invokemethod1(_.iterator) ~
+            Methods.method1((_: java.lang.Iterable[AnyRef]).iterator) ~
             swap() ~
             foldIterator[R,AnyRef,StringBuilder](
               it => 
               	_ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
               	  it.load ~
-              	  invokemethod1(_.hasNext) ~
+              	  Methods.method1((_: java.util.Iterator[AnyRef]).hasNext) ~
               	  ifne2(
               	  	_ ~
               	  	  ldc(sep) ~
-              	  	  invokemethod2(_.append(_))
+              	  	  appendM
                     ,f=>f
               	  )
             )(scala.reflect.Manifest.classType(eleType),cat1AnyRef)
@@ -115,7 +117,7 @@ object Compiler{
 	               	  ifne2(
                         _ ~
                           ldc(sep) ~
-                          invokemethod2(_.append(_))
+                          appendM
                         , f=>f)))	              
             )
         }
@@ -134,7 +136,7 @@ object Compiler{
                compileGetExp(inner,cl,classOf[Boolean])
              else 
                _ ~ compileGetExp(inner,cl,classOf[java.lang.Boolean]) 
-                 ~ invokemethod1(_.booleanValue)
+                 ~ Methods.method1((_: java.lang.Boolean).booleanValue)
             ) ~
             ifeq2(
               compileFormatElementList(elses,cl,value),
@@ -148,12 +150,12 @@ object Compiler{
             value.load ~
             compileGetExp(inner,cl,classOf[Option[AnyRef]]) ~
             dup ~
-            invokemethod1(_.isDefined) ~
+            Methods.method1((_: Option[AnyRef]).isDefined) ~
             ifeq2(
               _ ~ pop ~ compileFormatElementList(elses,cl,value),
               _ ~ 
                 checkcast(classOf[Some[AnyRef]]) ~
-                invokemethod1(_.get) ~
+                Methods.method1((_: Some[AnyRef]).get) ~
                 withLocal(newValue => compileFormatElementList(thens,eleType,newValue)))
         }
         else
@@ -174,7 +176,7 @@ object Compiler{
         f ~ newInstance(classOf[java.text.SimpleDateFormat]) ~
           dup ~
           ldc(format) ~ 
-          invokemethod2(_.applyPattern(_)) ~ pop_unit ~
+          Methods.method2((_: java.text.SimpleDateFormat).applyPattern(_: String)) ~
           value.load ~
           (f => 
             retType match {
@@ -183,23 +185,23 @@ object Compiler{
               case x if CalendarClass.isAssignableFrom(x) => 
                 f ~                
                   compileGetExp(exp,cl,CalendarClass) ~ 
-                  invokemethod1(_.getTime)
+                  Methods.method1((_: java.util.Calendar).getTime)
               case _ => throw new java.lang.Error(
                 "Expected date- or calendar- typed property. "+
                 cl+" can't be converted.") 
             }
           ) ~
-          invokemethod2(_.format(_)) ~
-          invokemethod2(_.append(_))
+          Methods.method2((_: java.text.SimpleDateFormat).format(_: java.util.Date)) ~
+          appendM
       }
     }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
     val elements:FormatElementList = parser.parse(format)
-    ASMCompiler.compile(cl)(value =>
+    ASM.compile(cl)(value =>
       _ ~ 
         newInstance(classOf[StringBuilder]) ~
         compileFormatElementList(elements,cl,value) ~
-        invokemethod1(_.toString)
+        toStringM
     )
   }
 }
