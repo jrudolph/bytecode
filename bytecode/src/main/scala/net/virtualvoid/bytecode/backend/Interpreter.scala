@@ -51,7 +51,7 @@ object Interpreter extends ByteletCompiler {
        * invokeconstructor then dismisses both instances of UninitializedObject before
        * using reflection to call the constructor.
        */
-      override def new_int[R <: List, U](cl: Class[U]): F[R**U] = IF(stack.asInstanceOf[R] ** UninitializedObject.asInstanceOf[U]) // noop
+      override def new_int[R <: List, U <: AnyRef](cl: Class[U]): F[R**Uninitialized[U]] = IF(stack.asInstanceOf[R] ** UninitializedObject.asInstanceOf) // noop
       override def invokeconstructor[R<:List,U](cons: Constructor): F[R**U] =
         popN(cons.numParams) match {
            case (args, Cons(Cons(rest, UninitializedObject), UninitializedObject)) =>
