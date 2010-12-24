@@ -1,7 +1,8 @@
 Version: 1
-Previous: 44bc8c1bac6da12be02667f647983a70127cb1cd
+Previous: 6c6012c1131be47841da5d161bd6db8e6ceaed46
 Head: bbb8cd0070403da63ee11c40ab79a9da56ebdae7
 Applied:
+  low-level-instantiation-suppor: bbb8cd0070403da63ee11c40ab79a9da56ebdae7
 Unapplied:
   workspace: 2ee1058037e3aea59b4ede9a4a4d0630435f3828
   method-calls: 9cd4d585e489415b553893ffeeb67f578c3ba797

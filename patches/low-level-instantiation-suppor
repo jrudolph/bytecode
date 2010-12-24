@@ -1,0 +1,104 @@
+Bottom: cfeeffe5e0e8938051148e166b4aea5d80875480
+Top:    32948ccfa7d5efc99f24c2b98b7998d20a08bd96
+Author: Johannes Rudolph <johannes_rudolph@gmx.de>
+Date:   2010-12-24 12:32:05 +0100
+
+low level instantiation support stub
+
+
+---
+
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/Instantiation.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/Instantiation.scala
+index dbe4d0d..3bfe986 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/Instantiation.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/Instantiation.scala
+@@ -3,12 +3,20 @@ package net.virtualvoid.bytecode
+ import scala.reflect.Code
+ import java.lang.reflect.{ Constructor => jConstructor }                        
+ 
++trait Uninitialized[T <: AnyRef]
++
+ trait Constructor {
+   def constructor: jConstructor[_]
+   def numParams: Int
+ }
+ 
+-case class Ctor1[T, U](override val constructor: jConstructor[_]) extends Constructor {
++class Constructor2[Args <: List, U <: AnyRef](override val constructor: jConstructor[_], override val numParams: Int) extends Constructor {
++  def lowLevelApply[R <: List, Res1 <: List, Res2 <: List](implicit s1: Sub[R, Args, Res1], s2: Sub[Res1, Nil**Uninitialized[U], Res2]): F[R] => F[Res2**U] = null
++  def apply[R <: List, Res <: List]()(implicit s: Sub[R, Args, Res]): F[R] => F[Res**U] = null
++    
++}
++
++/*case class Ctor1[T, U <: AnyRef](override val constructor: jConstructor[_]) extends Constructor2[Nil**Uninitialized[U]**T, U] {
+   override val numParams = 1
+ 
+   import Bytecode.Instructions._
+@@ -20,7 +28,7 @@ case class Ctor1[T, U](override val constructor: jConstructor[_]) extends Constr
+         .invokeconstructor(this)
+     }
+ }
+-case class Ctor2[T1, T2, U](override val constructor: jConstructor[_]) extends Constructor {
++case class Ctor2[T1, T2, U <: AnyRef](override val constructor: jConstructor[_]) extends Constructor2[Nil**Uninitialized[U]**T1**T2, U] {
+   override val numParams = 2
+ 
+   import Bytecode.Instructions._
+@@ -31,9 +39,13 @@ case class Ctor2[T1, T2, U](override val constructor: jConstructor[_]) extends C
+         arg1.load ~ arg2.load)
+         .invokeconstructor(this)
+     }}
+-}
++}*/
+ 
+ trait InstantiationInstructions {
+-  def ctor1[T, U](c: Code[T => U]): Ctor1[T, U] = Ctor1[T, U](CodeTools.constructorFromTree(c.tree))
+-  def ctor2[T1, T2, U](c: Code[(T1, T2) => U]): Ctor2[T1, T2, U] = Ctor2[T1, T2, U](CodeTools.constructorFromTree(c.tree))
++  def ctor1[T, U <: AnyRef](c: Code[T => U])/*: Ctor1[T, U]*/ = new Constructor2[Nil**T, U](CodeTools.constructorFromTree(c.tree), 1)
++  def ctor2[T1, T2, U <: AnyRef](c: Code[(T1, T2) => U])/*: Ctor2[T1, T2, U]*/ = new Constructor2[Nil**T1**T2, U](CodeTools.constructorFromTree(c.tree), 2)
++}
++
++trait LowLevelInstantiation {
++  def newInstance[R <: List, U <: AnyRef](cl: Class[U]): F[R] => F[R**Uninitialized[U]] = f => f.new_int(cl)
+ }
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala
+index ac7d76a..c90b6b5 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/ASM.scala
+@@ -167,7 +167,7 @@ object ASM extends ByteletCompiler{
+                           ,Type.getConstructorDescriptor(cons.constructor))
+         withStack(stackClass.popN(cons.numParams) ** cl)
+       }
+-      def new_int[R <: List, U](cl: Class[U]): F[R**U] = {
++      def new_int[R <: List, U <: AnyRef](cl: Class[U]): F[R**Uninitialized[U]] = {
+         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
+         withStack(stackClass ** cl)
+       }
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala
+index 40192a2..babd60f 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/BackendSupport.scala
+@@ -25,8 +25,10 @@ trait BackendSupport[+ST <: List] {
+     def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1]
+ 
+     def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
++    //def invokeconstructor[Args <: List, U <: AnyRef](cons: Constructor2[Args, U]): Func[Args, U]
+     def invokeconstructor[R<:List,U](cons: Constructor): F[R**U]
+-    def new_int[R <: List, U](cl: Class[U]): F[R**U]
++
++    def new_int[R <: List, U <: AnyRef](cl: Class[U]): F[R**Uninitialized[U]]
+                                    
+     def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
+     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]
+diff --git a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala
+index 8beb654..0231e36 100644
+--- a/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala
++++ b/bytecode/src/main/scala/net/virtualvoid/bytecode/backend/Interpreter.scala
+@@ -51,7 +51,7 @@ object Interpreter extends ByteletCompiler {
+        * invokeconstructor then dismisses both instances of UninitializedObject before
+        * using reflection to call the constructor.
+        */
+-      override def new_int[R <: List, U](cl: Class[U]): F[R**U] = IF(stack.asInstanceOf[R] ** UninitializedObject.asInstanceOf[U]) // noop
++      override def new_int[R <: List, U <: AnyRef](cl: Class[U]): F[R**Uninitialized[U]] = IF(stack.asInstanceOf[R] ** UninitializedObject.asInstanceOf) // noop
+       override def invokeconstructor[R<:List,U](cons: Constructor): F[R**U] =
+         popN(cons.numParams) match {
+            case (args, Cons(Cons(rest, UninitializedObject), UninitializedObject)) =>
