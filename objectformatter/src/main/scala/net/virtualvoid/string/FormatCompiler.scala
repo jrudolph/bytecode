@@ -3,17 +3,18 @@ package net.virtualvoid.string
 import java.lang.{StringBuilder,String=>jString}
 
 object Compiler{
-  import net.virtualvoid.bytecode.Bytecode
-  import net.virtualvoid.bytecode.ASMCompiler
+  import net.virtualvoid.bytecode._
+  import net.virtualvoid.bytecode.backend.ASM
   import Bytecode._
   import Bytecode.Instructions._
+  import Methods._
 
   val parser = EnhancedStringFormatParser
   import TypedAST._
 
   val append = method2((_:StringBuilder).append(_:String))
    
-  def compileExp[R<:List,T<:AnyRef,Ret <% NoUnit](exp:Exp[T,Ret])
+  def compileExp[R<:List,T<:AnyRef,Ret: NoUnit](exp:Exp[T,Ret])
                                   :F[R**T] => F[R**Ret] =
     exp match {
       case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
@@ -214,7 +215,7 @@ object Compiler{
     }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
     val elements:FormatElementList[T] = typed(parser.parse(format),cl)
-    ASMCompiler.compile(cl)(value =>
+    ASM.compile(cl)(value =>
       _ ~ 
         newInstance(classOf[StringBuilder]) ~
         compileFormatElementList(elements,value) ~

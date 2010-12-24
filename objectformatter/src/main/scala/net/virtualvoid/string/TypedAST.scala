@@ -1,6 +1,7 @@
 package net.virtualvoid.string
 
-import _root_.net.virtualvoid.bytecode.Bytecode._
+import net.virtualvoid.bytecode._
+import Methods._
 
 object TypedAST {
   trait Exp[-T,+U] extends (T => U){
@@ -140,7 +141,7 @@ object TypedAST {
 case class Person(name:String,town:String)
 object IterableHelper {
   implicit def java2scala[T](it:java.lang.Iterable[T]):Iterable[T] = new Iterable[T]{
-    override def elements:Iterator[T] = new Iterator[T]{
+    override def iterator:Iterator[T] = new Iterator[T]{
       val underlying = it.iterator
       override def hasNext = underlying.hasNext
       override def next = underlying.next
