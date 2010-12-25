@@ -29,6 +29,8 @@ object EvaluateSpecs extends Specification{
       def address:Option[String] = Some("Some Street 5")
       def nullAddress:String = null
       def nonNullAddress:String = "Some Other Street 10"
+      def hasNoMoney = true
+      def hasMoney = false
   }
   val thePerson = new Person
 
@@ -52,8 +54,10 @@ object EvaluateSpecs extends Specification{
     "object array access with inner expression" in {"#accs[#number]{,}*" must evaluateAs("78910,12345")}
     "deep property access" in {"#accs[#bank.name]{,}*" must evaluateAs("Sparkasse,Volksbank")}
     "format dates properly" in {"#this->date[dd.MM.yyyy]" must evaluateObjectAs(new GregorianCalendar(2008,OCTOBER,1),"01.10.2008")}
-    "evaluate conditionals true" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(true),"yes")}
-    "evaluate conditionals false" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(false),"no")}
+    "evaluate conditionals true (boxed)" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(true),"yes")}
+    "evaluate conditionals true (primitive)" in {"#hasNoMoney?[yes|no]" must evaluateAs("yes")}
+    "evaluate conditionals false (boxed)" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(false),"no")}
+    "evaluate conditionals false (primitive)" in {"#hasMoney?[yes|no]" must evaluateAs("no")}
     "evaluate conditionals with Some" in {"#address?[Found: #this|no address given]" must evaluateAs("Found: Some Street 5")}
     "evaluate conditionals with None" in {"#noAddress?[Found: #this|no address given]" must evaluateAs("no address given")}
     "evaluate conditionals with non-null condition" in {"#nonNullAddress?[An address: #this|Is null]" must evaluateAs("An address: Some Other Street 10")}

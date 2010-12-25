@@ -4,6 +4,8 @@ import net.virtualvoid.bytecode._
 import Methods._
 
 object TypedAST {
+  val BOOL = java.lang.Boolean.TYPE.asInstanceOf[Class[Boolean]]
+
   trait Exp[-T,+U] extends (T => U){
 	def eval(o:T):U
 	override def apply(o:T):U = eval(o) 
@@ -56,6 +58,12 @@ object TypedAST {
       case None => elseToks.format(o)
     }
   }
+  case class ConditionalBoolean[T <: AnyRef](exp: Exp[T, Boolean],
+                                             thenToks: FormatElementList[T],
+                                             elseToks: FormatElementList[T]) extends FormatElement[T] {
+    override def format(o:T): String = 
+      (if (exp(o)) thenToks else elseToks) format o
+  }
   abstract class Expand[T,C[_],U](exp:Exp[T,C[U]],sep:String,inner:FormatElementList[U]) extends Conversion[T,C[U]](exp){
     def asIterable(c:C[U]):Iterable[U]
     override def convert(i:C[U]) = asIterable(i) map (inner.format _) mkString sep
@@ -106,6 +114,16 @@ object TypedAST {
     val AST.Conditional(exp,thenB,elseB) = c
     ConditionalOption(typedExp(exp,cl,classOf[Option[U]]),typed(thenB,eleClass),typed(elseB,cl))
   }
+
+  def typedConditionalBoolean[T <: AnyRef](c: AST.Conditional, cl: Class[T], unbox: Boolean = false): ConditionalBoolean[T] = {
+    val AST.Conditional(exp, thenB, elseB) = c
+    val primitiveExp: Exp[T, Boolean] =
+      if (unbox)
+        ParentExp(MethodHandleExp(method1((_: java.lang.Boolean).booleanValue)), typedExp(exp, cl, classOf[java.lang.Boolean]))
+      else
+        typedExp(exp, cl, BOOL)
+    ConditionalBoolean(primitiveExp, typed(thenB, cl), typed(elseB, cl))
+  }
   
   def typed[T<:AnyRef](ast:AST.FormatElementList,cl:Class[T]):FormatElementList[T] = FormatElementList[T](
     ast.elements.map {
@@ -119,12 +137,17 @@ object TypedAST {
         typedExpandArray(exp,sep,inner,cl,eleType)
       }
       case c@AST.Conditional(exp,_,_) => {
-        if (classOf[Option[_]].isAssignableFrom(exp.returnType(cl))){
+        val retType = exp.returnType(cl)
+        if (classOf[Option[_]].isAssignableFrom(retType)){
           val eleType = elementType(exp.genericReturnType(cl),classOf[Option[_]])
           typedConditionalOption(c,cl,eleType)
         }
+        else if (retType == BOOL)
+          typedConditionalBoolean(c, cl)
+        else if (retType == classOf[java.lang.Boolean])
+          typedConditionalBoolean(c, cl, true)
         else
-          throw new RuntimeException("Only Option conditionals supported")
+          throw new RuntimeException("Only Option and Boolean conditionals supported")
       }
     }
   )

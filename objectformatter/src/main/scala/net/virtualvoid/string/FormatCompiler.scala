@@ -81,6 +81,14 @@ object Compiler{
                 method1((_:Option[AnyRef]).get) ~
                 withLocal(newValue => compileFormatElementList(then,newValue)))
       }
+      case ConditionalBoolean(exp, thenB, elseB) => {
+        f ~
+          value.load ~
+          compileExp(exp) ~
+          ifeq2(
+            _ ~ compileFormatElementList(elseB, value),
+            _ ~ compileFormatElementList(thenB, value))            
+      }
       /*case Expand(exp,sep,inner) => {
         import Bytecode.RichOperations.foldIterator
           
