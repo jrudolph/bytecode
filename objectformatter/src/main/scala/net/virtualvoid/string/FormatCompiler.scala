@@ -113,111 +113,16 @@ object Compiler{
             _ ~ compileFormatElementList(elseB, value),
             _ ~ compileFormatElementList(thenB, value))            
       }
-      /*case Expand(exp,sep,inner) => {
-        import Bytecode.RichOperations.foldIterator
-          
-        val retType = exp.returnType(cl)
-
-        if (classOf[java.lang.Iterable[_]].isAssignableFrom(retType)){
-          val eleType:Class[AnyRef] = elementType(exp.genericReturnType(cl)
-                                                  ,classOf[java.lang.Iterable[_]])
-                                                  .asInstanceOf[Class[AnyRef]]
-          
-          f ~
-            value.load ~
-            compileGetExp(exp,cl,classOf[java.lang.Iterable[AnyRef]]) ~
-            invokemethod1(_.iterator) ~
-            swap() ~
-            foldIterator[R,AnyRef,StringBuilder](
-              it => 
-              	_ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
-              	  it.load ~
-              	  invokemethod1(_.hasNext) ~
-              	  ifne2(
-              	  	_ ~
-              	  	  ldc(sep) ~
-              	  	  invokemethod2(_.append(_))
-                    ,f=>f
-              	  )
-            )(scala.reflect.Manifest.classType(eleType),cat1AnyRef)
-        }
-        else if (retType.isArray){
-          val eleType:Class[AnyRef] = retType.getComponentType.asInstanceOf[Class[AnyRef]]
-
-          if (eleType.isPrimitive)
-            throw new java.lang.Error("can't handle primitive arrays right now");
-
-          import Bytecode.RichOperations.foldArray
-          
-          f ~
-            value.load ~
-            compileGetExp(exp,cl,retType.asInstanceOf[Class[Array[AnyRef]]]) ~
-            dup ~
-            arraylength ~
-            bipush(1) ~
-            isub ~
-            withLocal(lastIndex =>
-              _ ~
-	            withLocal(array => 
-	              foldArray(array)(index =>
-	               	_ ~ withLocal(innerValue => compileFormatElementList(inner,eleType,innerValue)) ~
-	               	  lastIndex.load ~
-	               	  index.load ~
-	               	  isub ~
-	               	  ifne2(
-                        _ ~
-                          ldc(sep) ~
-                          invokemethod2(_.append(_))
-                        , f=>f)))	              
-            )
-        }
-        else
-          throw new java.lang.Error("can only iterate over "+
-                                      "iterables and arrays right now")
-      }*/
-      /*case Conditional(inner,thens,elses) => {
-        val retType = inner.returnType(cl)
-
-        if (retType == java.lang.Boolean.TYPE || 
-              classOf[java.lang.Boolean].isAssignableFrom(retType)){
-          f ~ 
-            value.load ~
-            (if (retType == java.lang.Boolean.TYPE)
-               compileGetExp(inner,cl,classOf[Boolean])
-             else 
-               _ ~ compileGetExp(inner,cl,classOf[java.lang.Boolean]) 
-                 ~ invokemethod1(_.booleanValue)
-            ) ~
-            ifeq2(
-              compileFormatElementList(elses,cl,value),
-              compileFormatElementList(thens,cl,value))
-        }
-        else if (classOf[Option[AnyRef]].isAssignableFrom(retType)){
-          val eleType = elementType(inner.genericReturnType(cl)
-                                    ,classOf[Option[_]])
-            .asInstanceOf[Class[AnyRef]]
-          f ~
-            value.load ~
-            compileGetExp(inner,cl,classOf[Option[AnyRef]]) ~
-            dup ~
-            invokemethod1(_.isDefined) ~
-            ifeq2(
-              _ ~ pop ~ compileFormatElementList(elses,cl,value),
-              _ ~ 
-                checkcast(classOf[Some[AnyRef]]) ~
-                invokemethod1(_.get) ~
-                withLocal(newValue => compileFormatElementList(thens,eleType,newValue)))
-        }
-        else
-          f ~
-            value.load ~
-            compileGetExp(inner,cl,classOf[AnyRef]) ~
-            dup ~
-            ifnull(
-            	_ ~ pop ~ compileFormatElementList(elses,cl,value),
-                _ ~ withLocal{newValue => compileFormatElementList(thens,retType.asInstanceOf[Class[AnyRef]],newValue)})
+      case ConditionalAnyRef(exp, thenB, elseB) => {
+        f ~
+          value.load ~
+          compileExp(exp) ~
+          dup ~
+          ifnull(
+            _ ~ pop /* null */ ~ compileFormatElementList(elseB, value),
+            _ ~ withLocal(innerValue => compileFormatElementList(thenB, innerValue)))
       }
-      case DateConversion(exp,format) => {
+      /*case DateConversion(exp,format) => {
         val retType = exp.returnType(cl)
         
         val DateClass:Class[java.util.Date] = classOf[java.util.Date]

@@ -34,16 +34,6 @@ object TypedAST {
   case class ToStringConversion[T<:AnyRef](exp:Exp[T,AnyRef]) extends Conversion[T,AnyRef](exp){
     def convert(o:AnyRef) = o.toString
   }/*
-  case class Conditional(condition:Exp,thenToks:FormatElementList,elseToks:FormatElementList) extends FormatElement{
-    def chars =""
-    def format(o:AnyRef) = condition.eval(o) match {
-      case java.lang.Boolean.TRUE => thenToks.format(o)
-      case java.lang.Boolean.FALSE => elseToks.format(o)
-      case x:Option[AnyRef] => x.map(thenToks.format).getOrElse(elseToks.format(o))
-      case null => elseToks.format(o)
-      case x => thenToks.format(x)
-    }
-  }
   case class DateConversion(exp:Exp,format:String) extends FormatElement{
     val df = new java.text.SimpleDateFormat(format)
     def format(o:AnyRef) = df.format(exp.eval(o) match {
@@ -64,6 +54,15 @@ object TypedAST {
     override def format(o:T): String = 
       (if (exp(o)) thenToks else elseToks) format o
   }
+  case class ConditionalAnyRef[T <: AnyRef, U <: AnyRef](exp: Exp[T, U],
+                                             thenToks: FormatElementList[U],
+                                             elseToks: FormatElementList[T]) extends FormatElement[T] {
+    override def format(o: T): String = exp(o) match {
+      case null => elseToks format o
+      case x    => thenToks format x
+    }
+  }
+
   abstract class Expand[T,C[_],U](exp:Exp[T,C[U]],sep:String,inner:FormatElementList[U]) extends Conversion[T,C[U]](exp){
     def asIterable(c:C[U]):Iterable[U]
     override def convert(i:C[U]) = asIterable(i) map (inner.format _) mkString sep
@@ -118,7 +117,10 @@ object TypedAST {
     val AST.Conditional(exp,thenB,elseB) = c
     ConditionalOption(typedExp(exp,cl,classOf[Option[U]]),typed(thenB,eleClass),typed(elseB,cl))
   }
-
+  def typedConditionalAnyRef[T <: AnyRef, U <: AnyRef](c: AST.Conditional, cl: Class[T], eleClass: Class[U]): ConditionalAnyRef[T, U] = {
+    val AST.Conditional(exp,thenB,elseB) = c
+    ConditionalAnyRef(typedExp(exp, cl, eleClass), typed(thenB, eleClass), typed(elseB, cl))
+  }
   def typedConditionalBoolean[T <: AnyRef](c: AST.Conditional, cl: Class[T], unbox: Boolean = false): ConditionalBoolean[T] = {
     val AST.Conditional(exp, thenB, elseB) = c
     val primitiveExp: Exp[T, Boolean] =
@@ -157,8 +159,10 @@ object TypedAST {
           typedConditionalBoolean(c, cl)
         else if (retType == classOf[java.lang.Boolean])
           typedConditionalBoolean(c, cl, true)
+        else if (!retType.isPrimitive)
+          typedConditionalAnyRef(c, cl, retType.asInstanceOf[Class[AnyRef]])
         else
-          throw new RuntimeException("Only Option and Boolean conditionals supported")
+          throw new RuntimeException(exp+" must not evaluate into a primitive value but is into "+exp.returnType(cl))
       }
     }
   )
