@@ -79,9 +79,8 @@ object Compiler{
             value.load ~
             compileExp(exp) ~
             iteratorM ~
-            swap() ~
-            foldIterator[R,AnyRef,StringBuilder](
-              it => 
+            withLocal { it =>
+              _ ~ foldIterator[R,AnyRef,StringBuilder](it)(
               	_ ~ withLocal(innerValue => compileFormatElementList(inner, innerValue)) ~
               	  it.load ~
               	  hasNextM ~
@@ -92,6 +91,7 @@ object Compiler{
                     ,f=>f
               	  )
             )(scala.reflect.Manifest.classType(eleType),cat1AnyRef)
+            }
       }
       case ConditionalOption(exp,then,elseB) => {
         f ~

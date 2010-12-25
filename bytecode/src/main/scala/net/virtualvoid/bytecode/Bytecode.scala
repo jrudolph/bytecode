@@ -140,15 +140,24 @@ object Bytecode{
 		      )
 		    }
 		  }
-	    
+    
+    def foldIterable[R <: List, T <: AnyRef: Manifest, U: Category1]
+        (iterable: LocalR[java.lang.Iterable[T]])
+        (func: LocalR[java.util.Iterator[T]] => F[R**U**T] => F[R**U])
+      : F[R**U] => F[R**U] = {
+      _ ~
+        iterable.load ~
+        Methods.method1((_: java.lang.Iterable[T]).iterator) ~
+        withLocal { it => foldIterator(it)(func(it)) }
+    }
+
     def foldIterator[R <: List, T <:AnyRef: Manifest, U: Category1]
-                    (func: Local[java.util.Iterator[T]] => F[R**U**T] => F[R**U])
-          : F[R**java.util.Iterator[T]**U] => F[R**U] = {
+                    (iterator: LocalR[java.util.Iterator[T]])
+                    (func: F[R**U**T] => F[R**U])
+          : F[R**U] => F[R**U] = {
             import Methods.method1
             val mf = implicitly[Manifest[T]]
             _ ~
-              swap() ~
-              withLocal( iterator =>
                   tailRecursive[R**U,R**U]( self =>
                     _ ~
 	                  iterator.load ~
@@ -158,12 +167,11 @@ object Bytecode{
 	                      iterator.load ~
 	                      method1((_:java.util.Iterator[T]).next).invoke() ~
 	                      checkcast(mf.erasure.asInstanceOf[Class[T]]) ~
-	                      func(iterator) ~
+	                      func ~
 	                      self
 	                    ,f=>f
 	                  )
                    )
-              )
           }
   }
   

@@ -248,15 +248,14 @@ object BytecodeCompilerSpecs extends Specification{
       f(Array(1,2,3,4)) must be_==(10)
       f(Array(5,17,12,3,28)) must be_==(65)
     }
-    "foldIterator" in {
-      val f = compiler.compile(classOf[java.util.Iterator[String]])( it =>
+    "foldIterable" in {
+      val f = compiler.compile(classOf[java.util.List[String]])( it =>
         _ ~
-          it.load ~
           newInstance(classOf[java.lang.StringBuilder]) ~
-          RichOperations.foldIterator(it => _ ~ append) ~
+          RichOperations.foldIterable(it)(iterator => _ ~ append) ~
           toString
       )
-      f(java.util.Arrays.asList("a","b","c").iterator) must be_==("abc")
+      f(java.util.Arrays.asList("a","b","c")) must be_==("abc")
     }
     "ifnull" in {
       val f = compiler.compile(classOf[AnyRef])( o =>
