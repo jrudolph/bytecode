@@ -71,7 +71,7 @@ object TypedAST {
   case class ExpandArray[T,U<:AnyRef](exp:Exp[T,Array[U]],sep:String,inner:FormatElementList[U]) extends Expand[T,Array,U](exp,sep,inner){
     override def asIterable(i:Array[U]) = i
   }
-  case class ExpandJavaIterable[T,U](exp:Exp[T,java.lang.Iterable[U]],sep:String,inner:FormatElementList[U]) extends Expand[T,java.lang.Iterable,U](exp,sep,inner){
+  case class ExpandJavaIterable[T,U <: AnyRef](exp:Exp[T,java.lang.Iterable[U]],sep:String,inner:FormatElementList[U], eleType: Class[U]) extends Expand[T,java.lang.Iterable,U](exp,sep,inner){
     override def asIterable(i:java.lang.Iterable[U]) = IterableHelper.java2scala(i)
   }
   case class FormatElementList[T](elements:Seq[FormatElement[T]]){
@@ -109,6 +109,10 @@ object TypedAST {
   def typedExpandArray[T<:AnyRef,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
   		:ExpandArray[T,E]
     = ExpandArray(typedExp(exp,cl,classOfArray(eleClass)),sep,typed(inner,eleClass))
+
+  def typedExpandJavaIterable[T<:AnyRef,E<:AnyRef](exp:AST.Exp,sep:String,inner:AST.FormatElementList,cl:Class[T],eleClass:Class[E])
+  		:ExpandJavaIterable[T,E]
+    = ExpandJavaIterable(typedExp(exp, cl, classOf[java.lang.Iterable[E]]),sep,typed(inner,eleClass), eleClass)
     
   def typedConditionalOption[T<:AnyRef,U<:AnyRef](c:AST.Conditional,cl:Class[T],eleClass:Class[U]):ConditionalOption[T,U] = {
     val AST.Conditional(exp,thenB,elseB) = c
@@ -130,11 +134,18 @@ object TypedAST {
       case AST.Literal(str) => Literal(str)
       case AST.ToStringConversion(exp) => ToStringConversion(typedExp(exp,cl,classOf[AnyRef]))
       case AST.Expand(exp,sep,inner) => {
-        val eleType:Class[AnyRef] = exp.returnType(cl).getComponentType.asInstanceOf[Class[AnyRef]]
-        if (eleType == null)
-          throw new RuntimeException(exp+" must evaluate into an array but is "+exp.returnType(cl))
-        
-        typedExpandArray(exp,sep,inner,cl,eleType)
+        val retType = exp.returnType(cl)
+
+        if (retType.isArray) {
+          val eleType:Class[AnyRef] = exp.returnType(cl).getComponentType.asInstanceOf[Class[AnyRef]]
+          typedExpandArray(exp,sep,inner,cl,eleType)
+        }
+        else if (classOf[java.lang.Iterable[_]].isAssignableFrom(retType)) {
+          val eleType = elementType(exp.genericReturnType(cl), classOf[java.lang.Iterable[_]])
+          typedExpandJavaIterable(exp, sep, inner, cl, eleType)
+        }
+        else
+          throw new RuntimeException(exp+" must evaluate into an array or java.lang.Iterable but is "+exp.returnType(cl))
       }
       case c@AST.Conditional(exp,_,_) => {
         val retType = exp.returnType(cl)

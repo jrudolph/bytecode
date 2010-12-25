@@ -12,7 +12,11 @@ object Compiler{
   val parser = EnhancedStringFormatParser
   import TypedAST._
 
-  val append = method2((_:StringBuilder).append(_:String))
+  lazy val append = method2((_:StringBuilder).append(_:String))
+  // looks good, but doesn't help us at all, because foldIterable has to work with erased types and uses manifests anyway
+  //def iteratorM[U <: AnyRef]: Method1[java.lang.Iterable[U], java.util.Iterator[U]] = method1((_: java.lang.Iterable[U]).iterator)
+  lazy val iteratorM = method1((_: java.lang.Iterable[AnyRef]).iterator)
+  lazy val hasNextM = method1((_: java.util.Iterator[AnyRef]).hasNext)
    
   def compileExp[R<:List,T<:AnyRef,Ret: NoUnit](exp:Exp[T,Ret])
                                   :F[R**T] => F[R**Ret] =
@@ -68,6 +72,26 @@ object Compiler{
 			        )
 			    )
             )
+      }
+      case ExpandJavaIterable(exp, sep, inner, eleType) => {
+	  import Bytecode.RichOperations.foldIterator
+          f ~
+            value.load ~
+            compileExp(exp) ~
+            iteratorM ~
+            swap() ~
+            foldIterator[R,AnyRef,StringBuilder](
+              it => 
+              	_ ~ withLocal(innerValue => compileFormatElementList(inner, innerValue)) ~
+              	  it.load ~
+              	  hasNextM ~
+              	  ifne2(
+              	  	_ ~
+              	  	  ldc(sep) ~
+              	  	  append
+                    ,f=>f
+              	  )
+            )(scala.reflect.Manifest.classType(eleType),cat1AnyRef)
       }
       case ConditionalOption(exp,then,elseB) => {
         f ~
