@@ -27,13 +27,13 @@ object Compiler{
     }
     
   def compileFormatElementList[R<:List,T<:AnyRef]
-                 (elements:FormatElementList[T],value:ROLocal[T])
+                 (elements:FormatElementList[T],value:LocalR[T])
                  (f:F[R**StringBuilder]):F[R**StringBuilder] =
     elements.elements.foldLeft(f){(frame,element) => 
       compileElement(element,value)(frame)}
 
   def compileElement[R<:List,T <: AnyRef]
-                     (ele:FormatElement[T],value:ROLocal[T])
+                     (ele:FormatElement[T],value:LocalR[T])
                      (f:F[R**StringBuilder])
                      :F[R**StringBuilder]
     = ele match {

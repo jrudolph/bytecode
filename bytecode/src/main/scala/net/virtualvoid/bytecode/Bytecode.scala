@@ -114,7 +114,7 @@ object Bytecode{
        *    f(0,start)
       */
     def foldArray[R<:List,T,U]
-      (array:Local[Array[T]])
+      (array:LocalR[Array[T]])
       (func:Local[Int]=>F[R**U**T]=>F[R**U])
 	  :F[R**U] => F[R**U] =
 	    _ ~

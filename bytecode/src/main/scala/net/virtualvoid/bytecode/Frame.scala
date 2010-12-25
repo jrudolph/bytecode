@@ -8,10 +8,21 @@ trait Target[ST<:List]{
   def jmp:F[ST] => Nothing
 }
 
-trait ROLocal[+T] {
+/**
+ * A capability representing a readable local variable slot.
+ */
+trait LocalR[+T] {
   def load[ST<:List, T2 >: T]:F[ST] => F[ST**T2]
 }
-trait Local[T] extends ROLocal[T] {
+/**
+ * The writable extension of LocalR. As usual, with writability covariance is
+ * lost. If a local variable slot is passed into a function and the local variable
+ * should only be read inside the function, use LocalR instead of Local because
+ * then covariance works like a client would expect it (e.g. for a parameter of type
+ * LocalR[java.lang.Iterable[AnyRef]] you can pass a Local[java.Util.List[AnyRef]]
+ * which is often the right thing.
+ */
+trait Local[T] extends LocalR[T] {
   def store[ST<:List]:F[ST**T] => F[ST]
 }
 
