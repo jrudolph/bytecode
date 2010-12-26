@@ -26,7 +26,7 @@ trait BackendSupport[+ST <: List] {
 
     def invokemethod[R<:List,U](handle:MethodHandle):F[R**U]
     def invokeconstructor[R<:List,U](cons: Constructor): F[R**U]
-    def new_int[R <: List, U](cl: Class[U]): F[R**U]
+    def new_int[ST2 >: ST <: List, U](cl: Class[U]): F[ST2**Uninitialized[U]]
                                    
     def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T]
     def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R]

@@ -6,7 +6,7 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object Interpreter extends ByteletCompiler {
-    case object UninitializedObject
+    case object UninitializedObject extends Uninitialized[AnyRef]
 
     case class IF[+ST<:List](stack:ST) extends F[ST]{
       import CodeTools._
@@ -51,7 +51,8 @@ object Interpreter extends ByteletCompiler {
        * invokeconstructor then dismisses both instances of UninitializedObject before
        * using reflection to call the constructor.
        */
-      override def new_int[R <: List, U](cl: Class[U]): F[R**U] = IF(stack.asInstanceOf[R] ** UninitializedObject.asInstanceOf[U]) // noop
+      override def new_int[ST2 >: ST <: List, U](cl: Class[U]): F[ST2**Uninitialized[U]] =
+        IF(stack ** UninitializedObject.asInstanceOf[Uninitialized[U]]) // noop
       override def invokeconstructor[R<:List,U](cons: Constructor): F[R**U] =
         popN(cons.numParams) match {
            case (args, Cons(Cons(rest, UninitializedObject), UninitializedObject)) =>
