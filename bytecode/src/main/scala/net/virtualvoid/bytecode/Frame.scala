@@ -19,7 +19,7 @@ trait LocalR[+T] {
  * lost. If a local variable slot is passed into a function and the local variable
  * should only be read inside the function, use LocalR instead of Local because
  * then covariance works like a client would expect it (e.g. for a parameter of type
- * LocalR[java.lang.Iterable[AnyRef]] you can pass a Local[java.Util.List[AnyRef]]
+ * LocalR[java.lang.Iterable[AnyRef]] you can pass a Local[java.util.List[AnyRef]]
  * which is often the right thing.
  */
 trait Local[T] extends LocalR[T] {
