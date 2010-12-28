@@ -1,5 +1,7 @@
 package net.virtualvoid.bytecode
 
+import scala.annotation.unchecked.uncheckedVariance
+
 trait F[+ST<:List] extends backend.BackendSupport[ST] {
   def ~[X](f:F[ST]=>X):X = f(this)
 }
@@ -12,8 +14,9 @@ trait Target[ST<:List]{
  * A capability representing a readable local variable slot.
  */
 trait LocalR[+T] {
-  def load[ST<:List, T2 >: T]:F[ST] => F[ST**T2]
+  def load[ST<:List]: F[ST] => F[ST**T] @uncheckedVariance
 }
+
 /**
  * The writable extension of LocalR. As usual, with writability covariance is
  * lost. If a local variable slot is passed into a function and the local variable
