@@ -14,7 +14,7 @@ trait Target[ST<:List]{
  * A capability representing a readable local variable slot.
  */
 trait LocalR[+T] {
-  def load[ST<:List]: F[ST] => F[ST**T] @uncheckedVariance
+  def load[ST<:List, T2 >: T]: F[ST] => F[ST ** T2]
 }
 
 /**
