@@ -41,7 +41,7 @@ object Bytecode{
     def swap[R <: Stack, T2: Category1, T1: Category1](): F[R**T2**T1] => F[R**T1**T2] =
       f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
-    def checkcast[T,U,R<:Stack](cl:Class[U]):F[R**T]=>F[R**U] =
+    def checkcast[T<:AnyRef,U,R<:Stack](cl:Class[U]):F[R**T]=>F[R**U] =
       f => f.checkcast_int(f.stack.rest,f.stack.top)(cl)
     
     def bipush[R<:Stack](i:Int):F[R]=>F[R**Int] = _.bipush(i)
