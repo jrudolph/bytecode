@@ -38,7 +38,7 @@ object Bytecode{
       f => f.dup_int(f.stack.rest,f.stack.top)
     def dup_x1[R<:Stack,T2,T1]:F[R**T2**T1] => F[R**T1**T2**T1] =
       f => f.dup_x1_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
-    def swap[R <: Stack, T2: Category1, T1: Category1](): F[R**T2**T1] => F[R**T1**T2] =
+    def swap[R <: Stack, T2 <% Category1, T1 <% Category1](): F[R**T2**T1] => F[R**T1**T2] =
       f => f.swap_int(f.stack.rest.rest,f.stack.rest.top,f.stack.top)
     
     def checkcast[T<:AnyRef,U,R<:Stack](cl:Class[U]):F[R**T]=>F[R**U] =
@@ -144,7 +144,7 @@ object Bytecode{
 		    }
 		  }
     
-    def foldIterable[R <: Stack, T <: AnyRef: Manifest, U: Category1]
+    def foldIterable[R <: Stack, T <: AnyRef: Manifest, U <% Category1]
         (iterable: LocalR[java.lang.Iterable[T]])
         (func: LocalR[java.util.Iterator[T]] => F[R**U**T] => F[R**U])
       : F[R**U] => F[R**U] = {
@@ -154,7 +154,7 @@ object Bytecode{
         withLocal { it => foldIterator(it)(func(it)) }
     }
 
-    def foldIterator[R <: Stack, T <:AnyRef: Manifest, U: Category1]
+    def foldIterator[R <: Stack, T <:AnyRef: Manifest, U <% Category1]
                     (iterator: LocalR[java.util.Iterator[T]])
                     (func: F[R**U**T] => F[R**U])
           : F[R**U] => F[R**U] = {
