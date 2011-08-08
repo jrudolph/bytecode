@@ -9,24 +9,24 @@ object BytecodeCompilerSpecs extends Specification{
     import Bytecode.Instructions._
     import Methods._
     
-    val boxInt:Method1[Int,java.lang.Integer] = method1(Integer.valueOf(_:Int))
-    val unboxInt:Method1[java.lang.Integer,Int] = method1((_:java.lang.Integer).intValue)
+    val boxInt:Method1[Int,java.lang.Integer] = method(Integer.valueOf(_:Int))
+    val unboxInt:Method1[java.lang.Integer,Int] = method((_:java.lang.Integer).intValue)
     
-    val boxDouble:Method1[Double,java.lang.Double] = method1(java.lang.Double.valueOf(_:Double))
-    val unboxDouble:Method1[java.lang.Double,Double] = method1((_:java.lang.Double).doubleValue)
+    val boxDouble:Method1[Double,java.lang.Double] = method(java.lang.Double.valueOf(_:Double))
+    val unboxDouble:Method1[java.lang.Double,Double] = method((_:java.lang.Double).doubleValue)
     
-    val concat = method2((s1:String,s2:String)=> s1.concat(s2))
+    val concat = method((s1:String,s2:String)=> s1.concat(s2))
     
-    val toString = method1((_:AnyRef).toString)
-    val append = method2((_:java.lang.StringBuilder).append(_:CharSequence))
+    val toString = method((_:AnyRef).toString)
+    val append = method((_:java.lang.StringBuilder).append(_:CharSequence))
     
     "bipush(20)" in {
       compiler.compile(classOf[String])(str => _~bipush(20)~boxInt)
         .apply("Test") must be_==(20)}
-    "invokemethod1(_.length)" in {
-      compiler.compile(classOf[String])(str => _~str.load~method1((_:String).length)~boxInt)
+    "invokemethod(_.length)" in {
+      compiler.compile(classOf[String])(str => _~str.load~method((_:String).length)~boxInt)
         .apply("Test") must be_==(4)}
-    "locals + method2" in {
+    "locals + method" in {
       compiler.compile(classOf[java.lang.String])(p => _ ~ p.load ~ withLocal{ str => _ ~ str.load ~ str.load ~ concat})
       .apply("Test") must be_==("TestTest")}
     "iadd with operations" in {
@@ -45,7 +45,7 @@ object BytecodeCompilerSpecs extends Specification{
     "store(_) double in locals" in {
       compiler.compile(classOf[java.lang.Double])(i => _~i.load~unboxDouble~withLocal{d=>d.load}~boxDouble)
       .apply(12.453) must be_==(12.453)}
-    "store(_) double after method2" in {
+    "store(_) double after method" in {
       compiler.compile(classOf[java.lang.Double])(i => _~i.load~unboxDouble~ldc("test")~dup~concat~pop~withLocal{d=>d.load}~boxDouble)
       .apply(12.453) must be_==(12.453)}
     "store Int after double" in {
@@ -119,7 +119,7 @@ object BytecodeCompilerSpecs extends Specification{
       import java.nio.charset.Charset
       val testCharset = "UTF-8"
       val stringCtor = ctor2(new java.lang.String(_: Array[Byte], _: Charset))
-      val charsetForName = method1(Charset.forName(_: String))
+      val charsetForName = method(Charset.forName(_: String))
 
       compiler.compile(classOf[Array[Byte]])(bytes => 
         _ ~ 
@@ -136,7 +136,7 @@ object BytecodeCompilerSpecs extends Specification{
           str.load ~ 
           newInstance(classOf[java.text.SimpleDateFormat]) ~ 
           ldc("yyyy") ~ 
-          method2((_:java.text.SimpleDateFormat).applyPattern(_:java.lang.String)) ~
+          method((_:java.text.SimpleDateFormat).applyPattern(_:java.lang.String)) ~
           withLocal{str=>str.load})
       .apply("test") must be_==("test")
     }
@@ -144,8 +144,8 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[Option[java.lang.String]])(str =>
         _ ~
           str.load ~
-          method1((_:Option[java.lang.String]).isDefined) ~
-          method1(java.lang.Boolean.valueOf(_:Boolean))
+          method((_:Option[java.lang.String]).isDefined) ~
+          method(java.lang.Boolean.valueOf(_:Boolean))
       )
       .apply(Some("x")) must be_==(true)
     }
@@ -153,12 +153,12 @@ object BytecodeCompilerSpecs extends Specification{
       compiler.compile(classOf[java.lang.StringBuilder])( sb =>
         _ ~
           sb.load ~
-          method1((_:java.lang.StringBuilder).length) ~
+          method((_:java.lang.StringBuilder).length) ~
           boxInt
       )
       .apply(new java.lang.StringBuilder) must be_==(0)
     }
-    "method2 call to method which accepts superclass" in {
+    "method call to method which accepts superclass" in {
       val sb = new java.lang.StringBuilder
       sb.append("test")
       compiler.compile(classOf[java.lang.StringBuilder])( sb =>
@@ -303,7 +303,7 @@ object BytecodeCompilerSpecs extends Specification{
         _ ~
           i.load ~
           intValue ~
-          method1(jInt.toString(_:Int))
+          method(jInt.toString(_:Int))
       ).apply(5) must be_==("5")
     }
     "dynamic binary method invocation" in {

@@ -31,7 +31,7 @@ object Methods {
   def dynMethod[T,U](m:Method,p1:Class[T],r:Class[U]):Method1[T,U] =
     dynMethod[T,U](m)(Manifest.classType(p1),Manifest.classType(r))
   
-  def method1[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
+  def method[T,U](code:scala.reflect.Code[T=>U]):Method1[T,U] =
     new AbstractMethodHandle(CodeTools.methodFromTree(code.tree)) with Method1[T,U]
   
   def dynMethod[T1,T2,U](m:Method)(implicit p1:Manifest[T1],p2:Manifest[T1],r:Manifest[U]):Method2[T1,T2,U] =
@@ -39,7 +39,7 @@ object Methods {
   def dynMethod[T1,T2,U](m:Method,p1:Class[T1],p2:Class[T2],r:Class[U]):Method2[T1,T2,U] =
     dynMethod[T1,T2,U](m)(Manifest.classType(p1),Manifest.classType(p2),Manifest.classType(r))
   
-  def method2[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] = 
+  def method[T1,T2,U](code:scala.reflect.Code[(T1,T2)=>U]):Method2[T1,T2,U] =
     new AbstractMethodHandle(CodeTools.methodFromCode(code)) with Method2[T1,T2,U]
 
   private def checkMethod[X](m:Method,retClazz:Class[_],paramClasses:Class[_]*)(f:Method=>X):X = {
@@ -53,7 +53,7 @@ object Methods {
     check("Method must have exactly "+paramClasses.length+" parameter")(params.length == paramClasses.length)
     check("Method's return type must be a subtype of "+retClazz)(retClazz.isAssignableFrom(m.getReturnType))
     for (i <- 0 until paramClasses.length)
-      check("Method's "+i+". parameter must be a supertype of "+paramClasses(i))(
+      check("Method's "+i+". parameter must be a supertype of "+paramClasses(i)+" but is "+params(i))(
         params(i).isAssignableFrom(paramClasses(i)))
   
     f(m)

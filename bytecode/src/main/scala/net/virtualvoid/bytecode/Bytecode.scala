@@ -147,7 +147,7 @@ object Bytecode{
       : F[R**U] => F[R**U] = {
       _ ~
         iterable.load ~
-        Methods.method1((_: java.lang.Iterable[T]).iterator) ~
+        Methods.method((_: java.lang.Iterable[T]).iterator) ~
         withLocal { it => foldIterator(it)(func(it)) }
     }
 
@@ -155,17 +155,17 @@ object Bytecode{
                     (iterator: LocalR[java.util.Iterator[T]])
                     (func: F[R**U**T] => F[R**U])
           : F[R**U] => F[R**U] = {
-            import Methods.method1
+            import Methods.method
             val mf = implicitly[Manifest[T]]
             _ ~
                   tailRecursive[R**U,R**U]( self =>
                     _ ~
 	                  iterator.load ~
-	                  method1((_:java.util.Iterator[T]).hasNext).invoke() ~
+	                  method((_:java.util.Iterator[T]).hasNext).invoke() ~
 	                  ifne2(
 	                    _ ~
 	                      iterator.load ~
-	                      method1((_:java.util.Iterator[T]).next).invoke() ~
+	                      method((_:java.util.Iterator[T]).next).invoke() ~
 	                      checkcast(mf.erasure.asInstanceOf[Class[T]]) ~
 	                      func ~
 	                      self
