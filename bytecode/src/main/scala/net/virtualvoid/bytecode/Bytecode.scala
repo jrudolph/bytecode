@@ -85,7 +85,7 @@ object Bytecode{
     									   :F[R**T]=>F[ST2] =
       f => f.conditional(IFNONNULL,f.stack.rest,f.stack.top,thenB,elseB)
       
-    def tailRecursive[ST<:List,ST2<:List]
+    def iterate[ST<:List,ST2<:List]
       (func: (F[ST] => F[ST2]) => (F[ST]=>F[ST2]))
       	(fr:F[ST]):F[ST2] =
         fr.tailRecursive_int(func)(fr)
@@ -120,7 +120,7 @@ object Bytecode{
 	    _ ~
 		  bipush(0) ~
 		  withLocal{ index =>
-		    tailRecursive[R**U,R**U]{self =>
+		    iterate[R**U,R**U]{self =>
 		      _ ~
 		      index.load ~
 		      array.load ~
@@ -158,7 +158,7 @@ object Bytecode{
             import Methods.method
             val mf = implicitly[Manifest[T]]
             _ ~
-                  tailRecursive[R**U,R**U]( self =>
+                  iterate[R**U,R**U]( self =>
                     _ ~
 	                  iterator.load ~
 	                  method((_:java.util.Iterator[T]).hasNext).invoke() ~
