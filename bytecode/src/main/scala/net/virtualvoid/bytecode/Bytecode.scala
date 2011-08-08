@@ -90,6 +90,9 @@ object Bytecode{
       	(fr:F[ST]):F[ST2] =
         fr.tailRecursive_int(func)(fr)
 
+    def withTargetHere[ST<:List,X](func: Target[ST] => F[ST] => X):F[ST] => X =
+      f => f.withTargetHere_int(func)
+
     def ifne[T<%JVMInt,R<:List](thenB:F[R] => Nothing):F[R**T] => F[R] =
       f => f.conditionalImperative(IFEQ,f.stack.rest,f.stack.top,thenB)
   }
