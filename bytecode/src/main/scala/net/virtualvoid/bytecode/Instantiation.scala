@@ -16,7 +16,7 @@ case class Ctor1[T, U <: AnyRef](override val constructor: jConstructor[_]) exte
   import Bytecode.Instructions._
   import LowLevelInstantiationInstructions._
 
-  def apply[R <: List](): F[R**T] => F[R**U] =
+  def apply[R <: Stack](): F[R**T] => F[R**U] =
     withLocal { arg1 => 
       _ ~ 
         newUninitialized(constructor.getDeclaringClass.asInstanceOf[Class[U]]) ~
@@ -31,7 +31,7 @@ case class Ctor2[T1, T2, U <: AnyRef](override val constructor: jConstructor[_])
   import Bytecode.Instructions._
   import LowLevelInstantiationInstructions._
 
-  def apply[R <: List](): F[R**T1**T2] => F[R**U] =
+  def apply[R <: Stack](): F[R**T1**T2] => F[R**U] =
     withLocal { arg2 => _ ~ withLocal { arg1 =>
       _ ~
         newUninitialized(constructor.getDeclaringClass.asInstanceOf[Class[U]]) ~
@@ -47,6 +47,6 @@ trait InstantiationInstructions {
 }
 
 object LowLevelInstantiationInstructions {
-  def newUninitialized[R <: List, T <: AnyRef](cl: Class[T]): F[R] => F[R**Uninitialized[T]] = f => f.new_int(cl)
-  def invokeconstructor[ST <: List, R <: List, U <: AnyRef](cons: Constructor): F[ST] => F[R**U] = f => f.invokeconstructor(cons)
+  def newUninitialized[R <: Stack, T <: AnyRef](cl: Class[T]): F[R] => F[R**Uninitialized[T]] = f => f.new_int(cl)
+  def invokeconstructor[ST <: Stack, R <: Stack, U <: AnyRef](cons: Constructor): F[ST] => F[R**U] = f => f.invokeconstructor(cons)
 }

@@ -122,7 +122,7 @@ object BytecodeStaticSpecs extends Specification {
     "dup on Int Stack" in {Stack("Nil**Int") must haveOp("dup")}
     
     "iadd on Int**Int" in {Stack("Nil**Int**Int") must haveOp("iadd")}
-    //"iadd on _**Int**Int" in {Stack("(_<:List)**Int**Int") must haveOp("iadd")}
+    //"iadd on _**Int**Int" in {Stack("(_<:Stack)**Int**Int") must haveOp("iadd")}
    
     //"l.load.e.dup.iadd with Int local" in {Locals("Nil**Int") must haveOp("local[_0,Int].load()~dup~iadd")}
     //"l.l.load.e.e.dup.iadd with Int local on place 2" in {Locals("Nil**Int**String") must haveOp("local[_1,Int].load()~dup~iadd")}

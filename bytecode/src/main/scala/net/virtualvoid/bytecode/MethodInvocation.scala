@@ -6,21 +6,21 @@ import _root_.scala.reflect.Manifest
 abstract class AbstractMethodHandle(val method:Method) extends MethodHandle {
   def numParams:Int
     
-  protected def normalCall[X<:List,R<:List,U]:F[X]=>F[R**U] = _.invokemethod(this)
-  protected def unitCall[X<:List,Y<:List]:F[X]=>F[Y] = { f => 
+  protected def normalCall[X<:Stack,R<:Stack,U]:F[X]=>F[R**U] = _.invokemethod(this)
+  protected def unitCall[X<:Stack,Y<:Stack]:F[X]=>F[Y] = { f =>
     val nextF = f.invokemethod(this)
     nextF.pop_unit_int(nextF.stack.rest)
   }
 }
 trait Method1[-T,+U] extends MethodHandle {
   override val numParams = 1
-  def invoke[R <: List, T1X <: T,UX >: U: NoUnit]():F[R**T1X] => F[R**UX] = normalCall
-  def invokeUnit[R <: List, T1X <: T]()(implicit x: IsUnit[U]):F[R**T1X] => F[R] = unitCall
+  def invoke[R <: Stack, T1X <: T,UX >: U: NoUnit]():F[R**T1X] => F[R**UX] = normalCall
+  def invokeUnit[R <: Stack, T1X <: T]()(implicit x: IsUnit[U]):F[R**T1X] => F[R] = unitCall
 }
 trait Method2[-T1,-T2,+U] extends MethodHandle {
   override val numParams = 2
-  def invoke[R <: List, T1X <: T1, T2X <: T2,UX >: U: NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
-  def invokeUnit[R<:List,T1X<:T1,T2X<:T2]()(implicit x: IsUnit[U]):F[R**T1X**T2X] => F[R] = unitCall
+  def invoke[R <: Stack, T1X <: T1, T2X <: T2,UX >: U: NoUnit]():F[R**T1X**T2X] => F[R**UX] = normalCall
+  def invokeUnit[R<:Stack,T1X<:T1,T2X<:T2]()(implicit x: IsUnit[U]):F[R**T1X**T2X] => F[R] = unitCall
 }
 
 object Methods {
@@ -61,9 +61,9 @@ object Methods {
 }
 
 trait MethodImplicits {
-  implicit def normalCall1[R<:List, T, U: NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
-  implicit def unitCall1[R<:List,T](m:Method1[T,Unit]):F[R**T]=>F[R] = m.invokeUnit()
+  implicit def normalCall1[R<:Stack, T, U: NoUnit](m:Method1[T,U]):F[R**T]=>F[R**U] = m.invoke()
+  implicit def unitCall1[R<:Stack,T](m:Method1[T,Unit]):F[R**T]=>F[R] = m.invokeUnit()
   
-  implicit def normalCall2[R <: List, T1, T2, U: NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
-  implicit def unitCall2[R<:List,T1,T2](m:Method2[T1,T2,Unit]):F[R**T1**T2]=>F[R] = m.invokeUnit()
+  implicit def normalCall2[R <: Stack, T1, T2, U: NoUnit](m:Method2[T1,T2,U]):F[R**T1**T2]=>F[R**U] = m.invoke()
+  implicit def unitCall2[R<:Stack,T1,T2](m:Method2[T1,T2,Unit]):F[R**T1**T2]=>F[R] = m.invokeUnit()
 }

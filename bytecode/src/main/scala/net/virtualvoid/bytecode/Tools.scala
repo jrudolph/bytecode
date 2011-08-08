@@ -69,9 +69,9 @@ object CodeTools{
 	      // method call if receiver is too generic, i.e. only a bounded type parameter in the enclosing scope
 	      // like [T,It<:Iterable[T]] (it:It) => it.iterator
 	      case Function(
-	        List(LocalValue(NoSymbol,x,PrefixedType(NoType,NoSymbol))),
+	        Stack(LocalValue(NoSymbol,x,PrefixedType(NoType,NoSymbol))),
                  Apply(Select(Ident(LocalValue(NoSymbol,x1,PrefixedType(NoType,NoSymbol))),
-                         Method(method,_)),List())) if x == x1 => {
+                         Method(method,_)),Stack())) if x == x1 => {
             val (clazz,methodName) = splitFullMethodName(method)
             val cl = forName(clazz).getOrElse(throw classNotFound(clazz))
             cl.getMethod(methodName)

@@ -2,11 +2,11 @@ package net.virtualvoid.bytecode
 
 import scala.annotation.unchecked.uncheckedVariance
 
-trait F[+ST<:List] extends backend.BackendSupport[ST] {
+trait F[+ST<:Stack] extends backend.BackendSupport[ST] {
   def ~[X](f:F[ST]=>X):X = f(this)
 }
 
-trait Target[ST<:List]{
+trait Target[ST<:Stack]{
   def jmp:F[ST] => Nothing
 }
 
@@ -14,7 +14,7 @@ trait Target[ST<:List]{
  * A capability representing a readable local variable slot.
  */
 trait LocalR[+T] {
-  def load[ST<:List, T2 >: T]: F[ST] => F[ST ** T2]
+  def load[ST<:Stack, T2 >: T]: F[ST] => F[ST ** T2]
 }
 
 /**
@@ -22,11 +22,11 @@ trait LocalR[+T] {
  * lost. If a local variable slot is passed into a function and the local variable
  * should only be read inside the function, use LocalR instead of Local because
  * then covariance works like a client would expect it (e.g. for a parameter of type
- * LocalR[java.lang.Iterable[AnyRef]] you can pass a Local[java.util.List[AnyRef]]
+ * LocalR[java.lang.Iterable[AnyRef]] you can pass a Local[java.util.Stack[AnyRef]]
  * which is often the right thing.
  */
 trait Local[T] extends LocalR[T] {
-  def store[ST<:List]:F[ST**T] => F[ST]
+  def store[ST<:Stack]:F[ST**T] => F[ST]
 }
 
 trait MethodHandle {
@@ -34,6 +34,6 @@ trait MethodHandle {
   
   def method: Method
   def numParams: Int
-  protected def normalCall[X <: List, R <: List, U]: F[X] => F[R**U]
-  protected def   unitCall[X <: List, Y <: List   ]: F[X] => F[Y] 
+  protected def normalCall[X <: Stack, R <: Stack, U]: F[X] => F[R**U]
+  protected def   unitCall[X <: Stack, Y <: Stack   ]: F[X] => F[Y]
 }

@@ -8,11 +8,11 @@ import java.lang.{String=>jString}
 object Interpreter extends ByteletCompiler {
     case object UninitializedObject extends Uninitialized[AnyRef]
 
-    case class IF[+ST<:List](stack:ST) extends F[ST]{
+    case class IF[+ST<:Stack](stack:ST) extends F[ST]{
       import CodeTools._
       
-      def popN(n:Int):(scala.List[AnyRef],List) = {
-        def inner(i:Int,cur:(scala.List[AnyRef],List)):(scala.List[AnyRef],List) =
+      def popN(n:Int):(scala.List[AnyRef],Stack) = {
+        def inner(i:Int,cur:(scala.List[AnyRef],Stack)):(scala.List[AnyRef],Stack) =
           if (i > 0) {
             val Cons(rest,top:AnyRef) = cur._2
             inner(i - 1,(top :: cur._1,rest))
@@ -25,21 +25,21 @@ object Interpreter extends ByteletCompiler {
       def notImplemented(what:String) = 
         new java.lang.Error(what + " not implemented in Interpreter")
       
-      def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int] = IF(stack ** i1)
-      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString] = IF(stack ** str)
+      def bipush[ST2>:ST<:Stack](i1:Int):F[ST2**Int] = IF(stack ** i1)
+      def ldc[ST2>:ST<:Stack](str:jString):F[ST2**jString] = IF(stack ** str)
 
-      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1+i2))
-      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1-i2))
-      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1*i2))
-      def pop_int[R<:List](rest:R):F[R] = IF(rest)
-      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T] = 
+      def iadd_int[R<:Stack](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1+i2))
+      def isub_int[R<:Stack](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1-i2))
+      def imul_int[R<:Stack](rest:R,i1:Int,i2:Int):F[R**Int] = IF(rest ** (i1*i2))
+      def pop_int[R<:Stack](rest:R):F[R] = IF(rest)
+      def dup_int[R<:Stack,T](rest:R,top:T):F[R**T**T] =
     	  IF(rest**top**top)
-      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2] = 
+      def swap_int[R<:Stack,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2] =
     	  IF(rest**t1**t2)
-      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1] = 
+      def dup_x1_int[R<:Stack,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1] =
         IF(rest**t1**t2**t1)
       
-      override def invokemethod[R<:List,U](handle:MethodHandle)
+      override def invokemethod[R<:Stack,U](handle:MethodHandle)
                                    :F[R**U] = {
         val (args,rest) = popN(handle.numParams)
         IF(rest.asInstanceOf[R] ** invokeMethod(handle.method,args:_*).asInstanceOf[U])
@@ -51,27 +51,27 @@ object Interpreter extends ByteletCompiler {
        * invokeconstructor then dismisses both instances of UninitializedObject before
        * using reflection to call the constructor.
        */
-      override def new_int[ST2 >: ST <: List, U](cl: Class[U]): F[ST2**Uninitialized[U]] =
+      override def new_int[ST2 >: ST <: Stack, U](cl: Class[U]): F[ST2**Uninitialized[U]] =
         IF(stack ** UninitializedObject.asInstanceOf[Uninitialized[U]]) // noop
-      override def invokeconstructor[R<:List,U](cons: Constructor): F[R**U] =
+      override def invokeconstructor[R<:Stack,U](cons: Constructor): F[R**U] =
         popN(cons.numParams) match {
            case (args, Cons(Cons(rest, UninitializedObject), UninitializedObject)) =>
              IF(rest.asInstanceOf[R] ** cons.constructor.newInstance(args: _*).asInstanceOf[U])
         }
 
-      def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = 
+      def getstatic_int[ST2>:ST<:Stack,T](code:scala.reflect.Code[()=>T]):F[ST2**T] =
         IF(stack ** fieldFromTree(code.tree).get(null).asInstanceOf[T])
 
-      def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
+      def putstatic_int[R<:Stack,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
         fieldFromTree(code.tree).set(null,top)
         IF(rest)
       }
       
-      def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U] = 
+      def checkcast_int[R<:Stack,T,U](rest:R,top:T)(cl:Class[U]):F[R**U] =
         IF(rest**top.asInstanceOf[U])
-      def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R] => Nothing):F[R] = 
+      def ifne_int[R<:Stack](rest:R,top:JVMInt,inner:F[R] => Nothing):F[R] =
         throw notImplemented("ifeq_int")
-      def ifne2_int[R<:List,ST2<:List](rest:R
+      def ifne2_int[R<:Stack,ST2<:Stack](rest:R
                                                  ,top:JVMInt
                                                  ,then:F[R]=>F[ST2]
                                                  ,elseB:F[R]=>F[ST2]):F[ST2] =
@@ -84,7 +84,7 @@ object Interpreter extends ByteletCompiler {
         case IFNE => value != 0
         case IFEQ => value == 0
       }
-      def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+      def conditional[R<:Stack,T,ST2<:Stack](cond:Int,rest:R,top:T
     	              					  ,thenB:F[R]=>F[ST2]
     									  ,elseB:F[R]=>F[ST2]):F[ST2] = 
         if (isConditionTrue(cond,top))
@@ -93,31 +93,31 @@ object Interpreter extends ByteletCompiler {
           elseB(IF(rest))
       
       import java.lang.reflect.{Array => jArray}
-      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T] = {
+      def aload_int[R<:Stack,T](rest:R,array:AnyRef,i:Int):F[R**T] = {
         IF(rest**jArray.get(array,i).asInstanceOf[T])
       }
-      def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R] = {
+      def astore_int[R<:Stack,T](rest:R,array:AnyRef,index:Int,t:T):F[R] = {
         jArray.set(array,index,t)
         IF(rest)
       }
-      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int] = 
+      def arraylength_int[R<:Stack](rest:R,array:AnyRef):F[R**Int] =
         IF(rest**jArray.getLength(array))
       
-      def pop_unit_int[R<:List](rest:R):F[R] = IF(rest)      
+      def pop_unit_int[R<:Stack](rest:R):F[R] = IF(rest)
 
-      def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = 
+      def newInstance[T,ST2>:ST<:Stack](cl:Class[T]):F[ST2**T] =
         IF(stack**cl.newInstance)
       
-      def tailRecursive_int[ST1>:ST<:List,ST2<:List]
+      def tailRecursive_int[ST1>:ST<:Stack,ST2<:Stack]
         (func: (F[ST1] => F[ST2]) => (F[ST1]=>F[ST2]))
         	(fr:F[ST1]):F[ST2] =
           // classical y combinator in strict languages
           func(tailRecursive_int(func)_)(fr)
       
-      def withLocal_int[T,ST<:List,ST2<:List](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] =
+      def withLocal_int[T,ST<:Stack,ST2<:Stack](top:T,rest:ST,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] =
         code(local(top))(IF(rest))
       
-      def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X = 
+      def withTargetHere_int[X,ST2>:ST<:Stack](code:Target[ST2] => F[ST2] => X):X =
         code(new Target[ST2]{
           def jmp:F[ST2] => Nothing = f => throw ResultException(code(this)(f.asInstanceOf[F[ST]]))
         })(this)
@@ -131,21 +131,21 @@ object Interpreter extends ByteletCompiler {
           case x:ResultException => x.res
         }
       }
-      def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+      def conditionalImperative[R<:Stack,T,ST2<:Stack](cond:Int,rest:R,top:T
     											  ,thenB:F[R]=>Nothing):F[R] =
         if(!isConditionTrue(cond,top)) // this is called with inverted conditions
           executeAndExtract(() => thenB(IF(rest))).asInstanceOf[F[R]]
         else
           IF(rest)
 
-      def lookupSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] =
+      def lookupSwitch[R <: Stack, ST2 <: Stack](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] =
         mapping(IF(rest))(candidates.find(cond == _))
     }
 
     def local[T](initial:T):Local[T] = new Local[T] {
       var value = initial
-      def load[ST <: List,T2>:T]:F[ST] => F[ST**T2] = f => IF(f.stack**value)
-      def store[ST<:List]:F[ST**T] => F[ST] = f => {
+      def load[ST <: Stack,T2>:T]:F[ST] => F[ST**T2] = f => IF(f.stack**value)
+      def store[ST<:Stack]:F[ST**T] => F[ST] = f => {
     	  value = f.stack.top
     	  IF(f.stack.rest)
       }

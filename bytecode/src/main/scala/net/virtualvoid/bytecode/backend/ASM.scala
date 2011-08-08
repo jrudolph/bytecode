@@ -26,43 +26,43 @@ object ASM extends ByteletCompiler{
     
     object JmpException extends RuntimeException 
     
-    class ASMFrame[+ST<:List](val mv:MethodVisitor
+    class ASMFrame[+ST<:Stack](val mv:MethodVisitor
                                       ,val stackClass:ClassStack
                                       ,val nextFreeLocal:Int) 
                                       	extends F[ST]{
       def self[T]:T = this.asInstanceOf[T]
 
-      val loopingList = new Cons(null.asInstanceOf[List],null){
+      val loopingList = new Cons(null.asInstanceOf[Stack],null){
         override val rest = this
         override val top = null
       }
       
       def stack = loopingList.asInstanceOf[ST]
       
-      def withStack[ST2<:List](classes:ClassStack) =
+      def withStack[ST2<:Stack](classes:ClassStack) =
         new ASMFrame[ST2](mv,classes,nextFreeLocal)
       
-      def newStacked[T,ST2>:ST<:List](cl:Class[T]) = 
+      def newStacked[T,ST2>:ST<:Stack](cl:Class[T]) =
         withStack(stackClass**cl)
       
-      def bipush[ST2>:ST<:List](i1:Int):F[ST2**Int] = {
+      def bipush[ST2>:ST<:Stack](i1:Int):F[ST2**Int] = {
         mv.visitIntInsn(BIPUSH, i1)
         newStacked(classOf[Int])
       }
-      def ldc[ST2>:ST<:List](str:jString):F[ST2**jString] = {
+      def ldc[ST2>:ST<:Stack](str:jString):F[ST2**jString] = {
         mv.visitLdcInsn(str)
         newStacked(classOf[jString])
       }
       
-      def iadd_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = {
+      def iadd_int[R<:Stack](rest:R,i1:Int,i2:Int):F[R**Int] = {
         mv.visitInsn(IADD)
         withStack(stackClass.rest)
       }
-      def isub_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = {
+      def isub_int[R<:Stack](rest:R,i1:Int,i2:Int):F[R**Int] = {
         mv.visitInsn(ISUB)
         withStack(stackClass.rest)
       }
-      def imul_int[R<:List](rest:R,i1:Int,i2:Int):F[R**Int] = {
+      def imul_int[R<:Stack](rest:R,i1:Int,i2:Int):F[R**Int] = {
         mv.visitInsn(IMUL)
         withStack(stackClass.rest)
       }
@@ -73,29 +73,29 @@ object ASM extends ByteletCompiler{
       val pop = (POP,POP2)
       val dup = (DUP,DUP2)
       val dup_x1 = (DUP_X1,DUP2_X1)
-      def pop_int[R<:List](rest:R):F[R] = {
+      def pop_int[R<:Stack](rest:R):F[R] = {
         mv.visitInsn(withCategory(pop))
         withStack(stackClass.rest)
       }
-      def dup_int[R<:List,T](rest:R,top:T):F[R**T**T] = {
+      def dup_int[R<:Stack,T](rest:R,top:T):F[R**T**T] = {
         mv.visitInsn(withCategory(dup))
         withStack(stackClass**stackClass.top)
       }
-      def swap_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2] = {
+      def swap_int[R<:Stack,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2] = {
         mv.visitInsn(SWAP)
         withStack(stackClass.rest.rest**stackClass.top**stackClass.rest.top)
       }
-      def dup_x1_int[R<:List,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1] = {
+      def dup_x1_int[R<:Stack,T1,T2](rest:R,t2:T2,t1:T1):F[R**T1**T2**T1] = {
         mv.visitInsn(withCategory(dup_x1))
         withStack(
           stackClass.rest.rest**stackClass.top**
             stackClass.rest.top**stackClass.top)
       }
-      def checkcast_int[R<:List,T,U](rest:R,top:T)(cl:Class[U]):F[R**U] = {
+      def checkcast_int[R<:Stack,T,U](rest:R,top:T)(cl:Class[U]):F[R**U] = {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(cl));
         withStack(stackClass.rest**cl)
       }
-      def ifne_int[R<:List](rest:R,top:JVMInt,inner:F[R] => Nothing):F[R] = {
+      def ifne_int[R<:Stack](rest:R,top:JVMInt,inner:F[R] => Nothing):F[R] = {
         val l = new Label
         mv.visitJumpInsn(IFEQ,l)
         
@@ -110,28 +110,28 @@ object ASM extends ByteletCompiler{
         withStack(stackClass.rest)
       }
       import CodeTools._
-      def aload_int[R<:List,T](rest:R,array:AnyRef,i:Int):F[R**T] = {
+      def aload_int[R<:Stack,T](rest:R,array:AnyRef,i:Int):F[R**T] = {
         val elType = stackClass.rest.top.getComponentType
         
         mv.visitInsn(opcode(elType,IALOAD))
         
         withStack(stackClass.rest.rest ** elType)
       }
-      def astore_int[R<:List,T](rest:R,array:AnyRef,index:Int,t:T):F[R] = {
+      def astore_int[R<:Stack,T](rest:R,array:AnyRef,index:Int,t:T):F[R] = {
         val elType = stackClass.rest.rest.top.getComponentType
         
         mv.visitInsn(opcode(elType,IASTORE))
         
         withStack(stackClass.rest.rest.rest)
       }
-      def arraylength_int[R<:List](rest:R,array:AnyRef):F[R**Int] = {
+      def arraylength_int[R<:Stack](rest:R,array:AnyRef):F[R**Int] = {
         mv.visitInsn(ARRAYLENGTH)
         
         withStack(stackClass.rest ** classOf[Int])
       }      
       
       
-      def newInstance[T,ST2>:ST<:List](cl:Class[T]):F[ST2**T] = {
+      def newInstance[T,ST2>:ST<:Stack](cl:Class[T]):F[ST2**T] = {
         val cons = cl.getConstructor()
         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
         mv.visitInsn(DUP)
@@ -148,7 +148,7 @@ object ASM extends ByteletCompiler{
         else
           INVOKEVIRTUAL
 
-      def invokemethod[R<:List,U](handle:MethodHandle)
+      def invokemethod[R<:Stack,U](handle:MethodHandle)
                                    :F[R**U] = {
         val m = handle.method                                     
         val cl = m.getDeclaringClass
@@ -158,7 +158,7 @@ object ASM extends ByteletCompiler{
                           ,Type.getMethodDescriptor(m))
         withStack(stackClass.popN(handle.numParams) ** m.getReturnType)
       }
-      def invokeconstructor[R<:List,U](cons: Constructor)
+      def invokeconstructor[R<:Stack,U](cons: Constructor)
                                    :F[R**U] = {
         val cl = cons.constructor.getDeclaringClass
         mv.visitMethodInsn(INVOKESPECIAL
@@ -167,12 +167,12 @@ object ASM extends ByteletCompiler{
                           ,Type.getConstructorDescriptor(cons.constructor))
         withStack(stackClass.popN(cons.numParams) ** cl)
       }
-      def new_int[ST2 >: ST <: List, U](cl: Class[U]): F[ST2**Uninitialized[U]] = {
+      def new_int[ST2 >: ST <: Stack, U](cl: Class[U]): F[ST2**Uninitialized[U]] = {
         mv.visitTypeInsn(NEW,Type.getInternalName(cl))
         withStack(stackClass ** cl)
       }
                                    
-      def getstatic_int[ST2>:ST<:List,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
+      def getstatic_int[ST2>:ST<:Stack,T](code:scala.reflect.Code[()=>T]):F[ST2**T] = {
         val field = fieldFromTree(code.tree)
         mv.visitFieldInsn(GETSTATIC
                           ,Type.getInternalName(field.getDeclaringClass)
@@ -180,7 +180,7 @@ object ASM extends ByteletCompiler{
                           ,Type.getDescriptor(field.getType))
         newStacked(field.getType)
       }
-      def putstatic_int[R<:List,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
+      def putstatic_int[R<:Stack,T](rest:R,top:T,code:scala.reflect.Code[T=>Unit]):F[R] = {
         val field = fieldFromTree(code.tree)
         mv.visitFieldInsn(PUTSTATIC
                           ,Type.getInternalName(field.getDeclaringClass)
@@ -189,10 +189,10 @@ object ASM extends ByteletCompiler{
         withStack(stackClass.rest)
       }
       
-      def pop_unit_int[R<:List](rest:R):F[R] = 
+      def pop_unit_int[R<:Stack](rest:R):F[R] =
         withStack(stackClass.rest)
       
-      def conditional[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+      def conditional[R<:Stack,T,ST2<:Stack](cond:Int,rest:R,top:T
     	              					  ,thenB:F[R]=>F[ST2]
     									  ,elseB:F[R]=>F[ST2]):F[ST2] = {
         /*
@@ -233,9 +233,9 @@ object ASM extends ByteletCompiler{
       class InvalidFrame extends ASMFrame[Nothing](null,null,0){
         override val toString = "invalid frame" 
       }
-      def invalidFrame[ST<:List]:F[ST] = 
+      def invalidFrame[ST<:Stack]:F[ST] =
         (new InvalidFrame).asInstanceOf[F[ST]]
-      def tailRecursive_int[ST1>:ST<:List,ST2<:List]
+      def tailRecursive_int[ST1>:ST<:Stack,ST2<:Stack]
         (func: (F[ST1] => F[ST2]) => (F[ST1]=>F[ST2]))
         (fr:F[ST1]):F[ST2] = {
           val start = new Label
@@ -254,7 +254,7 @@ object ASM extends ByteletCompiler{
           case _ => 1
         }
       }
-      def withLocal_int[T,ST<:List,ST2<:List](top:T
+      def withLocal_int[T,ST<:Stack,ST2<:Stack](top:T
                                              ,rest:ST
                                              ,code:Local[T]=>F[ST]=>F[ST2]):F[ST2] = {
         val localIndex = nextFreeLocal
@@ -266,14 +266,14 @@ object ASM extends ByteletCompiler{
         
         new ASMFrame[ST2](mv,afterBlock.stackClass,nextFreeLocal)
       }
-      def withTargetHere_int[X,ST2>:ST<:List](code:Target[ST2] => F[ST2] => X):X = {
+      def withTargetHere_int[X,ST2>:ST<:Stack](code:Target[ST2] => F[ST2] => X):X = {
         val label = new Label
         mv.visitLabel(label)
         code(new Target[ST2]{
           def jmp:F[ST2] => Nothing = {_ => mv.visitJumpInsn(GOTO,label); throw JmpException}                                               
         })(this)
       }
-      def conditionalImperative[R<:List,T,ST2<:List](cond:Int,rest:R,top:T
+      def conditionalImperative[R<:Stack,T,ST2<:Stack](cond:Int,rest:R,top:T
     											  ,thenB:F[R]=>Nothing):F[R] = {
         val afterCondition:F[R] = withStack(stackClass.rest)
         
@@ -288,7 +288,7 @@ object ASM extends ByteletCompiler{
     	mv.visitLabel(after)
     	afterCondition
       }
-      def lookupSwitch[R <: List, ST2 <: List](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] = {
+      def lookupSwitch[R <: Stack, ST2 <: Stack](cond: Int, rest: R)(candidates: Int*)(mapping: F[R] => PartialFunction[Option[Int], F[ST2]]): F[ST2] = {
         // TODO: emit warnings/errors if mapping doesn't include all the candidates
         val map = mapping(withStack(stackClass.rest))
 
@@ -318,12 +318,12 @@ object ASM extends ByteletCompiler{
         Type.getType(CodeTools.cleanClass(cl.getName)).getOpcode(opcode)
     def local[T](index:Int,clazz:Class[_]):Local[T] = 
         new Local[T]{
-          def load[ST <: List,T2>:T]: F[ST] => F[ST**T2] = f => {
+          def load[ST <: Stack,T2>:T]: F[ST] => F[ST**T2] = f => {
             val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
             asmF.mv.visitVarInsn(opcode(clazz,ILOAD),index)
             asmF.withStack(asmF.stackClass ** clazz)
           }
-          def store[ST<:List]:F[ST**T] => F[ST] = f => {
+          def store[ST<:Stack]:F[ST**T] => F[ST] = f => {
             val asmF:ASMFrame[ST] = f.asInstanceOf[ASMFrame[ST]]
             asmF.mv.visitVarInsn(opcode(clazz,ISTORE),index)
             asmF.withStack(asmF.stackClass.rest)
