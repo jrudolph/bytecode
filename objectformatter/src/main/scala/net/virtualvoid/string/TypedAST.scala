@@ -125,7 +125,7 @@ object TypedAST {
     val AST.Conditional(exp, thenB, elseB) = c
     val primitiveExp: Exp[T, Boolean] =
       if (unbox)
-        ParentExp(MethodHandleExp(method1((_: java.lang.Boolean).booleanValue)), typedExp(exp, cl, classOf[java.lang.Boolean]))
+        ParentExp(MethodHandleExp(method((_: java.lang.Boolean).booleanValue)), typedExp(exp, cl, classOf[java.lang.Boolean]))
       else
         typedExp(exp, cl, BOOL)
     ConditionalBoolean(primitiveExp, typed(thenB, cl), typed(elseB, cl))

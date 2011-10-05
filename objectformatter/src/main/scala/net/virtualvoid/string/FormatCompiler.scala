@@ -12,13 +12,13 @@ object Compiler{
   val parser = EnhancedStringFormatParser
   import TypedAST._
 
-  lazy val append = method2((_:StringBuilder).append(_:String))
+  lazy val append = method((_:StringBuilder).append(_:String))
   // looks good, but doesn't help us at all, because foldIterable has to work with erased types and uses manifests anyway
-  //def iteratorM[U <: AnyRef]: Method1[java.lang.Iterable[U], java.util.Iterator[U]] = method1((_: java.lang.Iterable[U]).iterator)
-  lazy val iteratorM = method1((_: java.lang.Iterable[AnyRef]).iterator)
-  lazy val hasNextM = method1((_: java.util.Iterator[AnyRef]).hasNext)
+  //def iteratorM[U <: AnyRef]: method[java.lang.Iterable[U], java.util.Iterator[U]] = method((_: java.lang.Iterable[U]).iterator)
+  lazy val iteratorM = method((_: java.lang.Iterable[AnyRef]).iterator)
+  lazy val hasNextM = method((_: java.util.Iterator[AnyRef]).hasNext)
    
-  def compileExp[R<:List,T<:AnyRef,Ret: NoUnit](exp:Exp[T,Ret])
+  def compileExp[R<:Stack,T<:AnyRef,Ret: NoUnit](exp:Exp[T,Ret])
                                   :F[R**T] => F[R**Ret] =
     exp match {
       case ParentExp(inner,parent) => _ ~ compileExp(parent) ~ compileExp(inner)
@@ -26,13 +26,13 @@ object Compiler{
       case ThisExp => f => f
     }
     
-  def compileFormatElementList[R<:List,T<:AnyRef]
+  def compileFormatElementList[R<:Stack,T<:AnyRef]
                  (elements:FormatElementList[T],value:LocalR[T])
                  (f:F[R**StringBuilder]):F[R**StringBuilder] =
     elements.elements.foldLeft(f){(frame,element) => 
       compileElement(element,value)(frame)}
 
-  def compileElement[R<:List,T <: AnyRef]
+  def compileElement[R<:Stack,T <: AnyRef]
                      (ele:FormatElement[T],value:LocalR[T])
                      (f:F[R**StringBuilder])
                      :F[R**StringBuilder]
@@ -42,7 +42,7 @@ object Compiler{
       case ToStringConversion(e) =>
         f ~ value.load ~
           compileExp(e) ~ 
-          method1((_:AnyRef).toString) ~ 
+          method((_:AnyRef).toString) ~ 
           append
       case ExpandArray(exp,sep,inner) => {
 		  import Bytecode.RichOperations.foldArray
@@ -98,11 +98,11 @@ object Compiler{
             value.load ~
             compileExp(exp) ~
             dup ~
-            method1((_:Option[AnyRef]).isDefined) ~
+            method((_:Option[AnyRef]).isDefined) ~
             ifeq2(
               _ ~ pop /*None*/ ~ compileFormatElementList(elseB,value),
               _ ~ 
-                method1((_:Option[AnyRef]).get) ~
+                method((_:Option[AnyRef]).get) ~
                 withLocal(newValue => compileFormatElementList(then,newValue)))
       }
       case ConditionalBoolean(exp, thenB, elseB) => {
@@ -131,7 +131,7 @@ object Compiler{
         f ~ newInstance(classOf[java.text.SimpleDateFormat]) ~
           dup ~
           ldc(format) ~ 
-          invokemethod2(_.applyPattern(_)) ~ pop_unit ~
+          invokemethod(_.applyPattern(_)) ~ pop_unit ~
           value.load ~
           (f => 
             retType match {
@@ -140,14 +140,14 @@ object Compiler{
               case x if CalendarClass.isAssignableFrom(x) => 
                 f ~                
                   compileGetExp(exp,cl,CalendarClass) ~ 
-                  invokemethod1(_.getTime)
+                  invokemethod(_.getTime)
               case _ => throw new java.lang.Error(
                 "Expected date- or calendar- typed property. "+
                 cl+" can't be converted.") 
             }
           ) ~
-          invokemethod2(_.format(_)) ~
-          invokemethod2(_.append(_))
+          invokemethod(_.format(_)) ~
+          invokemethod(_.append(_))
       }*/
     }
   def compile[T<:AnyRef](format:String,cl:Class[T]):T=>jString = {
@@ -156,7 +156,7 @@ object Compiler{
       _ ~ 
         newInstance(classOf[StringBuilder]) ~
         compileFormatElementList(elements,value) ~
-        method1((_:StringBuilder).toString)
+        method((_:StringBuilder).toString)
     )
   }
 }
