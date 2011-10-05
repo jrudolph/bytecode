@@ -13,7 +13,7 @@ object MnemonicsTest extends App {
 	  bipush(1) ~
 	  iadd ~
 	  method((x: Int) => Integer.valueOf(x)) ~
-	  ret . jmp)
+	  ret.jmp)
 
   println("f(5) = "+f(5))
 }
