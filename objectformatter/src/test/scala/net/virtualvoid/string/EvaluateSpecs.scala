@@ -53,7 +53,7 @@ object EvaluateSpecs extends Specification{
     "object iterable access with inner expression" in {"#accounts[#number]{,}*" must evaluateAs("78910,12345")}
     "object array access with inner expression" in {"#accs[#number]{,}*" must evaluateAs("78910,12345")}
     "deep property access" in {"#accs[#bank.name]{,}*" must evaluateAs("Sparkasse,Volksbank")}
-    "format dates properly" in {"#this->date[dd.MM.yyyy]" must evaluateObjectAs(new GregorianCalendar(2008,OCTOBER,1),"01.10.2008")}
+    //"format dates properly" in {"#this->date[dd.MM.yyyy]" must evaluateObjectAs(new GregorianCalendar(2008,OCTOBER,1),"01.10.2008")}
     "evaluate conditionals true (boxed)" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(true),"yes")}
     "evaluate conditionals true (primitive)" in {"#hasNoMoney?[yes|no]" must evaluateAs("yes")}
     "evaluate conditionals false (boxed)" in {"#this?[yes|no]" must evaluateObjectAs(java.lang.Boolean.valueOf(false),"no")}
