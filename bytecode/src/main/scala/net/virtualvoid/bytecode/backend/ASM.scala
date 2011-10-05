@@ -5,6 +5,8 @@ import Bytecode._
 import java.lang.{String=>jString}
 
 object ASM extends ByteletCompiler{
+    val shouldWriteClass: Boolean = System.getProperty("bytecode.writeClassFile", "false").toBoolean
+
     import _root_.org.objectweb.asm._
     import Opcodes._
 
@@ -328,13 +330,12 @@ object ASM extends ByteletCompiler{
             asmF.mv.visitVarInsn(opcode(clazz,ISTORE),index)
             asmF.withStack(asmF.stackClass.rest)
           }
-        }                                     
+        }
+
     def classFromBytes(className:String,bytes:Array[Byte]):Class[_] = {
       new java.lang.ClassLoader(getClass.getClassLoader){
         lazy val thisClass = {
-          val fos = new java.io.FileOutputStream(className+".class")
-          fos.write(bytes)
-          fos.close
+          if (shouldWriteClass) writeClassFile
           defineClass(className,bytes,0,bytes.length)
         }
         override def findClass(name:String):java.lang.Class[_] = {
@@ -342,6 +343,12 @@ object ASM extends ByteletCompiler{
             thisClass
           else
             getParent.loadClass(name)
+        }
+
+        def writeClassFile {
+          val fos = new java.io.FileOutputStream(className+".class")
+          fos.write(bytes)
+          fos.close
         }
       }.loadClass(className)
     }
