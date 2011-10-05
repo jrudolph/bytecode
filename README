@@ -11,7 +11,7 @@ How to build
 ============
 
 To build you need to install the sbt launcher. See http://code.google.com/p/simple-build-tool/wiki/Setup
-for instructions. In each of the directories you can call `sbt package` to build the module.
+for instructions. In each of the directories you can call `sbt update && sbt package` to build the module.
 
 How to use the example project
 ==============================
