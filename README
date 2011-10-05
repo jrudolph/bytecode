@@ -1,0 +1,29 @@
+Source code for "Mnemonics: Type-safe Bytecode Generation at Run Time"
+======================================================================
+
+Directories:
+ - bytecode: code of the Mnemoncis library
+ - objectformatter: code of the formatting library including a compiler using Mnemonics to 
+                    compile format expressions to JVM bytecodes.
+ - ExampleProject: an example project for playing around with the library.
+                   
+How to build
+============
+
+To build you need to install the sbt launcher. See http://code.google.com/p/simple-build-tool/wiki/Setup
+for instructions. In each of the directories you can call `sbt package` to build the module.
+
+How to use the example project
+==============================
+
+The directory 'ExampleProject' contains an example project to experiment with Mnemonics. It contains
+project files for Eclipse. For editing in Eclipse it is recommended to install the current version of
+the Scala Eclipse IDE from http://www.scala-ide.org/ .
+
+Otherwise, you can use sbt to build and run the example.
+
+Updates
+=======
+
+Current source files, updates and more information will be published at 
+http://mnemonics.virtual-void.net
