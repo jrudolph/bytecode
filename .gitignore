@@ -1,4 +1,12 @@
-/build.properties
-target
-boot
-lib_managed
+/target
+/*.class
+/*.swp
+/.classpath
+/.project
+/.manager
+/.settings
+/lib_managed
+/project/boot
+*~
+\#*\#
+.#*

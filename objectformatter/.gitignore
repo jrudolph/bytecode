@@ -1,9 +1,0 @@
-/target
-/*.swp
-/.manager
-/.project
-/.classpath
-/.settings
-/*.class
-/project/boot
-/lib_managed
