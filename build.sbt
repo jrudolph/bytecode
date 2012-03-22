@@ -8,3 +8,9 @@ initialCommands in console +=
      |import Methods._
      |import Bytecode.Instructions._
      |import backend.ASM""".stripMargin
+
+scalacOptions in Global ++= Seq(
+  "-encoding", "utf8",
+  "-deprecation",
+  "-unchecked"
+)
