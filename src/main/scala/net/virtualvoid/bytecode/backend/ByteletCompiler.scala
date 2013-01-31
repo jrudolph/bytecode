@@ -21,6 +21,14 @@ trait ByteletCompiler {
                                         (implicit mf: scala.reflect.Manifest[R])
       : T1 => R = 
     compile(cl, mf.erasure.asInstanceOf[Class[R]])(p1 => ret => f => f ~ code(p1) ~ ret.jmp)
+
+  /** A shortcut which uses just manifests for types */
+  def apply[T1 <: AnyRef, R <: AnyRef](code: Local[T1] => F[Nil] => F[Nil**R])
+                                      (implicit mfT1: scala.reflect.Manifest[R], mfR: scala.reflect.Manifest[R])
+      : T1 => R =
+    compile[T1, R](mfT1.erasure.asInstanceOf[Class[T1]], mfR.erasure.asInstanceOf[Class[R]]) {
+      p1 => ret => f => f ~ code(p1) ~ ret.jmp
+    }
 }
 
 /** A token which is used to return a value from the function */
